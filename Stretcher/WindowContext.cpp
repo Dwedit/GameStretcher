@@ -13,17 +13,41 @@ using std::wstring;
 
 #define DO_NOT_RESET_WNDPROC 0
 #define DELAYED_HOOK 0
-#define USE_IDLE_HOOK 0
+//#define USE_IDLE_HOOK 0
 
 #include "WindowClassContext.h"
 
 TinyMapUnique<HWND, WindowContext> windowMap;
 TinyMap<HDC, WindowContext*> hdcMap;
 
+#define _DefWindowProc(hwnd, uMsg, wParam, lParam)\
+ (isWindowUnicode ? DefWindowProcW((hwnd), (uMsg), (wParam), (lParam))\
+ : DefWindowProcA((hwnd), (uMsg), (wParam), (lParam)))
+
+#define _CallWindowProc(proc, hwnd, uMsg, wParam, lParam)\
+ (isWindowUnicode ? CallWindowProcW((proc), (hwnd), (uMsg), (wParam), (lParam))\
+ : CallWindowProcA((proc), (hwnd), (uMsg), (wParam), (lParam)))
+
+#define _SetWindowLongPtr(hwnd, index, value)\
+ (isWindowUnicode ? SetWindowLongPtrW((hwnd), (index), (value)) :\
+ SetWindowLongPtrA((hwnd), (index), (value)))
+
+#define _GetWindowLongPtr(hwnd, index)\
+ (isWindowUnicode ? GetWindowLongPtrW((hwnd), (index)) :\
+ GetWindowLongPtrA((hwnd), (index)))
+
+#define _SetWindowLong(hwnd, index, value)\
+ (isWindowUnicode ? SetWindowLongW((hwnd), (index), (value)) :\
+ SetWindowLongA((hwnd), (index), (value)))
+
+#define _GetWindowLong(hwnd, index)\
+ (isWindowUnicode ? GetWindowLongW((hwnd), (index)) :\
+ GetWindowLongA((hwnd), (index)))
+
 /*
 LRESULT CALLBACK WindowContext::WndProc_Static(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	WindowContext* context = windowMap.Get(hwnd);
+	WindowContext* context = GetWindowContext(hwnd);
 	if (context != NULL)
 	{
 		return context->WndProc(hwnd, uMsg, wParam, lParam);
@@ -34,11 +58,9 @@ LRESULT CALLBACK WindowContext::WndProc_Static(HWND hwnd, UINT uMsg, WPARAM wPar
 		WNDPROC originalWndProc = windowClassSet.GetOriginalWndProc(hwnd);
 		if (originalWndProc != NULL)
 		{
-			return IsWindowUnicode(hwnd) ?
-				CallWindowProcW(originalWndProc, hwnd, uMsg, wParam, lParam) :
-				CallWindowProcA(originalWndProc, hwnd, uMsg, wParam, lParam);
+			return _CallWindowProc(originalWndProc, hwnd, uMsg, wParam, lParam);
 		}
-		return IsWindowUnicode(hwnd) ? DefWindowProcW(hwnd, uMsg, wParam, lParam) : DefWindowProcA(hwnd, uMsg, wParam, lParam);
+		return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 }
 */
@@ -49,13 +71,13 @@ void WindowContext::Init(HWND hwnd)
 	isWindowUnicode = IsWindowUnicode(hwnd);
 	window = hwnd;
 	HWND parentWindow = GetParent(hwnd);
-	if (windowMap.ContainsKey(parentWindow))
+	if (WindowContextExists(parentWindow))
 	{
-		this->parentWindowContext = windowMap.Get(parentWindow);
+		this->parentWindowContext = GetWindowContext(parentWindow);
 		this->parentWindowContext->childWindows.push_back(this);
 	}
 
-	WNDPROC currentWndProc = (WNDPROC)(isWindowUnicode ? GetWindowLongPtrW(hwnd, GWL_WNDPROC) : GetWindowLongPtrA(hwnd, GWL_WNDPROC));
+	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWL_WNDPROC);
 	if (currentWndProc != DefaultWndProc && currentWndProc != SimpleWndProc)
 	{
 		oldWindowProc = currentWndProc;
@@ -71,18 +93,50 @@ void WindowContext::Init(HWND hwnd)
 		}
 #endif
 	}
-	isWindowUnicode ? 
-		SetWindowLongPtrW(hwnd, GWL_WNDPROC, (LONG_PTR)SimpleWndProc):
-		SetWindowLongPtrA(hwnd, GWL_WNDPROC, (LONG_PTR)SimpleWndProc);
-
+	_SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG_PTR)SimpleWndProc);
+/*
 #if USE_IDLE_HOOK
 	SetWindowsHookExA(WH_FOREGROUNDIDLE, (HOOKPROC)ForegroundIdleProc, NULL, GetCurrentThreadId());
 #endif
+*/
 	if (parentWindow == NULL)
 	{
 		SetForegroundWindow(hwnd);
 	}
 }
+
+WindowContext* WindowContext::Get(HWND hwnd)	//static
+{
+	return windowMap.Get(hwnd);
+}
+WindowContext* WindowContext::GetByHdc(HDC hdc)	//static
+{
+	return hdcMap.Get(hdc);
+}
+WindowContext* WindowContext::GetWindowContext(HWND hwnd)	//static
+{
+	return windowMap.Get(hwnd);
+}
+WindowContext* WindowContext::GetWindowContext()	//static
+{
+	return windowMap.GetFirstValue();
+}
+WindowContext* WindowContext::CreateNewWindowContext(HWND hwnd)	//static
+{
+	windowMap.AddNew(hwnd);
+	WindowContext* windowContext = windowMap.Get(hwnd);
+	windowContext->Init(hwnd);
+	return windowContext;
+}
+bool WindowContext::DeleteWindowContext(HWND hwnd)	//static
+{
+	return windowMap.Remove(hwnd);
+}
+bool WindowContext::WindowContextExists(HWND hwnd)	//static
+{
+	return windowMap.ContainsKey(hwnd);
+}
+
 
 template <class T>
 void RemoveFromVector(std::vector<T> vec, const T& item)
@@ -102,9 +156,7 @@ void WindowContext::Release()
 
 	if (IsWindow(window) && oldWindowProc != NULL)
 	{
-		isWindowUnicode ?
-			SetWindowLongPtrW(window, GWL_WNDPROC, (LONG_PTR)oldWindowProc):
-			SetWindowLongPtrA(window, GWL_WNDPROC, (LONG_PTR)oldWindowProc);
+		_SetWindowLongPtr(window, GWL_WNDPROC, (LONG_PTR)oldWindowProc);
 	}
 	d3d9Context.Destroy();
 	window = NULL;
@@ -116,11 +168,12 @@ void WindowContext::Release()
 	//}
 }
 
+/*
 DWORD CALLBACK WindowContext::ForegroundIdleProc(int code, DWORD wParam, LONG lParam)
 {
 	if (code == HC_ACTION)
 	{
-		WindowContext* context = windowMap.GetFirstValue();
+		WindowContext* context = GetWindowContext();
 		if (context->WantToHook)
 		{
 			context->WantToHook = false;
@@ -129,6 +182,7 @@ DWORD CALLBACK WindowContext::ForegroundIdleProc(int code, DWORD wParam, LONG lP
 	}
 	return CallNextHookEx(NULL, code, wParam, lParam);
 }
+*/
 
 inline int Round(float f)
 {
@@ -271,8 +325,8 @@ void WindowContext::MouseVirtualToVirtualScreen(LPPOINT lpPoint) const
 
 */
 
-#undef _CallWndProc
-#define _CallWndProc(a,b,c,d,e) (isWindowUnicode ? CallWindowProcW((a),(b),(c),(d),(e)) : CallWindowProcA((a),(b),(c),(d),(e)))
+//#undef _CallWindowProc
+//#define _CallWindowProc(a,b,c,d,e) (isWindowUnicode ? CallWindowProcW((a),(b),(c),(d),(e)) : CallWindowProcA((a),(b),(c),(d),(e)))
 
 static RECT GetMonitorRect(HWND window)
 {
@@ -298,8 +352,8 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	//Always handle these
 	case WM_NCDESTROY:
 	{
-		LRESULT result = _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		windowMap.Remove(hwnd);
+		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+		DeleteWindowContext(hwnd);
 		return result;
 	}
 	case WM_SHOWWINDOW:
@@ -309,11 +363,11 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	case WM_ERASEBKGND:
 	{
-		LRESULT result = _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		if (result == 0)
-		{
-			BackgroundNeedsErasing = true;
-		}
+		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+		//if (result == 0)
+		//{
+		//	BackgroundNeedsErasing = true;
+		//}
 		return result;
 	}
 	case WM_PAINT:
@@ -353,7 +407,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			POINT mousePoint{ (short)LOWORD(lParam), (short)HIWORD(lParam) };
 			MouseClientToVirtualClamp(&mousePoint);
 			lParam = (mousePoint.x & 0xFFFF) | ((mousePoint.y & 0xFFFF) << 16);
-			return _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+			return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
 		}
 		case WM_MOUSEWHEEL:
 		case WM_MOUSEHWHEEL:
@@ -366,7 +420,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			POINT mousePoint{ (short)LOWORD(lParam), (short)HIWORD(lParam) };
 			MouseScreenToVirtualScreen(&mousePoint);
 			lParam = (mousePoint.x & 0xFFFF) | ((mousePoint.y & 0xFFFF) << 16);
-			return _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+			return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
 		}
 		//Hide move/resize messages from window
 		case WM_MOVING:
@@ -378,17 +432,13 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_NCCALCSIZE:
 		case WM_SYSCOMMAND:
 		{
-			return isWindowUnicode ?
-				DefWindowProcW(hwnd, uMsg, wParam, lParam) :
-				DefWindowProcA(hwnd, uMsg, wParam, lParam);
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		//these two are separate from above (triggers constantly)
 		case WM_WINDOWPOSCHANGING:
 		case WM_WINDOWPOSCHANGED:
 		{
-			return isWindowUnicode ?
-				DefWindowProcW(hwnd, uMsg, wParam, lParam) :
-				DefWindowProcA(hwnd, uMsg, wParam, lParam);
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		case WM_SIZE:
 		{
@@ -404,9 +454,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			{
 				UpdateSize(width, height);
 			}
-			return isWindowUnicode ?
-				DefWindowProcW(hwnd, uMsg, wParam, lParam) :
-				DefWindowProcA(hwnd, uMsg, wParam, lParam);
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		case WM_KEYDOWN:
 		{
@@ -458,9 +506,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 				minMaxInfo->ptMaxSize = { monitorRect.right - monitorRect.left, monitorRect.bottom - monitorRect.top };
 				return 0;
 			}
-			return isWindowUnicode ?
-				DefWindowProcW(hwnd, uMsg, wParam, lParam) :
-				DefWindowProcA(hwnd, uMsg, wParam, lParam);
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		break;
 		} //end swtich
@@ -471,8 +517,8 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	{
 	case WM_NCDESTROY:
 	{
-		LRESULT result = _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		windowMap.Remove(hwnd);
+		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+		DeleteWindowContext(hwnd);
 		return result;
 	}
 	case WM_MOVING:
@@ -540,7 +586,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_GETMINMAXINFO:
 	{
 		LPMINMAXINFO minMaxInfo = (LPMINMAXINFO)lParam;
-		LRESULT result = _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
 		//LRESULT result = DefWindowProcA(hwnd, uMsg, wParam, lParam);
 		return result;
 		break;
@@ -560,12 +606,12 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			//using rect
 			int dummy = 0;
 		}
-		LRESULT result = _CallWndProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
 		return result;
 	}
 	}
 	*/
-	return _CallWndProc(oldWindowProc,hwnd, uMsg, wParam, lParam);
+	return _CallWindowProc(oldWindowProc,hwnd, uMsg, wParam, lParam);
 }
 
 HDC WindowContext::GetDC_()
@@ -772,6 +818,26 @@ void WindowContext::AddDirtyRect(int x, int y, int width, int height)
 	RECT rect{ x, y, x + width, y + height };
 	AddDirtyRect(rect);
 }
+void WindowContext::AddDirtyRectWithPen(int x, int y, int width, int height)
+{
+	HGDIOBJ currentObject = GetCurrentObject(hdc, OBJ_PEN);
+	if (currentObject == NULL)
+	{
+		AddDirtyRect(x, y, width, height);
+		return;
+	}
+	else
+	{
+		LOGPEN pen = {};
+		GetObjectA(currentObject, sizeof(pen), &pen);
+		int penWidth = pen.lopnWidth.x;
+		if (pen.lopnStyle == PS_INSIDEFRAME)
+		{
+			penWidth = 0;
+		}
+		AddDirtyRect(x - penWidth, x - penWidth, width + penWidth * 2, height + penWidth * 2);
+	}
+}
 
 /*
 void WindowContext::TryInitializeWindowSize(int width, int height)
@@ -782,12 +848,12 @@ void WindowContext::TryInitializeWindowSize(int width, int height)
 }
 */
 
-bool TryHookWindow(HWND hwnd)
+bool WindowContext::TryHookWindow(HWND hwnd)
 {
 #if NOHOOKWINDOW
 	return false;
 #endif
-	if (windowMap.ContainsKey(hwnd)) return false;
+	if (WindowContextExists(hwnd)) return false;
 
 	bool doHook = false;
 	DWORD style = GetWindowLong(hwnd, GWL_STYLE);
@@ -795,14 +861,13 @@ bool TryHookWindow(HWND hwnd)
 	{
 		doHook = true;
 	}
-	if ((style & WS_CHILDWINDOW) && (windowMap.ContainsKey(GetParent(hwnd))))
+	if ((style & WS_CHILDWINDOW) && (WindowContextExists(GetParent(hwnd))))
 	{
 		doHook = true;
 	}
 	if (doHook)
 	{
-		windowMap.AddNew(hwnd);
-		windowMap.Get(hwnd)->Init(hwnd);
+		CreateNewWindowContext(hwnd);
 		return true;
 	}
 	return false;
@@ -811,7 +876,7 @@ bool TryHookWindow(HWND hwnd)
 _declspec(noinline)
 LRESULT CALLBACK WindowContext::SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	WindowContext* context = windowMap.Get(hwnd);
+	WindowContext* context = GetWindowContext(hwnd);
 	if (context != NULL)
 	{
 		LRESULT result = context->WndProc(hwnd, uMsg, wParam, lParam);
@@ -830,13 +895,12 @@ _declspec(noinline)
 LRESULT CALLBACK WindowContext::DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	//normal: use a registered window, and call the handler there.
-	WindowContext* context = windowMap.Get(hwnd);
+	WindowContext* context = GetWindowContext(hwnd);
 	if (context != NULL)
 	{
+		bool isWindowUnicode = context->isWindowUnicode;
 		//Prevent recursion
-		return context->isWindowUnicode ?
-			DefWindowProcW(hwnd, uMsg, wParam, lParam) :
-			DefWindowProcA(hwnd, uMsg, wParam, lParam);
+		return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 
 	//Hook windows really early, before CreateWindow has finished
@@ -851,7 +915,7 @@ LRESULT CALLBACK WindowContext::DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 			{
 				WindowBeingCreated = false;
 				//If window is to be hooked, proceed to registered window proc
-				context = windowMap.Get(hwnd);
+				context = GetWindowContext(hwnd);
 				LRESULT result = SimpleWndProc(hwnd, uMsg, wParam, lParam);
 				return result;
 			}
@@ -861,31 +925,23 @@ LRESULT CALLBACK WindowContext::DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 	//Did not want to hook window, restore the normal WNDPROC so it doesn't go through this code again.
 	//Is current WND proc already different than This procedure?  (can somehow happen)  Just run that.
 	bool isWindowUnicode = IsWindowUnicode(hwnd);
-	WNDPROC currentWndProc = (WNDPROC)(isWindowUnicode ? GetWindowLongPtrW(hwnd, GWL_WNDPROC) : GetWindowLongPtrA(hwnd, GWL_WNDPROC));
+	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWL_WNDPROC);
 	if (currentWndProc != DefaultWndProc && currentWndProc != SimpleWndProc)
 	{
-		return isWindowUnicode ?
-			CallWindowProcW(currentWndProc, hwnd, uMsg, wParam, lParam) :
-			CallWindowProcA(currentWndProc, hwnd, uMsg, wParam, lParam);
+		return _CallWindowProc(currentWndProc, hwnd, uMsg, wParam, lParam);
 	}
 #if USE_CLASS_HOOK
 	WNDPROC oldWndProc = windowClassSet.GetClassWndProc(hwnd);
 	if (oldWndProc != NULL)
 	{
 #if !DO_NOT_RESET_WNDPROC
-		isWindowUnicode ?
-			SetWindowLongPtrW(hwnd, GWL_WNDPROC, (LONG_PTR)oldWndProc) :
-			SetWindowLongPtrA(hwnd, GWL_WNDPROC, (LONG_PTR)oldWndProc);
+		_SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG_PTR)oldWndProc);
 #endif
-		return isWindowUnicode ?
-			CallWindowProcW(oldWndProc, hwnd, uMsg, wParam, lParam) :
-			CallWindowProcA(oldWndProc, hwnd, uMsg, wParam, lParam);
+		return _CallWindowProc(oldWndProc, hwnd, uMsg, wParam, lParam);
 	}
 #endif
 	//Emergency, no WndProc found (should never happen), just call DefWndProc instead.
-	return isWindowUnicode ?
-		DefWindowProcW(hwnd, uMsg, wParam, lParam) :
-		DefWindowProcA(hwnd, uMsg, wParam, lParam);
+	return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 void WindowContext::WindowShown()
@@ -1072,7 +1128,7 @@ DWORD WindowContext::GetVirtualWindowStyle()
 
 bool WindowContext::IsVirtualized() const
 {
-	//if (parentWindowContext != NULL) return parentWindowContext->IsVirtualized();
+	if (parentWindowContext != NULL) return parentWindowContext->IsVirtualized();
 	return VirtualizeWindowSize;
 }
 
@@ -1086,9 +1142,7 @@ LONG_PTR WindowContext::SetWindowLong_(int index, LONG_PTR newLong)
 			DWORD oldWindowLong = GetWindowLong_(index);
 			newLong &= WS_DISABLED | WS_MINIMIZE | WS_VISIBLE;
 			newLong |= oldWindowLong;
-			isWindowUnicode ?
-				SetWindowLongPtrW(window, index, newLong) :
-				SetWindowLongPtrA(window, index, newLong);
+			_SetWindowLongPtr(window, index, newLong);
 			return oldWindowLong;
 		}
 		break;
@@ -1101,9 +1155,7 @@ LONG_PTR WindowContext::SetWindowLong_(int index, LONG_PTR newLong)
 		}
 		break;
 	}
-	return isWindowUnicode ?
-		SetWindowLongPtrW(window, index, newLong) :
-		SetWindowLongPtrA(window, index, newLong);
+	return _SetWindowLongPtr(window, index, newLong);
 }
 LONG_PTR WindowContext::GetWindowLong_(int index)
 {
@@ -1112,9 +1164,7 @@ LONG_PTR WindowContext::GetWindowLong_(int index)
 	case GWL_STYLE:
 		if (IsVirtualized())
 		{
-			LONG_PTR windowLong = isWindowUnicode ?
-				GetWindowLongPtrW(window, index) :
-				GetWindowLongPtrA(window, index);
+			LONG_PTR windowLong = _GetWindowLongPtr(window, index);
 			windowLong &= WS_DISABLED | WS_MINIMIZE | WS_VISIBLE;
 			VirtualWindowStyle &= ~(WS_DISABLED | WS_MINIMIZE | WS_VISIBLE);
 			windowLong |= VirtualWindowStyle;
@@ -1128,9 +1178,7 @@ LONG_PTR WindowContext::GetWindowLong_(int index)
 		}
 		break;
 	}
-	return isWindowUnicode ?
-		GetWindowLongPtrW(window, index) :
-		GetWindowLongPtrA(window, index);
+	return _GetWindowLongPtr(window, index);
 }
 void WindowContext::UpdateRectVirtualToClient(LPRECT lpRect) const
 {

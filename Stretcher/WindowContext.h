@@ -40,16 +40,27 @@ class WindowContext
 	bool VirtualizeWindowSize;
 	bool IgnoreResizeEvents;
 	bool SuspendDrawing;
-	bool InsideWndProc;
+	//bool InsideWndProc;
 	bool IsShown;
-	bool WantToHook;
-	bool BackgroundNeedsErasing;
+	//bool WantToHook;
+	//bool BackgroundNeedsErasing;
 	bool EnteringFullScreen;
 	bool LeavingFullScreen;
 	bool IsFullScreen;
 	int BorderChanging;
+
+	//RECT knownWindowRect;
+	//RECT knownClientRect;
+
+
+
+	//RECT realClientRectScreen;
+	//RECT virtualClientRectScreen;
+
 	RECT VirtualWindowRect;
 	DWORD VirtualWindowStyle;
+	
+	
 	//RECT VirtualClientRect;
 	//RECT RealClientRect;
 	int VirtualWidth;
@@ -87,7 +98,7 @@ public:
 	static LRESULT CALLBACK SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static bool WindowBeingCreated;
 
-	static DWORD CALLBACK ForegroundIdleProc(int code, DWORD wParam, LONG  lParam);
+	//static DWORD CALLBACK ForegroundIdleProc(int code, DWORD wParam, LONG  lParam);
 
 public:
 	void Init(HWND hwnd);
@@ -96,8 +107,8 @@ public:
 	WindowContext() :
 		Scale(1.0f),
 		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), hdc(), paintDc(),
-		BorderChanging(), InsideWndProc(), LastInvalidatedRectClient(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
-		IsShown(), WantToHook(), BackgroundNeedsErasing(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
+		BorderChanging(), LastInvalidatedRectClient(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
+		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
 		parentWindowContext()
 	{
 	}
@@ -105,6 +116,15 @@ public:
 	{
 		Release();
 	}
+
+	static WindowContext* Get(HWND hwnd);
+	static WindowContext* GetByHdc(HDC hwnd);
+	static WindowContext* GetWindowContext(HWND hwnd);
+	static WindowContext* GetWindowContext();
+	static bool TryHookWindow(HWND hwnd);
+	static WindowContext* CreateNewWindowContext(HWND hwnd);
+	static bool DeleteWindowContext(HWND hwnd);
+	static bool WindowContextExists(HWND hwnd);
 
 	void ClientToVirtualFloat(float& x, float& y) const;
 	void VirtualToClientFloat(float& x, float& y) const;
@@ -140,6 +160,7 @@ public:
 
 	void AddDirtyRect(const RECT &rect);
 	void AddDirtyRect(int x, int y, int width, int height);
+	void AddDirtyRectWithPen(int x, int y, int width, int height);
 
 	void WindowShown();
 	void VirtualizeWindow();
@@ -169,5 +190,3 @@ public:
 	BOOL SetWindowPlacement_(const WINDOWPLACEMENT* windowPlacement);
 	BOOL SetWindowPos_(HWND hwndInsertAfter, int x, int y, int cx, int cy, UINT flags);
 };
-
-extern bool TryHookWindow(HWND hwnd);

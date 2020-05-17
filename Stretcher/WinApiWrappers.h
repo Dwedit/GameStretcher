@@ -60,8 +60,10 @@ typedef BOOL(WINAPI* UnhookWinEvent_FUNC)(HWINEVENTHOOK hWinEventHook);
 typedef BOOL(WINAPI* BitBlt_FUNC)(HDC, int, int, int, int, HDC, int, int, DWORD);
 typedef int(WINAPI* StretchDIBits_FUNC)(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, const void* lpBits, const BITMAPINFO* lpbmi, UINT iUsage, DWORD rop);
 typedef BOOL(WINAPI* TextOutA_FUNC)(HDC hdc, int x, int y, LPCSTR lpString, int c);
+typedef BOOL(WINAPI* TextOutW_FUNC)(HDC hdc, int x, int y, LPCWSTR lpString, int c);
 typedef int(WINAPI* GetClipBox_FUNC)(HDC, LPRECT);
 typedef BOOL(WINAPI* Rectangle_FUNC)(HDC, int, int, int, int);
+typedef BOOL(WINAPI* RoundRect_FUNC)(HDC, int, int, int, int, int, int);
 
 //Import Backups (Declarations)
 extern ClientToScreen_FUNC ClientToScreen_OLD;
@@ -118,9 +120,11 @@ extern UnhookWinEvent_FUNC UnhookWinEvent_OLD;
 
 extern BitBlt_FUNC BitBlt_OLD;
 extern StretchDIBits_FUNC StretchDIBits_OLD;
-extern TextOutA_FUNC TextOutA_OLD; 
+extern TextOutA_FUNC TextOutA_OLD;
+extern TextOutW_FUNC TextOutW_OLD;
 extern GetClipBox_FUNC GetClipBox_OLD;
 extern Rectangle_FUNC Rectangle_OLD;
+extern RoundRect_FUNC RoundRect_OLD;
 
 //Replacement Functions (Declarations)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint);
@@ -177,8 +181,10 @@ BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook);
 
 BOOL WINAPI BitBlt_Replacement(HDC, int, int, int, int, HDC, int, int, DWORD);
 int WINAPI StretchDIBits_Replacement(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, const void* lpBits, const BITMAPINFO* lpbmi, UINT iUsage, DWORD rop);
-BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c); 
+BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c);
+BOOL WINAPI TextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int c);
 int WINAPI GetClipBox_Replacement(HDC, LPRECT);
 BOOL WINAPI Rectangle_Replacement(HDC, int, int, int, int);
+BOOL WINAPI RoundRect_Replacement(HDC, int, int, int, int, int, int);
 
 void ReplaceImports();

@@ -127,8 +127,10 @@ void ReplaceImports()
     ReplaceImport("Gdi32.dll", "BitBlt", (FARPROC)BitBlt_Replacement, (FARPROC*)&BitBlt_OLD);
     ReplaceImport("Gdi32.dll", "StretchDIBits", (FARPROC)StretchDIBits_Replacement, (FARPROC*)&StretchDIBits_OLD);
     ReplaceImport("Gdi32.dll", "TextOutA", (FARPROC)TextOutA_Replacement, (FARPROC*)&TextOutA_OLD);
+    ReplaceImport("Gdi32.dll", "TextOutW", (FARPROC)TextOutW_Replacement, (FARPROC*)&TextOutW_OLD);
     ReplaceImport("Gdi32.dll", "GetClipBox", (FARPROC)GetClipBox_Replacement, (FARPROC*)&GetClipBox_OLD);
     ReplaceImport("Gdi32.dll", "Rectangle", (FARPROC)Rectangle_Replacement, (FARPROC*)&Rectangle_OLD);
+    ReplaceImport("Gdi32.dll", "RoundRect", (FARPROC)RoundRect_Replacement, (FARPROC*)&RoundRect_OLD);
 }
 
 //Import Backups (Definitions)
@@ -187,8 +189,10 @@ UnhookWinEvent_FUNC UnhookWinEvent_OLD = NULL;
 BitBlt_FUNC BitBlt_OLD = NULL;
 StretchDIBits_FUNC StretchDIBits_OLD = NULL;
 TextOutA_FUNC TextOutA_OLD = NULL;
+TextOutW_FUNC TextOutW_OLD = NULL;
 GetClipBox_FUNC GetClipBox_OLD = NULL;
 Rectangle_FUNC Rectangle_OLD = NULL;
+RoundRect_FUNC RoundRect_OLD = NULL;
 
 /*
 
@@ -248,7 +252,7 @@ BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint)
     return ClientToScreen_OLD(hWnd, lpPoint);
     //convert Virtual Client coordinates to Virtual Screen coordinates
     //if (lpPoint == NULL) return false;
-    //WindowContext *windowContext = windowMap.Get(hWnd);
+    //WindowContext *windowContext = WindowContext::Get(hWnd);
     //if (windowContext == NULL) return ClientToScreen_OLD(hWnd, lpPoint);
     //windowContext->MouseVirtualToVirtualScreen(lpPoint);
     //return true;
@@ -258,7 +262,7 @@ BOOL WINAPI ScreenToClient_Replacement(HWND hWnd, LPPOINT lpPoint)
     return ScreenToClient_OLD(hWnd, lpPoint);
     //convert Virtual Screen coordinates to Virtual Client coordinates
     //if (lpPoint == NULL) return false;
-    //WindowContext* windowContext = windowMap.Get(hWnd);
+    //WindowContext* windowContext = WindowContext::Get(hWnd);
     //if (windowContext == NULL) return ScreenToClient_OLD(hWnd, lpPoint);
     //windowContext->MouseVirtualScreenToVirtual(lpPoint);
     //return true;
@@ -267,7 +271,7 @@ BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
 {
     if (lpPoint == NULL) return false;
     BOOL okay = GetCursorPos_OLD(lpPoint);
-    WindowContext* windowContext = windowMap.GetFirstValue();
+    WindowContext* windowContext = WindowContext::GetWindowContext();
     if (windowContext == NULL) return okay;
     windowContext->MouseScreenToVirtualScreen(lpPoint);
     return okay;
@@ -275,7 +279,7 @@ BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
 BOOL WINAPI SetCursorPos_Replacement(int x, int y)
 {
     POINT point{ x,y };
-    WindowContext* windowContext = windowMap.GetFirstValue();
+    WindowContext* windowContext = WindowContext::GetWindowContext();
     if (windowContext == NULL) return SetCursorPos_OLD(x, y);
     windowContext->MouseVirtualScreenToScreen(&point);
     return SetCursorPos_OLD(point.x, point.y);
@@ -284,7 +288,7 @@ BOOL WINAPI SetCursorPos_Replacement(int x, int y)
 HWND WINAPI CreateWindowExA_Replacement(DWORD exStyle, LPCSTR lpClassName, LPCSTR windowName, DWORD style, int x, int y, int width, int height, HWND parent, HMENU menu, HINSTANCE instance, LPVOID param)
 {
 #if USE_CREATE_HOOK
-    //WindowContext* parentWindowContext = windowMap.Get(parent);
+    //WindowContext* parentWindowContext = WindowContext::Get(parent);
     bool _windowBeingCreated = WindowContext::WindowBeingCreated;
     bool wantToHook = false;
     if (style & WS_CAPTION) wantToHook = true;
@@ -304,7 +308,7 @@ HWND WINAPI CreateWindowExA_Replacement(DWORD exStyle, LPCSTR lpClassName, LPCST
     HWND hwnd = CreateWindowExA_OLD(exStyle, lpClassName, windowName, style, x, y, width, height, parent, menu, instance, param);
     WindowContext::WindowBeingCreated = _windowBeingCreated;
 
-    TryHookWindow(hwnd);
+    WindowContext::TryHookWindow(hwnd);
     return hwnd;
 #else
     return CreateWindowExA_OLD(exStyle, lpClassName, windowName, style, x, y, width, height, parent, menu, instance, param);
@@ -329,7 +333,7 @@ HWND WINAPI CreateWindowExW_Replacement(DWORD exStyle, LPCWSTR lpClassName, LPCW
     HWND hwnd = CreateWindowExW_OLD(exStyle, lpClassName, windowName, style, x, y, width, height, parent, menu, instance, param);
     WindowContext::WindowBeingCreated = _windowBeingCreated;
 
-    TryHookWindow(hwnd);
+    WindowContext::TryHookWindow(hwnd);
     return hwnd;
 #else
     return CreateWindowExW_OLD(exStyle, lpClassName, windowName, style, x, y, width, height, parent, menu, instance, param);
@@ -408,11 +412,11 @@ BOOL WINAPI UnregisterClassW_Replacement(LPCWSTR lpClassName, HINSTANCE hInstanc
 BOOL WINAPI ShowWindow_Replacement(HWND hWnd, int nCmdShow)
 {
 restart:
-    WindowContext* windowContext = windowMap.Get(hWnd);
+    WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL)
     {
 #if USE_SHOW_HOOK
-        if (TryHookWindow(hWnd))
+        if (WindowContext::TryHookWindow(hWnd))
         {
             goto restart;
         }
@@ -425,38 +429,26 @@ restart:
 
 BOOL WINAPI GetClientRect_Replacement(HWND hwnd, LPRECT clientRect)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return GetClientRect_OLD(hwnd, clientRect);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return GetClientRect_OLD(hwnd, clientRect);
     return windowContext->GetClientRect_(clientRect);
 }
 BOOL WINAPI GetWindowPlacement_Replacement(HWND hwnd, WINDOWPLACEMENT *windowPlacement)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return GetWindowPlacement_OLD(hwnd, windowPlacement);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return GetWindowPlacement_OLD(hwnd, windowPlacement);
     return windowContext->GetWindowPlacement_(windowPlacement);
 }
 BOOL WINAPI GetWindowRect_Replacement(HWND hwnd, LPRECT windowRect)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return GetWindowRect_OLD(hwnd, windowRect);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return GetWindowRect_OLD(hwnd, windowRect);
     return windowContext->GetWindowRect_(windowRect);
 }
 BOOL WINAPI MoveWindow_Replacement(HWND hwnd, int x, int y, int width, int height, BOOL repaint)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return MoveWindow_OLD(hwnd, x, y, width, height, repaint);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return MoveWindow_OLD(hwnd, x, y, width, height, repaint);
     return windowContext->MoveWindow_(x, y, width, height, repaint);
 }
 DWORD WINAPI GetClassLongA_Replacement(HWND hWnd, int nIndex)
@@ -493,59 +485,50 @@ ULONG_PTR WINAPI SetClassLongPtrW_Replacement(HWND hWnd, int nIndex, LONG_PTR dw
 }
 LONG WINAPI GetWindowLongA_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = windowMap.Get(hWnd);
-    if (windowContext == NULL)
-    {
-        return GetWindowLongA_OLD(hWnd, nIndex);
-    }
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetWindowLongA_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG WINAPI GetWindowLongW_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = windowMap.Get(hWnd);
-    if (windowContext == NULL)
-    {
-        return GetWindowLongW_OLD(hWnd, nIndex);
-    }
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetWindowLongW_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG_PTR WINAPI GetWindowLongPtrA_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = windowMap.Get(hWnd);
-    if (windowContext == NULL)
-    {
-        return GetWindowLongPtrA_OLD(hWnd, nIndex);
-    }
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetWindowLongPtrA_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG_PTR WINAPI GetWindowLongPtrW_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = windowMap.Get(hWnd);
-    if (windowContext == NULL)
-    {
-        return GetWindowLongW_OLD(hWnd, nIndex);
-    }
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetWindowLongW_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG_PTR SetWindowLong_(HWND hwnd, int index, LONG_PTR value)
 {
+    bool isWindowUnicode = IsWindowUnicode(hwnd);
 tryAgain:
-    WindowContext* windowContext = windowMap.Get(hwnd);
+    WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL)
     {
         if (index == GWL_WNDPROC && WindowContext::WindowBeingCreated)
         {
-            WNDPROC oldWndProc = (WNDPROC)GetWindowLongPtrA(hwnd, index);
+            WNDPROC oldWndProc = (WNDPROC)(isWindowUnicode ? 
+                GetWindowLongPtrW(hwnd, index) :
+                GetWindowLongPtrA(hwnd, index));
             if (oldWndProc == WindowContext::DefaultWndProc)
             {
-                if (TryHookWindow(hwnd))
+                if (WindowContext::TryHookWindow(hwnd))
                 {
                     WindowContext::WindowBeingCreated = false;
                     goto tryAgain;
                 }
             }
         }
-        return IsWindowUnicode(hwnd) ?
+        return isWindowUnicode ?
             SetWindowLongPtrW(hwnd, index, value) :
             SetWindowLongPtrA(hwnd, index, value);
     }
@@ -570,74 +553,50 @@ LONG_PTR WINAPI SetWindowLongPtrW_Replacement(HWND hwnd, int index, LONG_PTR val
 }
 BOOL WINAPI SetWindowPlacement_Replacement(HWND hwnd, const WINDOWPLACEMENT* windowPlacement)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return SetWindowPlacement_OLD(hwnd, windowPlacement);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return SetWindowPlacement_OLD(hwnd, windowPlacement);
     return windowContext->SetWindowPlacement_(windowPlacement);
 }
 BOOL WINAPI SetWindowPos_Replacement(HWND hwnd, HWND hwndInsertAfter, int x, int y, int cx, int cy, UINT flags)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return SetWindowPos_OLD(hwnd, hwndInsertAfter, x, y, cx, cy, flags);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return SetWindowPos_OLD(hwnd, hwndInsertAfter, x, y, cx, cy, flags);
     return windowContext->SetWindowPos_(hwndInsertAfter, x, y, cx, cy, flags);
 }
 HDC WINAPI BeginPaint_Replacement(HWND hwnd, LPPAINTSTRUCT lpPaintStruct)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return BeginPaint_OLD(hwnd, lpPaintStruct);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return BeginPaint_OLD(hwnd, lpPaintStruct);
     return windowContext->BeginPaint_(lpPaintStruct);
 }
 BOOL WINAPI EndPaint_Replacement(HWND hwnd, const PAINTSTRUCT* paintStruct)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return EndPaint_OLD(hwnd, paintStruct);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return EndPaint_OLD(hwnd, paintStruct);
     return windowContext->EndPaint_(paintStruct);
 }
 HDC WINAPI GetDC_Replacement(HWND hwnd)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return GetDC_OLD(hwnd);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return GetDC_OLD(hwnd);
     return windowContext->GetDC_();
 }
 BOOL WINAPI InvalidateRect_Replacement(HWND hwnd, LPCRECT lpRect, BOOL bErase)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return InvalidateRect_OLD(hwnd, lpRect, bErase);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return InvalidateRect_OLD(hwnd, lpRect, bErase);
     return windowContext->InvalidateRect_(lpRect, bErase);
 }
 int WINAPI ReleaseDC_Replacement(HWND hwnd, HDC hdc)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return ReleaseDC_OLD(hwnd, hdc);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return ReleaseDC_OLD(hwnd, hdc);
     return windowContext->ReleaseDC_();
 }
 BOOL WINAPI ValidateRect_Replacement(HWND hwnd, LPCRECT rect)
 {
-    WindowContext* windowContext = windowMap.Get(hwnd);
-    if (windowContext == NULL)
-    {
-        return ValidateRect(hwnd, rect);
-    }
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return ValidateRect(hwnd, rect);
     return windowContext->ValidateRect_(rect);
     //if (rect != NULL)
     //{
@@ -697,33 +656,43 @@ BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook)
 
 BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
-    WindowContext* windowContext = hdcMap.Get(hdc);
-    if (windowContext == NULL)
-    {
-        return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
-    }
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
     windowContext->AddDirtyRect(x, y, cx, cy);
     return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
 }
 int WINAPI StretchDIBits_Replacement(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, const void* lpBits, const BITMAPINFO* lpbmi, UINT iUsage, DWORD rop)
 {
-    WindowContext* windowContext = hdcMap.Get(hdc);
-    if (windowContext == NULL)
-    {
-        return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
-    }
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
     windowContext->AddDirtyRect(xDest, yDest, DestWidth, DestHeight);
     return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
 }
 BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c)
 {
-    WindowContext* windowContext = hdcMap.Get(hdc);
-    if (windowContext == NULL)
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return TextOutA_OLD(hdc, x, y, lpString, c);
+    SIZE size;
+    BOOL okay;
+    okay = GetTextExtentPoint32A(hdc, lpString, c, &size);
+    if (okay)
     {
-        return TextOutA_OLD(hdc, x, y, lpString, c);
+        windowContext->AddDirtyRect(x, y, size.cx, size.cy);
     }
-    windowContext->AddDirtyRect(0, 0, 65536, 65536);
     return TextOutA_OLD(hdc, x, y, lpString, c);
+}
+BOOL WINAPI TextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int c)
+{
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return TextOutW_OLD(hdc, x, y, lpString, c);
+    SIZE size;
+    BOOL okay;
+    okay = GetTextExtentPoint32W(hdc, lpString, c, &size);
+    if (okay)
+    {
+        windowContext->AddDirtyRect(x, y, size.cx, size.cy);
+    }
+    return TextOutW_OLD(hdc, x, y, lpString, c);
 }
 int WINAPI GetClipBox_Replacement(HDC hdc, LPRECT rect)
 {
@@ -731,5 +700,15 @@ int WINAPI GetClipBox_Replacement(HDC hdc, LPRECT rect)
 }
 BOOL WINAPI Rectangle_Replacement(HDC hdc, int left, int top, int right, int bottom)
 {
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return Rectangle_OLD(hdc, left, top, right, bottom);
+    windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
     return Rectangle_OLD(hdc, left, top, right, bottom);
+}
+BOOL WINAPI RoundRect_Replacement(HDC hdc, int left, int top, int right, int bottom, int width, int height)
+{
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
+    windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
+    return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
 }
