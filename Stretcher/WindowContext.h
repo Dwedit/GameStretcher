@@ -57,7 +57,14 @@ class WindowContext
 	//RECT realClientRectScreen;
 	//RECT virtualClientRectScreen;
 
-	RECT VirtualWindowRect;
+	RECT RealClientRect;		//Real Client Rect (top left is 0,0)
+	RECT RealClientBounds;		//Real Client Bounds relative to the screen
+	RECT RealWindowRect;		//Real Window Rect relative to the screen
+	RECT VirtualClientRect;		//Virtual Client Rect (top left is 0,0)
+	RECT VirtualWindowRect;		//Virtual Window Rect relative to the screen
+	RECT VirtualClientBounds;	//Virtual Client Bounds relative to the screen
+	RECT ScaledClientRect;		//Scaled Rect relative to the Real Client rect (top left is 0,0)
+
 	DWORD VirtualWindowStyle;
 	
 	
@@ -72,7 +79,7 @@ class WindowContext
 	int RealX, RealY;
 
 	RECT LastInvalidatedRectVirtual;
-	RECT LastInvalidatedRectClient;
+	RECT LastInvalidatedRectReal;
 
 	//ULONG_PTR window_long_extra;
 	//IDirect3DDevice9* device;
@@ -107,7 +114,7 @@ public:
 	WindowContext() :
 		Scale(1.0f),
 		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), hdc(), paintDc(),
-		BorderChanging(), LastInvalidatedRectClient(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
+		BorderChanging(), LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
 		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
 		parentWindowContext()
 	{
@@ -165,6 +172,11 @@ public:
 	void WindowShown();
 	void VirtualizeWindow();
 	void UpdateSize(int newWidth, int newHeight);
+	void UpdateSize();
+	void UpdateSizeReal();		//Updates Real size and position from real window coordinates
+	void UpdateSizeNonVirtualized();	//Assigns real client bounds and real window rect to all size variables
+	void UpdateSizeScaled();	//Updates Scale factor, and Scaled dimensions.  Ensure that Virtual dimensions and Real dimensions are up to date before calling.
+	void UpdateSizeVirtualized();
 	bool ChangeWindowResizable(bool resizable);
 	void FinishBorderChange();
 	BOOL GetWindowRect_(LPRECT rect) const;
@@ -189,4 +201,8 @@ public:
 	BOOL MoveWindow_(int x, int y, int width, int height, BOOL repaint);
 	BOOL SetWindowPlacement_(const WINDOWPLACEMENT* windowPlacement);
 	BOOL SetWindowPos_(HWND hwndInsertAfter, int x, int y, int cx, int cy, UINT flags);
+
+	RECT GetRealClientBounds() const;
+	RECT GetRealWindowRect() const;
+	RECT GetRealClientRect() const;
 };

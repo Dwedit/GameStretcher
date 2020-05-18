@@ -70,6 +70,7 @@ void ReplaceImports()
     
     ReplaceImport("User32.dll", "ClientToScreen", (FARPROC)ClientToScreen_Replacement, (FARPROC*)&ClientToScreen_OLD);
     ReplaceImport("User32.dll", "ScreenToClient", (FARPROC)ScreenToClient_Replacement, (FARPROC*)&ScreenToClient_OLD);
+    ReplaceImport("User32.dll", "MapWindowPoints", (FARPROC)MapWindowPoints_Replacement, (FARPROC*)&MapWindowPoints_OLD);
 #if USE_CREATE_HOOK
     ReplaceImport("User32.dll", "CreateWindowExA", (FARPROC)CreateWindowExA_Replacement, (FARPROC*)&CreateWindowExA_OLD);
     ReplaceImport("User32.dll", "CreateWindowExW", (FARPROC)CreateWindowExW_Replacement, (FARPROC*)&CreateWindowExW_OLD);
@@ -136,6 +137,7 @@ void ReplaceImports()
 //Import Backups (Definitions)
 ClientToScreen_FUNC ClientToScreen_OLD = NULL;
 ScreenToClient_FUNC ScreenToClient_OLD = NULL;
+MapWindowPoints_FUNC MapWindowPoints_OLD = NULL;
 CreateWindowExA_FUNC CreateWindowExA_OLD = NULL;
 CreateWindowExW_FUNC CreateWindowExW_OLD = NULL;
 ShowWindow_FUNC ShowWindow_OLD = NULL;
@@ -266,6 +268,18 @@ BOOL WINAPI ScreenToClient_Replacement(HWND hWnd, LPPOINT lpPoint)
     //if (windowContext == NULL) return ScreenToClient_OLD(hWnd, lpPoint);
     //windowContext->MouseVirtualScreenToVirtual(lpPoint);
     //return true;
+}
+int WINAPI MapWindowPoints_Replacement(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoints, UINT cPoints)
+{
+    return MapWindowPoints_OLD(hWndFrom, hWndTo, lpPoints, cPoints);
+    //if (lpPoints == NULL) return 0;
+    //if (hWndFrom == NULL && hWndTo != NULL)
+    //{
+    //    for (UINT i = 0; i < cPoints; i++)
+    //    {
+    //        ScreenToClient_Replacement(
+    //    }
+    //}
 }
 BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
 {

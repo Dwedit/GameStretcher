@@ -7,6 +7,7 @@ struct IUnknown;
 //Function Pointer Typedefs
 typedef BOOL(WINAPI* ClientToScreen_FUNC)(HWND hWnd, LPPOINT lpPoint);
 typedef BOOL(WINAPI* ScreenToClient_FUNC)(HWND hWnd, LPPOINT lpPoint);
+typedef int(WINAPI* MapWindowPoints_FUNC)(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoints, UINT cPoints);
 typedef HWND(WINAPI* CreateWindowExA_FUNC)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 typedef HWND(WINAPI* CreateWindowExW_FUNC)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 typedef BOOL(WINAPI* ShowWindow_FUNC)(HWND hWnd, int nCmdShow);
@@ -68,6 +69,7 @@ typedef BOOL(WINAPI* RoundRect_FUNC)(HDC, int, int, int, int, int, int);
 //Import Backups (Declarations)
 extern ClientToScreen_FUNC ClientToScreen_OLD;
 extern ScreenToClient_FUNC ScreenToClient_OLD;
+extern MapWindowPoints_FUNC MapWindowPoints_OLD;
 extern CreateWindowExA_FUNC CreateWindowExA_OLD;
 extern CreateWindowExW_FUNC CreateWindowExW_OLD;
 extern ShowWindow_FUNC ShowWindow_OLD;
@@ -129,6 +131,7 @@ extern RoundRect_FUNC RoundRect_OLD;
 //Replacement Functions (Declarations)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint);
 BOOL WINAPI ScreenToClient_Replacement(HWND hWnd, LPPOINT lpPoint);
+int WINAPI MapWindowPoints_Replacement(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoints, UINT cPoints);
 HWND WINAPI CreateWindowExA_Replacement(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 HWND WINAPI CreateWindowExW_Replacement(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 BOOL WINAPI ShowWindow_Replacement(HWND hWnd, int nCmdShow);

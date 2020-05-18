@@ -71,11 +71,13 @@ void WindowContext::Init(HWND hwnd)
 	isWindowUnicode = IsWindowUnicode(hwnd);
 	window = hwnd;
 	HWND parentWindow = GetParent(hwnd);
-	if (WindowContextExists(parentWindow))
+	this->parentWindowContext = GetWindowContext(parentWindow);
+	if (this->parentWindowContext != NULL)
 	{
-		this->parentWindowContext = GetWindowContext(parentWindow);
 		this->parentWindowContext->childWindows.push_back(this);
 	}
+	//Initialize Virtual Client Bounds
+	UpdateSize();
 
 	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWL_WNDPROC);
 	if (currentWndProc != DefaultWndProc && currentWndProc != SimpleWndProc)
@@ -958,25 +960,184 @@ void WindowContext::VirtualizeWindow()
 {
 	if (!IsVirtualized())
 	{
-		VirtualizeWindowSize = true;
-		RECT windowRect;
-		RECT clientRect;
-		POINT clientZero = {};
-		ClientToScreen(window, &clientZero);
-		::GetWindowRect(window, &windowRect);
-		::GetClientRect(window, &clientRect);
+		UpdateSizeNonVirtualized();
 		VirtualWindowStyle = GetWindowLong(window, GWL_STYLE);
-		VirtualWindowRect = windowRect;
-		VirtualWidth = clientRect.right - clientRect.left;
-		VirtualHeight = clientRect.bottom - clientRect.top;
-		RealWidth = -1;
-		RealHeight = -1;
-		UpdateSize(VirtualWidth, VirtualHeight);
+		VirtualizeWindowSize = true;
+		UpdateSize();
+		HWND parent = GetParent(window);
+		if (parent == NULL)
+		{
+			ChangeWindowResizable(true);
+		}
+		else
+		{
+			if (parentWindowContext != NULL)
+			{
+				parentWindowContext->UpdateSize();
+			}
+		}
 	}
+
+	//if (!IsVirtualized())
+	//{
+	//	VirtualizeWindowSize = true;
+	//	RECT windowRect;
+	//	RECT clientRect;
+	//	POINT clientZero = {};
+	//	ClientToScreen(window, &clientZero);
+	//	::GetWindowRect(window, &windowRect);
+	//	::GetClientRect(window, &clientRect);
+	//	VirtualWindowStyle = GetWindowLong(window, GWL_STYLE);
+	//	VirtualWindowRect = windowRect;
+	//	VirtualWidth = clientRect.right - clientRect.left;
+	//	VirtualHeight = clientRect.bottom - clientRect.top;
+	//	RealWidth = -1;
+	//	RealHeight = -1;
+	//	UpdateSize(VirtualWidth, VirtualHeight);
+	//}
+}
+
+void WindowContext::UpdateSize()
+{
+	bool virtualized = IsVirtualized();
+	bool parentVirtualized = parentWindowContext != NULL && parentWindowContext->IsVirtualized();
+	HWND parent = GetParent(window);
+	if (!virtualized)
+	{
+		if (!parentVirtualized)
+		{
+			UpdateSizeNonVirtualized();
+		}
+		else
+		{
+			UpdateSizeNonVirtualized();
+			VirtualizeWindow();
+		}
+	}
+	else
+	{
+		int oldWidth = RealWidth;
+		int oldHeight = RealHeight;
+		UpdateSizeVirtualized();
+		if (oldWidth != RealWidth || oldHeight != RealHeight)
+		{
+			InvalidateRect(window, NULL, false);
+		}
+	}
+}
+
+void WindowContext::UpdateSizeReal()
+{
+	RealClientRect = GetRealClientRect();
+	RealClientBounds = GetRealClientBounds();
+	RealWindowRect = GetRealWindowRect();
+	RealWidth = RealClientRect.right;
+	RealHeight = RealClientRect.bottom;
+	RealX = RealClientBounds.left;
+	RealY = RealClientBounds.top;
+}
+
+void WindowContext::UpdateSizeScaled()
+{
+	//Before calling this, ensure that Virtual dimensions and Real dimensions are up to date
+	if (VirtualWidth != 0 && VirtualHeight != 0)
+	{
+		float scaleX = (float)RealWidth / (float)VirtualWidth;
+		float scaleY = (float)RealHeight / (float)VirtualHeight;
+		Scale = std::min(scaleX, scaleY);
+	}
+	else
+	{
+		Scale = 1.0f;
+	}
+	ScaledWidth = Round(Scale * VirtualWidth);
+	ScaledHeight = Round(Scale * VirtualHeight);
+	LeftPadding = (RealWidth - ScaledWidth) / 2;
+	RightPadding = RealWidth - ScaledWidth - LeftPadding;
+	TopPadding = (RealHeight - ScaledHeight) / 2;
+	BottomPadding = RealHeight - ScaledHeight - TopPadding;
+	XOffset = LeftPadding;
+	YOffset = TopPadding;
+
+	ScaledClientRect = { LeftPadding, TopPadding, LeftPadding + ScaledWidth, TopPadding + ScaledHeight };
+
+	upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
+	upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
+}
+
+
+//Assigns real client bounds and real window rect to all size variables
+void WindowContext::UpdateSizeNonVirtualized()
+{
+	UpdateSizeReal();
+	VirtualClientRect = RealClientRect;
+	VirtualClientBounds = RealClientBounds;
+	VirtualWindowRect = RealWindowRect;
+	VirtualWidth = RealWidth;
+	VirtualHeight = RealHeight;
+	UpdateSizeScaled();
+	/*
+	this->VirtualClientBounds = GetRealClientBounds();
+	this->RealClientBounds = this->VirtualClientBounds;
+	this->VirtualHeight = this->VirtualClientBounds.right - VirtualClientBounds.left;
+	this->VirtualWidth = this->VirtualClientBounds.bottom - VirtualClientBounds.top;
+	this->RealWidth = this->RealClientBounds.right - this->RealClientBounds.left;
+	this->RealHeight = this->RealClientBounds.bottom - this->RealClientBounds.top;
+	this->ScaledWidth = this->RealWidth;
+	this->ScaledHeight = this->ScaledHeight;
+	this->Scale = 1.0f;
+	this->XOffset = 0;
+	this->YOffset = 0;
+	this->LeftPadding = 0;
+	this->TopPadding = 0;
+	this->RightPadding = 0;
+	this->BottomPadding = 0;
+	this->RealX = this->VirtualClientBounds.left;
+	this->RealY = this->VirtualClientBounds.top;
+	this->VirtualWindowRect = GetRealWindowRect();
+	this->RealWindowRect = this->VirtualWindowRect;
+	this->ScaledClientRect = GetRealClientRect();
+	*/
+}
+
+void WindowContext::UpdateSizeVirtualized()
+{
+
+
+	UpdateSizeReal();
+	UpdateSizeScaled();
+	/*
+	RECT realClientBounds = GetRealClientBounds();
+	this->RealWidth = realClientBounds.right - realClientBounds.left;
+	this->RealHeight = realClientBounds.bottom - realClientBounds.top;
+	{
+		float scaleX = (float)RealWidth / (float)VirtualWidth;
+		float scaleY = (float)RealHeight / (float)VirtualHeight;
+		Scale = std::min(scaleX, scaleY);
+	}
+	ScaledWidth = Round(Scale * VirtualWidth);
+	ScaledHeight = Round(Scale * VirtualHeight);
+	LeftPadding = (RealWidth - ScaledWidth) / 2;
+	RightPadding = RealWidth - ScaledWidth - LeftPadding;
+	TopPadding = (RealHeight - ScaledHeight) / 2;
+	BottomPadding = RealHeight - ScaledHeight - TopPadding;
+	XOffset = LeftPadding;
+	YOffset = TopPadding;
+	RealX = realClientBounds.left;
+	RealY = realClientBounds.top;
+	upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
+	upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
+	*/
 }
 
 void WindowContext::UpdateSize(int newWidth, int newHeight)
 {
+	if (RealWidth == newWidth && RealHeight == newHeight)
+	{
+		return;
+	}
+	UpdateSize();
+/*
 	if (IgnoreResizeEvents) return;
 	if (!IsVirtualized())
 	{
@@ -984,6 +1145,8 @@ void WindowContext::UpdateSize(int newWidth, int newHeight)
 	}
 	if (RealWidth != newWidth || RealHeight != newHeight)
 	{
+		UpdateSize();
+
 		RealWidth = newWidth;
 		RealHeight = newHeight;
 
@@ -1013,6 +1176,7 @@ void WindowContext::UpdateSize(int newWidth, int newHeight)
 		//UpdateWindow(window);
 		//ValidateRect(window, NULL);
 	}
+	*/
 }
 
 bool WindowContext::ChangeWindowResizable(bool resizable)
@@ -1128,7 +1292,7 @@ DWORD WindowContext::GetVirtualWindowStyle()
 
 bool WindowContext::IsVirtualized() const
 {
-	if (parentWindowContext != NULL) return parentWindowContext->IsVirtualized();
+	//if (parentWindowContext != NULL) return parentWindowContext->IsVirtualized();
 	return VirtualizeWindowSize;
 }
 
@@ -1184,7 +1348,7 @@ void WindowContext::UpdateRectVirtualToClient(LPRECT lpRect) const
 {
 	if (*lpRect == LastInvalidatedRectVirtual)
 	{
-		*lpRect = LastInvalidatedRectClient;
+		*lpRect = LastInvalidatedRectReal;
 	}
 	else
 	{
@@ -1193,7 +1357,7 @@ void WindowContext::UpdateRectVirtualToClient(LPRECT lpRect) const
 }
 void WindowContext::UpdateRectClientToVirtual(LPRECT lpRect) const
 {
-	if (*lpRect == LastInvalidatedRectClient)
+	if (*lpRect == LastInvalidatedRectReal)
 	{
 		*lpRect = LastInvalidatedRectVirtual;
 	}
@@ -1223,7 +1387,7 @@ BOOL WindowContext::GetUpdateRect_(LPRECT rect, BOOL bErase) //rect in virtual c
 	BOOL okay;
 	RECT updateRectClient;
 	okay = GetUpdateRect(window, &updateRectClient, bErase);
-	RECT updateRectVirtual = (LastInvalidatedRectClient == updateRectClient) ?
+	RECT updateRectVirtual = (LastInvalidatedRectReal == updateRectClient) ?
 		LastInvalidatedRectVirtual :
 		RectClientToVirtualClamp(updateRectClient);
 	*rect = updateRectVirtual;
@@ -1238,7 +1402,7 @@ BOOL WindowContext::InvalidateRect_(LPCRECT rect, BOOL bErase) //rect in virtual
 		rect = &clientRect;
 	}
 	LastInvalidatedRectVirtual = *rect;
-	LastInvalidatedRectClient = RectVirtualToClient(*rect);
+	LastInvalidatedRectReal = RectVirtualToClient(*rect);
 
 	BOOL okay;
 	if (*rect == clientRect)
@@ -1247,7 +1411,7 @@ BOOL WindowContext::InvalidateRect_(LPCRECT rect, BOOL bErase) //rect in virtual
 	}
 	else
 	{
-		okay = InvalidateRect(window, &LastInvalidatedRectClient, bErase);
+		okay = InvalidateRect(window, &LastInvalidatedRectReal, bErase);
 	}
 	return okay;
 }
@@ -1265,7 +1429,7 @@ BOOL WindowContext::ValidateRect_(LPCRECT rect) //rect in virtual coordinates
 	//RECT updateRectClient = RectVirtualToClient(*rect);
 	//if (LastInvalidatedRectVirtual == *rect)
 	//{
-	//	updateRectClient = LastInvalidatedRectClient;
+	//	updateRectClient = LastInvalidatedRectReal;
 	//}
 
 	BOOL okay;
@@ -1431,4 +1595,27 @@ BOOL WindowContext::SetWindowPos_(HWND hwndInsertAfter, int x, int y, int cx, in
 	}
 	//TODO
 	return SetWindowPos(window, hwndInsertAfter, x, y, cx, cy, flags);
+}
+
+RECT WindowContext::GetRealClientBounds() const
+{
+	RECT result;
+	HWND parent = GetParent(window);
+	GetClientRect(window, &result);
+	MapWindowPoints(window, parent, (LPPOINT)&result, 2);
+	return result;
+}
+
+RECT WindowContext::GetRealWindowRect() const
+{
+	RECT result;
+	GetWindowRect(window, &result);
+	return result;
+}
+
+RECT WindowContext::GetRealClientRect() const
+{
+	RECT result;
+	GetClientRect(window, &result);
+	return result;
 }
