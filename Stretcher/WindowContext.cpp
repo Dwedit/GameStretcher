@@ -7,10 +7,7 @@ using std::wstring;
 #define NOD3D 0
 #define NOVIRTUALIZE 0
 #define NOHOOKWINDOW 0
-#define PAINT_USE_CLIP_BOX 0
-#define PAINT_USE_CLIP_BOX2 1
-#define NO_PAINT_HOOK 0
-#define USE_BEGINPAINT 1
+#define PAINT_USE_CLIP_BOX 1
 
 #define DO_NOT_RESET_WNDPROC 0
 #define DELAYED_HOOK 0
@@ -606,7 +603,7 @@ HDC WindowContext::GetDC_()
 	{
 		//TODO
 		HDC hdc = parentWindowContext->GetDC_();
-#if PAINT_USE_CLIP_BOX2
+#if PAINT_USE_CLIP_BOX
 		HRGN clipRegion = CreateRectRgnIndirect(&this->VirtualClientBounds);
 		result = SelectClipRgn(hdc, clipRegion);
 		okay = DeleteObject(clipRegion);
@@ -643,7 +640,7 @@ HDC WindowContext::GetDC_()
 		}
 		hdcMap.Add(this->hdc, this);
 
-#if PAINT_USE_CLIP_BOX2
+#if PAINT_USE_CLIP_BOX
 		result = SelectClipRgn(hdc, NULL);
 		//HRGN clipRegion = CreateRectRgnIndirect(&this->VirtualClientRect);
 		//result = SelectClipRgn(hdc, clipRegion);
@@ -656,7 +653,7 @@ HDC WindowContext::GetDC_()
 int WindowContext::ReleaseDC_()
 {
 	int result;
-#if PAINT_USE_CLIP_BOX2
+#if PAINT_USE_CLIP_BOX
 	result = SelectClipRgn(hdc, NULL);
 #endif
 	if (parentWindowContext != NULL)
@@ -1466,36 +1463,11 @@ HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 	HDC hdc;
 	BOOL okay = true;
 	int result = 0;
-#if NO_PAINT_HOOK
-	//RECT clientRect, clipRect;
-	//HRGN clipRgn;
-	//int regionType;
-	//GetClientRect(window, &clientRect);
-	//clipRgn = CreateRectRgnIndirect(&clientRect);
-	//int okay = 0;
-	//hdc = GetDC(window);
-	//okay = GetClipRgn(hdc, clipRgn);
-	//regionType = GetRgnBox(clipRgn, &clipRect);
-	//okay = GetClipBox(hdc, &clipRect);
-	//ReleaseDC(window, hdc);
-
-	paintDc = BeginPaint(window, lpPaintStruct);
-	
-	//GetClientRect(window, &clientRect);
-	//okay = GetClipRgn(hdc, clipRgn);
-	//regionType = GetRgnBox(clipRgn, &clipRect);
-	//okay = GetClipBox(hdc, &clipRect);
-	//DeleteObject(clipRgn);
-
-	return hdc;
-#endif
-#if USE_BEGINPAINT
 	paintDc = BeginPaint(window, lpPaintStruct);
 	hdc = GetDC_();
 	lpPaintStruct->hdc = hdc;
 	UpdateRectClientToVirtual(&(lpPaintStruct->rcPaint));
-
-#if PAINT_USE_CLIP_BOX2
+#if PAINT_USE_CLIP_BOX
 	RECT clipRect = lpPaintStruct->rcPaint;
 	if (this->parentWindowContext != NULL)
 	{
@@ -1508,27 +1480,6 @@ HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 	result = SelectClipRgn(hdc, clipRegion);
 	okay = DeleteObject(clipRegion);
 #endif
-
-	//int mapMode = GetMapMode(hdc); //MM_TEXT is default
-
-
-#else
-	hdc = GetDC_();
-	if (lpPaintStruct != NULL)
-	{
-		memset(lpPaintStruct, 0, sizeof(PAINTSTRUCT));
-		lpPaintStruct->hdc = hdc;
-		lpPaintStruct->fErase = BackgroundNeedsErasing;
-		okay = GetUpdateRect_(&(lpPaintStruct->rcPaint), false);
-#if PAINT_USE_CLIP_BOX
-		RECT updateRectClient;
-		okay = GetUpdateRect(window, &updateRectClient, false);
-		HRGN clipRegion = CreateRectRgnIndirect(&updateRectClient);
-		okay = SelectClipRgn(hdc, clipRegion);
-		DeleteObject(clipRegion);
-#endif
-	}
-#endif
 	return hdc;
 }
 
@@ -1536,24 +1487,6 @@ BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 {
 	BOOL okay = true;
 	int result = 0;
-#if NO_PAINT_HOOK
-	//RECT clientRect, clipRect;
-	//HRGN clipRgn;
-	//GetClientRect(window, &clientRect);
-	//clipRgn = CreateRectRgnIndirect(&clientRect);
-	//okay = GetClipRgn(lpPaintStruct->hdc, clipRgn);
-	//okay = GetClipBox(lpPaintStruct->hdc, &clipRect);
-
-	okay = EndPaint(window, lpPaintStruct);
-
-	//GetClientRect(window, &clientRect);
-	//okay = GetClipRgn(lpPaintStruct->hdc, clipRgn);
-	//okay = GetClipBox(lpPaintStruct->hdc, &clipRect);
-	//DeleteObject(clipRgn);
-
-	return okay;
-#endif
-#if USE_BEGINPAINT
 	if (lpPaintStruct != NULL)
 	{
 #if PAINT_USE_CLIP_BOX
@@ -1569,21 +1502,6 @@ BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 		return okay;
 	}
 	return false;
-#else
-#if PAINT_USE_CLIP_BOX
-	okay = SelectClipRgn(lpPaintStruct->hdc, NULL);
-#endif
-	if (lpPaintStruct != NULL)
-	{
-		okay = ValidateRect_(&(lpPaintStruct->rcPaint));
-		okay &= ReleaseDC_();
-		return okay;
-	}
-	else
-	{
-		return false;
-	}
-#endif
 }
 
 BOOL WindowContext::GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement)
