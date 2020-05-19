@@ -177,6 +177,9 @@ public:
 	void UpdateSizeNonVirtualized();	//Assigns real client bounds and real window rect to all size variables
 	void UpdateSizeScaled();	//Updates Scale factor, and Scaled dimensions.  Ensure that Virtual dimensions and Real dimensions are up to date before calling.
 	void UpdateSizeVirtualized();
+	void MoveResizeChildWindow();
+	void MoveResizeChildWindows();
+
 	bool ChangeWindowResizable(bool resizable);
 	void FinishBorderChange();
 	BOOL GetWindowRect_(LPRECT rect) const;
