@@ -378,6 +378,10 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_XBUTTONDBLCLK:
 		case WM_MOUSEHOVER:
 		{
+			if (lParam == -1)
+			{
+				return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+			}
 			if (this->parentWindowContext != NULL)
 			{
 				//TODO
@@ -1066,58 +1070,12 @@ void WindowContext::UpdateSizeNonVirtualized()
 	VirtualWidth = RealWidth;
 	VirtualHeight = RealHeight;
 	UpdateSizeScaled();
-	/*
-	this->VirtualClientBounds = GetRealClientBounds();
-	this->RealClientBounds = this->VirtualClientBounds;
-	this->VirtualHeight = this->VirtualClientBounds.right - VirtualClientBounds.left;
-	this->VirtualWidth = this->VirtualClientBounds.bottom - VirtualClientBounds.top;
-	this->RealWidth = this->RealClientBounds.right - this->RealClientBounds.left;
-	this->RealHeight = this->RealClientBounds.bottom - this->RealClientBounds.top;
-	this->ScaledWidth = this->RealWidth;
-	this->ScaledHeight = this->ScaledHeight;
-	this->Scale = 1.0f;
-	this->XOffset = 0;
-	this->YOffset = 0;
-	this->LeftPadding = 0;
-	this->TopPadding = 0;
-	this->RightPadding = 0;
-	this->BottomPadding = 0;
-	this->RealX = this->VirtualClientBounds.left;
-	this->RealY = this->VirtualClientBounds.top;
-	this->VirtualWindowRect = GetRealWindowRect();
-	this->RealWindowRect = this->VirtualWindowRect;
-	this->ScaledClientRect = GetRealClientRect();
-	*/
 }
 
 void WindowContext::UpdateSizeVirtualized()
 {
-
-
 	UpdateSizeReal();
 	UpdateSizeScaled();
-	/*
-	RECT realClientBounds = GetRealClientBounds();
-	this->RealWidth = realClientBounds.right - realClientBounds.left;
-	this->RealHeight = realClientBounds.bottom - realClientBounds.top;
-	{
-		float scaleX = (float)RealWidth / (float)VirtualWidth;
-		float scaleY = (float)RealHeight / (float)VirtualHeight;
-		Scale = std::min(scaleX, scaleY);
-	}
-	ScaledWidth = Round(Scale * VirtualWidth);
-	ScaledHeight = Round(Scale * VirtualHeight);
-	LeftPadding = (RealWidth - ScaledWidth) / 2;
-	RightPadding = RealWidth - ScaledWidth - LeftPadding;
-	TopPadding = (RealHeight - ScaledHeight) / 2;
-	BottomPadding = RealHeight - ScaledHeight - TopPadding;
-	XOffset = LeftPadding;
-	YOffset = TopPadding;
-	RealX = realClientBounds.left;
-	RealY = realClientBounds.top;
-	upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
-	upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
-	*/
 }
 
 void WindowContext::UpdateSize(int newWidth, int newHeight)
