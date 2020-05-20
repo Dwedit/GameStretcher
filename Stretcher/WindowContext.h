@@ -47,7 +47,9 @@ class WindowContext
 	bool EnteringFullScreen;
 	bool LeavingFullScreen;
 	bool IsFullScreen;
-	int BorderChanging;
+	typedef void (WindowContext::*VoidMemberFunction)();
+	VoidMemberFunction ResizeHandler;
+
 
 	//RECT knownWindowRect;
 	//RECT knownClientRect;
@@ -114,8 +116,9 @@ public:
 	WindowContext() :
 		Scale(1.0f),
 		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), hdc(), paintDc(),
-		BorderChanging(), LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
+		LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
 		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
+		ResizeHandler(),
 		parentWindowContext()
 	{
 	}
@@ -179,8 +182,9 @@ public:
 	void UpdateSizeVirtualized();
 	void MoveResizeChildWindow();
 	void MoveResizeChildWindows();
-
-	bool ChangeWindowResizable(bool resizable);
+	bool MakeWindowResizable();
+	bool MakeWindowBorderless();
+	void FinishBorderChangeHandler();
 	void FinishBorderChange();
 	BOOL GetWindowRect_(LPRECT rect) const;
 	BOOL GetClientRect_(LPRECT rect) const;

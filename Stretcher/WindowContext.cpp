@@ -413,7 +413,6 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_ENTERSIZEMOVE:
 		case WM_EXITSIZEMOVE:
 		//case WM_GETMINMAXINFO:
-		case WM_NCCALCSIZE:
 		case WM_SYSCOMMAND:
 		{
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -424,19 +423,23 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		{
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
+		case WM_NCCALCSIZE:
+		{
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
 		case WM_SIZE:
 		{
 			//TODO: handle Resize to redraw the window, and rescale the window
 			int width = (int)(short)LOWORD(lParam); //client area width
 			int height = (int)(short)HIWORD(lParam); //client area height
 			
-			if (BorderChanging == 1)
-			{
-				FinishBorderChange();
-			}
-			else if (BorderChanging == 0)
+			if (!IgnoreResizeEvents)
 			{
 				UpdateSize(width, height);
+			}
+			if (ResizeHandler != NULL)
+			{
+				(this->*ResizeHandler)();
 			}
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
@@ -449,32 +452,22 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 				if (style & WS_CAPTION)
 				{
 					IsFullScreen = true;
-					//remove caption
-					style &= ~(WS_CAPTION | WS_THICKFRAME | WS_BORDER | WS_DLGFRAME);
-					exStyle &= ~(WS_EX_CLIENTEDGE | WS_EX_WINDOWEDGE);
-					SetWindowLong(window, GWL_EXSTYLE, exStyle);
-					SetWindowLong(window, GWL_STYLE, style);
-
+					
 					RECT monitorRect = GetMonitorRect(window);
-					//SetWindowPos(NULL, HWND_TOPMOST, monitorRect.left, monitorRect.top, monitorRect.right - monitorRect.left, monitorRect.bottom - monitorRect.top, 0);
-					//SetForegroundWindow(window);
-					ShowWindow(window, SW_MAXIMIZE);
-					//SetWindowPos(NULL, HWND_TOPMOST, 0, 0, 1919, 1080, 0);
-					//SetWindowPos(NULL, HWND_TOPMOST, 0, 0, 1920, 1080, 0);
-					//SetWindowPos(NULL, HWND_TOPMOST, 0, 0, 1920, 1080, 0);
+					RealX = monitorRect.left;
+					RealY = monitorRect.top;
+					RealWidth = monitorRect.right - monitorRect.left;
+					RealHeight = monitorRect.bottom - monitorRect.top;
+					MakeWindowBorderless();
 				}
 				else
 				{
 					IsFullScreen = false;
-					//add caption
-					style |= (WS_CAPTION | WS_THICKFRAME);
-					style &= ~WS_MAXIMIZE;
-					//SetWindowPos(NULL, HWND_NOTOPMOST, 0, 0, 1920, 1080, 0);
-					SetWindowLong(window, GWL_STYLE, style);
-					//ShowWindow(window, SW_MAXIMIZE);
-					//SetWindowPos(NULL, HWND_NOTOPMOST, 0, 0, 1919, 1080, 0);
-					//SetWindowPos(NULL, HWND_NOTOPMOST, 0, 0, 1920, 1080, 0);
-					//SetWindowPos(NULL, HWND_NOTOPMOST, 0, 0, 1920, 1080, 0);
+					RealX = this->VirtualClientBounds.left;
+					RealY = this->VirtualClientBounds.top;
+					RealWidth = this->VirtualWidth;
+					RealHeight = this->VirtualHeight;
+					MakeWindowResizable();
 				}
 				return 0;
 			}
@@ -980,7 +973,7 @@ void WindowContext::VirtualizeWindow()
 		HWND parent = GetParent(window);
 		if (parent == NULL)
 		{
-			ChangeWindowResizable(true);
+			MakeWindowResizable();
 		}
 		else
 		{
@@ -1118,7 +1111,7 @@ void WindowContext::UpdateSize(int newWidth, int newHeight)
 		upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
 		upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
 
-		ChangeWindowResizable(true);
+		MakeWindowResizable();
 
 		InvalidateRect(window, NULL, false);
 		//UpdateWindow(window);
@@ -1142,36 +1135,67 @@ void WindowContext::MoveResizeChildWindows()
 	}
 }
 
-bool WindowContext::ChangeWindowResizable(bool resizable)
+bool WindowContext::MakeWindowResizable()
 {
 	DWORD windowStyle = GetWindowLong(window, GWL_STYLE);
 	bool hasResizeBorder = windowStyle & WS_THICKFRAME;
-	if (hasResizeBorder != resizable)
+	if (!hasResizeBorder)
 	{
-		BorderChanging = 1;
 		IgnoreResizeEvents = true;
-
-		if (hasResizeBorder)
+		windowStyle |= WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_CAPTION;
+		SetWindowLong(window, GWL_STYLE, windowStyle);
+		if (windowStyle & WS_VISIBLE)
 		{
-			windowStyle &= ~WS_THICKFRAME;
+			FinishBorderChange();
+			IgnoreResizeEvents = false;
 		}
 		else
 		{
-			windowStyle |= WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU;
+			ResizeHandler = &WindowContext::FinishBorderChangeHandler;
 		}
-		SetWindowLong(window, GWL_STYLE, windowStyle);
-		//FinishBorderChange();
-		//BorderChanging = 1;
 		return true;
 	}
 	return false;
 }
 
+bool WindowContext::MakeWindowBorderless()
+{
+	DWORD windowStyle = GetWindowLong(window, GWL_STYLE);
+	bool hasCaption = windowStyle & WS_CAPTION;
+	if (hasCaption)
+	{
+		IgnoreResizeEvents = true;
+		windowStyle &= ~(WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_CAPTION);
+		SetWindowLong(window, GWL_STYLE, windowStyle);
+		if (windowStyle & WS_VISIBLE)
+		{
+			FinishBorderChange();
+			IgnoreResizeEvents = false;
+		}
+		else
+		{
+			ResizeHandler = &WindowContext::FinishBorderChangeHandler;
+		}
+		return true;
+	}
+	return false;
+}
+
+void WindowContext::FinishBorderChangeHandler()
+{
+	ResizeHandler = NULL;
+	IgnoreResizeEvents = true;
+	FinishBorderChange();
+	IgnoreResizeEvents = false;
+}
+
 void WindowContext::FinishBorderChange()
 {
 	int numberOfAttempts = 5;
+	int oldRealWidth = this->RealClientBounds.right - this->RealClientBounds.left;
+	int oldRealHeight = this->RealClientBounds.bottom - this->RealClientBounds.top;
+
 tryAgain:
-	BorderChanging = 2;
 	RECT windowRect;
 	RECT clientRect;
 	::GetWindowRect(window, &windowRect);
@@ -1182,11 +1206,28 @@ tryAgain:
 	int topBorder = clientZero.y - windowRect.top;
 	int extraWidth = (windowRect.right - windowRect.left) - (clientRect.right - clientRect.left);
 	int extraHeight = (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
-	SetWindowPos(window, NULL, RealX - leftBorder, RealY - topBorder, RealWidth + extraWidth, RealHeight + extraHeight, SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOZORDER);
-	BorderChanging = 0;
 
+	bool ignoreResizeEvents = IgnoreResizeEvents;
+	IgnoreResizeEvents = true;
+
+	DWORD flags = SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOZORDER;
+	DWORD windowStyle = _GetWindowLong(window, GWL_STYLE);
+	
+	if (windowStyle & WS_CAPTION)
+	{
+		flags = SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOZORDER;
+	}
+	else
+	{
+		flags = SWP_FRAMECHANGED;
+	}
+	
+	SetWindowPos(window, NULL, RealX - leftBorder, RealY - topBorder, RealWidth + extraWidth, RealHeight + extraHeight, flags);
 	::GetWindowRect(window, &windowRect);
 	::GetClientRect(window, &clientRect);
+
+	IgnoreResizeEvents = ignoreResizeEvents;
+
 
 	if (clientRect.right - clientRect.left != RealWidth)
 	{
@@ -1197,9 +1238,11 @@ tryAgain:
 		}
 
 	}
-
-
-	IgnoreResizeEvents = false;
+	if (oldRealWidth != RealWidth || oldRealHeight != RealHeight)
+	{
+		UpdateSize();
+		InvalidateRect(window, NULL, false);
+	}
 }
 
 BOOL WindowContext::GetWindowRect_(LPRECT rect) const
