@@ -13,10 +13,12 @@ using std::wstring;
 
 #include <string.h>
 #include "CUpscaler.h"
+#include "TinyMap.h"
+#include "HDCMap.h"
 
 class WindowContext;
-extern TinyMapUnique<HWND, WindowContext> windowMap;
-extern TinyMap<HDC, WindowContext*> hdcMap;
+extern TinyMap<HWND, std::unique_ptr<WindowContext>> windowMap;
+extern HDCMap hdcMap;
 
 static inline bool operator==(const RECT& rect1, const RECT& rect2)
 {
@@ -47,6 +49,7 @@ class WindowContext
 	bool EnteringFullScreen;
 	bool LeavingFullScreen;
 	bool IsFullScreen;
+	bool MovingWindow;	//Indicates that Window is being moved by this class, and not by Win32 itself
 	typedef void (WindowContext::*VoidMemberFunction)();
 	VoidMemberFunction ResizeHandler;
 
@@ -89,11 +92,14 @@ class WindowContext
 	
 	//RECT virtualClientRect;
 	//RECT realClientRect;
-	float Scale;
+	float Scale{};
 	int XOffset, YOffset;
 	int LeftPadding, TopPadding, BottomPadding, RightPadding;
-	HDC hdc;
 	HDC paintDc;
+	HDC realDC;
+	HDC d3dDC;
+
+	//int hdcRefCount;
 	Region dirtyRegion;
 	CUpscaler upscaler;
 
@@ -115,10 +121,10 @@ public:
 
 	WindowContext() :
 		Scale(1.0f),
-		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), hdc(), paintDc(),
+		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), d3dDC(), paintDc(),
 		LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
 		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
-		ResizeHandler(),
+		ResizeHandler(), MovingWindow(), realDC(),
 		parentWindowContext()
 	{
 	}
@@ -128,7 +134,9 @@ public:
 	}
 
 	static WindowContext* Get(HWND hwnd);
-	static WindowContext* GetByHdc(HDC hwnd);
+	static WindowContext* GetByHdc(HDC hdc);
+	static int HdcAddRef(HDC hdc, WindowContext* windowContext);
+	static int HdcSubtractRef(HDC hdc);
 	static WindowContext* GetWindowContext(HWND hwnd);
 	static WindowContext* GetWindowContext();
 	static bool TryHookWindow(HWND hwnd);
@@ -164,6 +172,7 @@ public:
 	void MouseVirtualToVirtualScreen(LPPOINT lpPoint) const;
 
 	HDC GetDC_();
+	int ReleaseDC_(HDC hdcToRelease);
 	int ReleaseDC_();
 
 	bool Redraw();	//TODO
@@ -209,7 +218,18 @@ public:
 	BOOL SetWindowPlacement_(const WINDOWPLACEMENT* windowPlacement);
 	BOOL SetWindowPos_(HWND hwndInsertAfter, int x, int y, int cx, int cy, UINT flags);
 
+	//Calls Win32 MoveWindow, indicates that the window is being moved by this class, and not by Win32 internally
+	BOOL _MoveWindow(int x, int y, int width, int height, BOOL repaint);
+	//Calls Win32 SetWindowPlacement, indicates that the window is being moved by this class, and not by Win32 internally
+	BOOL _SetWindowPlacement(const WINDOWPLACEMENT* windowPlacement);
+	//Calls Win32 SetWindowPos, indicates that the window is being moved by this class, and not by Win32 internally
+	BOOL _SetWindowPos(HWND hwndInsertAfter, int x, int y, int cx, int cy, UINT flags);
+
 	RECT GetRealClientBounds() const;
 	RECT GetRealWindowRect() const;
 	RECT GetRealClientRect() const;
+
+	void GetRealNonClientArea(int& left, int& top, int& right, int& bottom) const;
+
+	HDC GetCurrentDC(HDC inputDC);
 };

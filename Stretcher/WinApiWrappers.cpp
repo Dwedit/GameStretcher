@@ -127,6 +127,8 @@ void ReplaceImports()
 
     ReplaceImport("Gdi32.dll", "BitBlt", (FARPROC)BitBlt_Replacement, (FARPROC*)&BitBlt_OLD);
     ReplaceImport("Gdi32.dll", "StretchDIBits", (FARPROC)StretchDIBits_Replacement, (FARPROC*)&StretchDIBits_OLD);
+    ReplaceImport("gdi32.dll", "SetDIBits", (FARPROC)SetDIBits_Replacement, (FARPROC*)&SetDIBits_OLD);
+    ReplaceImport("gdi32.dll", "StretchBlt", (FARPROC)StretchBlt_Replacement, (FARPROC*)&StretchBlt_OLD);
     ReplaceImport("Gdi32.dll", "TextOutA", (FARPROC)TextOutA_Replacement, (FARPROC*)&TextOutA_OLD);
     ReplaceImport("Gdi32.dll", "TextOutW", (FARPROC)TextOutW_Replacement, (FARPROC*)&TextOutW_OLD);
     ReplaceImport("Gdi32.dll", "GetClipBox", (FARPROC)GetClipBox_Replacement, (FARPROC*)&GetClipBox_OLD);
@@ -190,6 +192,8 @@ UnhookWinEvent_FUNC UnhookWinEvent_OLD = NULL;
 
 BitBlt_FUNC BitBlt_OLD = NULL;
 StretchDIBits_FUNC StretchDIBits_OLD = NULL;
+SetDIBits_FUNC SetDIBits_OLD = NULL;
+StretchBlt_FUNC StretchBlt_OLD = NULL;
 TextOutA_FUNC TextOutA_OLD = NULL;
 TextOutW_FUNC TextOutW_OLD = NULL;
 GetClipBox_FUNC GetClipBox_OLD = NULL;
@@ -605,7 +609,7 @@ int WINAPI ReleaseDC_Replacement(HWND hwnd, HDC hdc)
 {
     WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return ReleaseDC_OLD(hwnd, hdc);
-    return windowContext->ReleaseDC_();
+    return windowContext->ReleaseDC_(hdc);
 }
 BOOL WINAPI ValidateRect_Replacement(HWND hwnd, LPCRECT rect)
 {
@@ -672,6 +676,7 @@ BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
     if (windowContext == NULL) return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
+    hdc = windowContext->GetCurrentDC(hdc);
     windowContext->AddDirtyRect(x, y, cx, cy);
     return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
 }
@@ -679,13 +684,30 @@ int WINAPI StretchDIBits_Replacement(HDC hdc, int xDest, int yDest, int DestWidt
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
     if (windowContext == NULL) return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
+    hdc = windowContext->GetCurrentDC(hdc);
     windowContext->AddDirtyRect(xDest, yDest, DestWidth, DestHeight);
     return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
+}
+int WINAPI SetDIBits_Replacement(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, CONST VOID* lpBits, CONST BITMAPINFO *bitmapInfo, UINT ColorUse)
+{
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext == NULL) return SetDIBits_OLD(hdc, hbm, start, cLines, lpBits, bitmapInfo, ColorUse);
+    hdc = windowContext->GetCurrentDC(hdc);
+    return SetDIBits_OLD(hdc, hbm, start, cLines, lpBits, bitmapInfo, ColorUse);
+}
+BOOL WINAPI StretchBlt_Replacement(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop)
+{
+    WindowContext* windowContext = WindowContext::GetByHdc(hdcDest);
+    if (windowContext == NULL) return StretchBlt_OLD(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
+    hdcDest = windowContext->GetCurrentDC(hdcDest);
+    windowContext->AddDirtyRect(xDest, yDest, wDest, hDest);
+    return StretchBlt_OLD(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
 }
 BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c)
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
     if (windowContext == NULL) return TextOutA_OLD(hdc, x, y, lpString, c);
+    hdc = windowContext->GetCurrentDC(hdc);
     SIZE size;
     BOOL okay;
     okay = GetTextExtentPoint32A(hdc, lpString, c, &size);
@@ -699,6 +721,7 @@ BOOL WINAPI TextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int c)
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
     if (windowContext == NULL) return TextOutW_OLD(hdc, x, y, lpString, c);
+    hdc = windowContext->GetCurrentDC(hdc);
     SIZE size;
     BOOL okay;
     okay = GetTextExtentPoint32W(hdc, lpString, c, &size);
@@ -716,6 +739,7 @@ BOOL WINAPI Rectangle_Replacement(HDC hdc, int left, int top, int right, int bot
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
     if (windowContext == NULL) return Rectangle_OLD(hdc, left, top, right, bottom);
+    hdc = windowContext->GetCurrentDC(hdc);
     windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
     return Rectangle_OLD(hdc, left, top, right, bottom);
 }
@@ -723,6 +747,7 @@ BOOL WINAPI RoundRect_Replacement(HDC hdc, int left, int top, int right, int bot
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
     if (windowContext == NULL) return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
+    hdc = windowContext->GetCurrentDC(hdc);
     windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
     return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
 }

@@ -45,6 +45,9 @@
     <ClCompile Include="CUpscaler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HDCMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinApiWrappers.h">
@@ -84,6 +87,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="shaderPrograms2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HDCMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

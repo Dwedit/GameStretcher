@@ -10,6 +10,236 @@ using std::make_pair;
 using std::make_unique;
 using std::swap;
 
+#include <unordered_map>
+using std::unordered_map;
+
+template <class TKey, class TValue>
+class VectorMap
+{
+	vector<pair<TKey, TValue>> vec;
+private:
+	int Find(const TKey& key) const
+	{
+		for (size_t i = 0; i < vec.size(); i++)
+		{
+			if (vec[i].first == key) return (int)i;
+		}
+		return -1;
+	}
+	int FindValue(const TValue& value) const
+	{
+		for (size_t i = 0; i < vec.size(); i++)
+		{
+			if (vec[i].second == value) return (int)i;
+		}
+		return -1;
+	}
+public:
+	VectorMap() { }
+	bool ContainsKey(const TKey& key) const
+	{
+		return Find(key) != -1;
+	}
+	bool ContainsValue(const TValue& value) const
+	{
+		return FindValue(value) != -1;
+	}
+	bool Add(const TKey& key, TValue value)
+	{
+		if (ContainsKey(key)) return false;
+		vec.push_back(make_pair(key, value));
+		return true;
+	}
+	pair<TKey, TValue> & Emplace(const TKey& key, TValue&& value)
+	{
+		int index = Find(key);
+		if (index != 0)
+		{
+			std::swap(vec[index].second, value);
+			return vec[index];
+		}
+		else
+		{
+			vec.emplace_back(make_pair(key, std::forward<TValue>(value)));
+			return vec[vec.size() - 1];
+		}
+	}
+
+	pair<TKey, TValue> &AddDefault(const TKey& key)
+	{
+		return Emplace(key, TValue());
+	}
+
+	void Set(const TKey& key, TValue value)
+	{
+		int index = Find(key);
+		if (index >= 0)
+		{
+			vec[index].second = value;
+		}
+		else
+		{
+			vec.push_back(make_pair(key, value));
+		}
+	}
+
+	bool Remove(const TKey& key)
+	{
+		int index = Find(key);
+		if (index == -1) return false;
+		vec.erase(vec.begin() + index, vec.begin() + index + 1);
+		return true;
+	}
+
+	TValue Get(const TKey& key) const
+	{
+		int index = Find(key);
+		if (index == -1) return TValue();
+		return vec[index].second;
+	}
+
+	TValue* GetReference(const TKey& key)
+	{
+		int index = Find(key);
+		if (index == -1) return NULL;
+		return &vec[index].second;
+	}
+
+	const TValue* GetReference(const TKey& key) const
+	{
+		int index = Find(key);
+		if (index == -1) return NULL;
+		return &vec[index].second;
+	}
+};
+
+template <class TKey, class TValue>
+class TinyMap
+{
+	unordered_map<TKey, TValue> map;
+	mutable TKey mostRecentKey;
+	mutable TValue *pMostRecentValue;
+public:
+	//TinyMap()
+	//{
+	//
+	//}
+	//~TinyMap()
+	//{
+	//
+	//}
+
+	bool ContainsKey(const TKey &key)
+	{
+		if (pMostRecentValue != NULL && mostRecentKey == key) return true;
+		auto found = map.find(key);
+		if (found != map.end())
+		{
+			mostRecentKey = key;
+			pMostRecentValue = &found->second;
+			return true;
+		}
+		return false;
+	}
+
+	bool ContainsValue(const TValue& value)
+	{
+		if (pMostRecentValue != NULL && *pMostRecentValue == value) return true;
+		for (auto iterator = map.begin(); iterator != map.end(); iterator++)
+		{
+			if (iterator->second == value)
+			{
+				mostRecentKey = iterator->first;
+				pMostRecentValue = &iterator->second;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool Add(const TKey &key, TValue value)
+	{
+		if (ContainsKey(key)) return false;
+		Set(key, value);
+		return true;
+	}
+
+	bool Emplace(const TKey& key, TValue&& value)
+	{
+		if (ContainsKey(key)) return false;
+		std::pair<unordered_map<TKey, TValue>::iterator, bool> newItem = map.emplace(key, std::forward<TValue>(value));
+		mostRecentKey = newItem.first->first;
+		pMostRecentValue = &newItem.first->second;
+		return true;
+	}
+
+	bool AddDefault(const TKey& key)
+	{
+		return Emplace(key, TValue());
+	}
+
+	void Set(const TKey &key, TValue value)
+	{
+		TValue &valueRef = map[key] = value;
+		mostRecentKey = key;
+		pMostRecentValue = &valueRef;
+	}
+
+	bool Remove(const TKey& key)
+	{
+		if (mostRecentKey == key)
+		{
+			map.erase(key);
+			mostRecentKey = TKey();
+			pMostRecentValue = NULL;
+			return true;
+		}
+		return map.erase(key) > 0;
+	}
+
+	TValue Get(const TKey& key)
+	{
+		if (ContainsKey(key)) return *pMostRecentValue;
+		return TValue();
+	}
+
+	TValue* GetReference(const TKey& key)
+	{
+		if (ContainsKey(key)) return pMostRecentValue;
+		return NULL;
+	}
+
+	TValue* GetMostRecentValue()
+	{
+		if (pMostRecentValue != NULL) return pMostRecentValue;
+		auto iterator = map.begin();
+		if (iterator != map.end())
+		{
+			pMostRecentValue = &iterator->second;
+			return pMostRecentValue;
+		}
+		return NULL;
+	}
+};
+
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 template <class TKey, class TValue>
 class TinyMapUnique
 {

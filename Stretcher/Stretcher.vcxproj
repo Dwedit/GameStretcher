@@ -170,6 +170,7 @@
   <ItemGroup>
     <ClCompile Include="CUpscaler.cpp" />
     <ClCompile Include="D3D9Context.cpp" />
+    <ClCompile Include="HDCMap.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MemoryUnlocker.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="CUpscaler.h" />
     <ClInclude Include="CUpscalerImpl.h" />
     <ClInclude Include="D3D9Context.h" />
+    <ClInclude Include="HDCMap.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="Region.h" />
