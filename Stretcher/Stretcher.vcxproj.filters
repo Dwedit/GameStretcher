@@ -48,6 +48,9 @@
     <ClCompile Include="HDCMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WinApiWrappers_AllGDI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinApiWrappers.h">
@@ -90,6 +93,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HDCMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WinApiWrappers_AllGDI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

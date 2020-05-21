@@ -125,6 +125,10 @@ void ReplaceImports()
     ReplaceImport("User32.dll", "IsWinEventHookInstalled", (FARPROC)IsWinEventHookInstalled_Replacement, (FARPROC*)&IsWinEventHookInstalled_OLD);
     ReplaceImport("User32.dll", "UnhookWinEvent", (FARPROC)UnhookWinEvent_Replacement, (FARPROC*)&UnhookWinEvent_OLD);
 
+    void ReplaceImports_AllGDI(ImportReplacer & replacer);
+    ReplaceImports_AllGDI(replacer);
+
+/*
     ReplaceImport("Gdi32.dll", "BitBlt", (FARPROC)BitBlt_Replacement, (FARPROC*)&BitBlt_OLD);
     ReplaceImport("Gdi32.dll", "StretchDIBits", (FARPROC)StretchDIBits_Replacement, (FARPROC*)&StretchDIBits_OLD);
     ReplaceImport("gdi32.dll", "SetDIBits", (FARPROC)SetDIBits_Replacement, (FARPROC*)&SetDIBits_OLD);
@@ -134,6 +138,7 @@ void ReplaceImports()
     ReplaceImport("Gdi32.dll", "GetClipBox", (FARPROC)GetClipBox_Replacement, (FARPROC*)&GetClipBox_OLD);
     ReplaceImport("Gdi32.dll", "Rectangle", (FARPROC)Rectangle_Replacement, (FARPROC*)&Rectangle_OLD);
     ReplaceImport("Gdi32.dll", "RoundRect", (FARPROC)RoundRect_Replacement, (FARPROC*)&RoundRect_OLD);
+*/
 }
 
 //Import Backups (Definitions)
@@ -190,6 +195,7 @@ SetWinEventHook_FUNC SetWinEventHook_OLD = NULL;
 IsWinEventHookInstalled_FUNC IsWinEventHookInstalled_OLD = NULL;
 UnhookWinEvent_FUNC UnhookWinEvent_OLD = NULL;
 
+/*
 BitBlt_FUNC BitBlt_OLD = NULL;
 StretchDIBits_FUNC StretchDIBits_OLD = NULL;
 SetDIBits_FUNC SetDIBits_OLD = NULL;
@@ -199,6 +205,7 @@ TextOutW_FUNC TextOutW_OLD = NULL;
 GetClipBox_FUNC GetClipBox_OLD = NULL;
 Rectangle_FUNC Rectangle_OLD = NULL;
 RoundRect_FUNC RoundRect_OLD = NULL;
+*/
 
 /*
 
@@ -672,6 +679,8 @@ BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook)
 }
 
 
+
+/*
 BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
     WindowContext* windowContext = WindowContext::GetByHdc(hdc);
@@ -750,4 +759,14 @@ BOOL WINAPI RoundRect_Replacement(HDC hdc, int left, int top, int right, int bot
     hdc = windowContext->GetCurrentDC(hdc);
     windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
     return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
+}
+*/
+
+void SubstituteDC(HDC& hdc)
+{
+    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+    if (windowContext != NULL)
+    {
+        hdc = windowContext->GetCurrentDC(hdc);
+    }
 }
