@@ -58,18 +58,6 @@ typedef HWINEVENTHOOK(WINAPI* SetWinEventHook_FUNC)(DWORD eventMin, DWORD eventM
 typedef BOOL(WINAPI* IsWinEventHookInstalled_FUNC)(DWORD event);
 typedef BOOL(WINAPI* UnhookWinEvent_FUNC)(HWINEVENTHOOK hWinEventHook);
 
-/*
-typedef BOOL(WINAPI* BitBlt_FUNC)(HDC, int, int, int, int, HDC, int, int, DWORD);
-typedef int(WINAPI* StretchDIBits_FUNC)(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, const void* lpBits, const BITMAPINFO* lpbmi, UINT iUsage, DWORD rop);
-typedef int(WINAPI* SetDIBits_FUNC)(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, CONST VOID* lpBits, CONST BITMAPINFO *bitmapInfo, UINT ColorUse);
-typedef BOOL(WINAPI* StretchBlt_FUNC)(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop);
-typedef BOOL(WINAPI* TextOutA_FUNC)(HDC hdc, int x, int y, LPCSTR lpString, int c);
-typedef BOOL(WINAPI* TextOutW_FUNC)(HDC hdc, int x, int y, LPCWSTR lpString, int c);
-typedef int(WINAPI* GetClipBox_FUNC)(HDC, LPRECT);
-typedef BOOL(WINAPI* Rectangle_FUNC)(HDC, int, int, int, int);
-typedef BOOL(WINAPI* RoundRect_FUNC)(HDC, int, int, int, int, int, int);
-*/
-
 //Import Backups (Declarations)
 extern ClientToScreen_FUNC ClientToScreen_OLD;
 extern ScreenToClient_FUNC ScreenToClient_OLD;
@@ -124,18 +112,6 @@ extern SetWinEventHook_FUNC SetWinEventHook_OLD;
 extern IsWinEventHookInstalled_FUNC IsWinEventHookInstalled_OLD;
 extern UnhookWinEvent_FUNC UnhookWinEvent_OLD;
 
-/*
-extern BitBlt_FUNC BitBlt_OLD;
-extern StretchDIBits_FUNC StretchDIBits_OLD;
-extern SetDIBits_FUNC SetDIBits_OLD;
-extern StretchBlt_FUNC StretchBlt_OLD; 
-extern TextOutA_FUNC TextOutA_OLD;
-extern TextOutW_FUNC TextOutW_OLD;
-extern GetClipBox_FUNC GetClipBox_OLD;
-extern Rectangle_FUNC Rectangle_OLD;
-extern RoundRect_FUNC RoundRect_OLD;
-*/
-
 //Replacement Functions (Declarations)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint);
 BOOL WINAPI ScreenToClient_Replacement(HWND hWnd, LPPOINT lpPoint);
@@ -189,17 +165,5 @@ LRESULT WINAPI CallNextHookEx_Replacement(HHOOK hhk, int nCode, WPARAM wParam, L
 HWINEVENTHOOK WINAPI SetWinEventHook_Replacement(DWORD eventMin, DWORD eventMax, HMODULE hmodWinEventProc, WINEVENTPROC pfnWinEventProc, DWORD idProcess, DWORD idThread, DWORD dwFlags);
 BOOL WINAPI IsWinEventHookInstalled_Replacement(DWORD event);
 BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook);
-
-/*
-BOOL WINAPI BitBlt_Replacement(HDC, int, int, int, int, HDC, int, int, DWORD);
-int WINAPI StretchDIBits_Replacement(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, const void* lpBits, const BITMAPINFO* lpbmi, UINT iUsage, DWORD rop);
-int WINAPI SetDIBits_Replacement(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, CONST VOID* lpBits, CONST BITMAPINFO* bitmapInfo, UINT ColorUse);
-BOOL WINAPI StretchBlt_Replacement(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop);
-BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c);
-BOOL WINAPI TextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int c);
-int WINAPI GetClipBox_Replacement(HDC, LPRECT);
-BOOL WINAPI Rectangle_Replacement(HDC, int, int, int, int);
-BOOL WINAPI RoundRect_Replacement(HDC, int, int, int, int, int, int);
-*/
 
 void ReplaceImports();

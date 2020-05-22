@@ -14,20 +14,13 @@ using std::wstring;
 #include <string.h>
 #include "CUpscaler.h"
 #include "TinyMap.h"
-//#include "HDCMap.h"
 
 class WindowContext;
-//extern TinyMap<HWND, std::unique_ptr<WindowContext>> windowMap;
-//extern TinyMap<HDC, WindowContext*> hdcMap;
 
 static inline bool operator==(const RECT& rect1, const RECT& rect2)
 {
 	return (0 == memcmp(&rect1, &rect2, sizeof(RECT)));
 }
-
-//LRESULT CALLBACK SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-//LRESULT CALLBACK DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-//extern bool WindowBeingCreated;
 
 #include <vector>
 using std::vector;
@@ -42,25 +35,13 @@ class WindowContext
 	bool VirtualizeWindowSize;
 	bool IgnoreResizeEvents;
 	bool SuspendDrawing;
-	//bool InsideWndProc;
 	bool IsShown;
-	//bool WantToHook;
-	//bool BackgroundNeedsErasing;
 	bool EnteringFullScreen;
 	bool LeavingFullScreen;
 	bool IsFullScreen;
 	bool MovingWindow;	//Indicates that Window is being moved by this class, and not by Win32 itself
 	typedef void (WindowContext::*VoidMemberFunction)();
 	VoidMemberFunction ResizeHandler;
-
-
-	//RECT knownWindowRect;
-	//RECT knownClientRect;
-
-
-
-	//RECT realClientRectScreen;
-	//RECT virtualClientRectScreen;
 
 	RECT RealClientRect;		//Real Client Rect (top left is 0,0)
 	RECT RealClientBounds;		//Real Client Bounds relative to the screen
@@ -72,9 +53,6 @@ class WindowContext
 
 	DWORD VirtualWindowStyle;
 	
-	
-	//RECT VirtualClientRect;
-	//RECT RealClientRect;
 	int VirtualWidth;
 	int VirtualHeight;
 	int RealWidth;
@@ -86,12 +64,6 @@ class WindowContext
 	RECT LastInvalidatedRectVirtual;
 	RECT LastInvalidatedRectReal;
 
-	//ULONG_PTR window_long_extra;
-	//IDirect3DDevice9* device;
-	//IDirect3DTexture9* texture;
-	
-	//RECT virtualClientRect;
-	//RECT realClientRect;
 	float Scale{};
 	int XOffset, YOffset;
 	int LeftPadding, TopPadding, BottomPadding, RightPadding;
@@ -103,7 +75,6 @@ class WindowContext
 	RECT paintClipRectReal;
 	RECT paintClipRectVirtual;
 
-	//int hdcRefCount;
 	Region dirtyRegion;
 	CUpscaler upscaler;
 
@@ -111,13 +82,10 @@ class WindowContext
 	vector<WindowContext*> childWindows;
 
 public:
-	//static LRESULT CALLBACK WndProc_Static(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static bool WindowBeingCreated;
-
-	//static DWORD CALLBACK ForegroundIdleProc(int code, DWORD wParam, LONG  lParam);
 
 public:
 	void Init(HWND hwnd);
@@ -164,13 +132,11 @@ public:
 	RECT RectVirtualToClient(const RECT& rect) const;
 	void RectVirtualToClient(LPRECT lpRect) const;
 	void RectClientToVirtual(LPRECT lpRect) const;
-	//void RectVirtualToClientClamp(LPRECT lpRect) const;
 	void RectClientToVirtualClamp(LPRECT lpRect) const;
 	RECT RectClientToVirtualClamp(const RECT &rect) const;
 	void MouseClientToVirtual(LPPOINT lpPoint) const;
 	void MouseVirtualToClient(LPPOINT lpPoint) const;
 	void MouseClientToVirtualClamp(LPPOINT lpPoint) const;
-	//void MouseVirtualToClientClamp(LPPOINT lpPoint) const;
 	void MouseScreenToVirtualScreen(LPPOINT lpPoint) const;
 	void MouseVirtualScreenToScreen(LPPOINT lpPoint) const;
 	void MouseVirtualScreenToVirtual(LPPOINT lpPoint) const;

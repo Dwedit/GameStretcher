@@ -13,7 +13,6 @@ using std::wstring;
 
 #define DO_NOT_RESET_WNDPROC 0
 #define DELAYED_HOOK 0
-//#define USE_IDLE_HOOK 0
 
 #include "WindowClassContext.h"
 
@@ -73,11 +72,6 @@ void WindowContext::Init(HWND hwnd)
 #endif
 	}
 	_SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG_PTR)SimpleWndProc);
-/*
-#if USE_IDLE_HOOK
-	SetWindowsHookExA(WH_FOREGROUNDIDLE, (HOOKPROC)ForegroundIdleProc, NULL, GetCurrentThreadId());
-#endif
-*/
 	
 	//Initialize Virtual Client Bounds
 	UpdateSize();
@@ -117,11 +111,6 @@ void WindowContext::Release()
 	d3d9Context.Destroy();
 	window = NULL;
 	oldWindowProc = NULL;
-	//if (texture != NULL)
-	//{
-	//	texture->Release();
-	//	texture = NULL;
-	//}
 }
 
 WindowContext* WindowContext::Get(HWND hwnd)	//static
@@ -131,9 +120,6 @@ WindowContext* WindowContext::Get(HWND hwnd)	//static
 WindowContext* WindowContext::GetByHdc(HDC hdc)	//static
 {
 	return hdcMap.Get(hdc);
-	//WindowContext **ref = hdcMap.GetReference(hdc);
-	//if (ref == NULL) return NULL;
-	//return *ref;
 }
 void WindowContext::HdcAdd(HDC hdc, WindowContext* windowContext)	//static
 {
@@ -153,16 +139,12 @@ WindowContext* WindowContext::GetWindowContext(HWND hwnd)	//static
 {
 	auto result = windowMap.GetReference(hwnd);
 	if (result == NULL) return NULL;
-	//return (*result).get();
 	lastWindowContext = (*result).get();
 	return lastWindowContext;
 }
 WindowContext* WindowContext::GetWindowContext()	//static
 {
 	return lastWindowContext;
-	//auto result = windowMap.GetMostRecentValue();
-	//if (result == NULL) return NULL;
-	//return (*result).get();
 }
 WindowContext* WindowContext::CreateNewWindowContext(HWND hwnd)	//static
 {
@@ -179,22 +161,6 @@ bool WindowContext::WindowContextExists(HWND hwnd)	//static
 {
 	return windowMap.ContainsKey(hwnd);
 }
-
-/*
-DWORD CALLBACK WindowContext::ForegroundIdleProc(int code, DWORD wParam, LONG lParam)
-{
-	if (code == HC_ACTION)
-	{
-		WindowContext* context = GetWindowContext();
-		if (context->WantToHook)
-		{
-			context->WantToHook = false;
-			context->VirtualizeWindow();
-		}
-	}
-	return CallNextHookEx(NULL, code, wParam, lParam);
-}
-*/
 
 inline int Round(float f)
 {
@@ -290,12 +256,6 @@ void WindowContext::MouseClientToVirtualClamp(LPPOINT lpPoint) const
 	ClientToVirtualRounded(x, y);
 	ClampPoint(lpPoint);
 }
-//void WindowContext::MouseVirtualToClientClamp(LPPOINT lpPoint) const
-//{
-//	int& x = reinterpret_cast<int&>(lpPoint->x);
-//	int& y = reinterpret_cast<int&>(lpPoint->y);
-//	VirtualToClientRounded(x, y);
-//}
 
 void WindowContext::MouseScreenToVirtualScreen(LPPOINT lpPoint) const
 {
@@ -317,28 +277,6 @@ void WindowContext::MouseVirtualToVirtualScreen(LPPOINT lpPoint) const
 {
 	ClientToScreen(window, lpPoint);
 }
-
-//void WindowContext::MouseScreenToVirtual(LPPOINT lpPoint)
-//{
-//	ScreenToClient(window, lpPoint);
-//	MouseClientToVirtual(lpPoint);
-//}
-//void WindowContext::MouseVirtualToScreen(LPPOINT lpPoint)
-//{
-//	MouseVirtualToClient(lpPoint);
-//	ClientToScreen(window, lpPoint);
-//}
-/*
-
-
-		ScreenToClient(hwnd, &mousePoint);
-		MouseClientToVirtual(&mousePoint);
-		ClientToScreen(hwnd, &mousePoint);
-
-*/
-
-//#undef _CallWindowProc
-//#define _CallWindowProc(a,b,c,d,e) (isWindowUnicode ? CallWindowProcW((a),(b),(c),(d),(e)) : CallWindowProcA((a),(b),(c),(d),(e)))
 
 static RECT GetMonitorRect(HWND window)
 {
@@ -376,10 +314,6 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_ERASEBKGND:
 	{
 		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		//if (result == 0)
-		//{
-		//	BackgroundNeedsErasing = true;
-		//}
 		return result;
 	}
 	case WM_PAINT:
@@ -528,106 +462,6 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		break;
 		} //end swtich
 	}
-	/*
-
-	switch (uMsg)
-	{
-	case WM_NCDESTROY:
-	{
-		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		DeleteWindowContext(hwnd);
-		return result;
-	}
-	case WM_MOVING:
-	{
-		LPRECT rect = (LPRECT)lParam;
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_MOVE:
-	{
-		int xPos = (int)(short)LOWORD(lParam);
-		int yPos = (int)(short)HIWORD(lParam);
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_SIZING:
-	{
-		int sizingEdge = wParam;
-		LPRECT rect = (LPRECT)lParam;
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_SIZE:
-	{
-		int resizeType = wParam;
-		int width = (int)(short)LOWORD(lParam); //client area width
-		int height = (int)(short)HIWORD(lParam); //client area height
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_WINDOWPOSCHANGING:
-	{
-		LPWINDOWPOS windowPos = (LPWINDOWPOS)lParam;
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_WINDOWPOSCHANGED:
-	{
-		LPWINDOWPOS windowPos = (LPWINDOWPOS)lParam;
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_ENTERSIZEMOVE:
-	{
-		//no parameters
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_EXITSIZEMOVE:
-	{
-		//no parameters
-		return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		break;
-	}
-	case WM_SHOWWINDOW:
-	{
-		bool visible = (bool)wParam;
-		if (visible)
-		{
-			WindowShown();
-		}
-		int showStatus = (int)lParam;
-		break;
-	}
-	case WM_GETMINMAXINFO:
-	{
-		LPMINMAXINFO minMaxInfo = (LPMINMAXINFO)lParam;
-		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		//LRESULT result = DefWindowProcA(hwnd, uMsg, wParam, lParam);
-		return result;
-		break;
-	}
-	case WM_NCCALCSIZE:
-	{
-		LPNCCALCSIZE_PARAMS params = (LPNCCALCSIZE_PARAMS)lParam;
-		LPRECT rect = (LPRECT)lParam;
-		if (wParam)
-		{
-			//using params
-			//TryInitializeWindowSize(params->rgrc[2].right - params->rgrc[2].left, params->rgrc[2].bottom - params->rgrc[2].top);
-			int dummy = 0;
-		}
-		else
-		{
-			//using rect
-			int dummy = 0;
-		}
-		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		return result;
-	}
-	}
-	*/
 	return _CallWindowProc(oldWindowProc,hwnd, uMsg, wParam, lParam);
 }
 
@@ -642,142 +476,19 @@ HDC WindowContext::GetDC_()
 		HdcAdd(this->realDC, this);
 	}
 
-
 	return this->realDC;
-/*
-
-
-	HRESULT hr;
-	int result;
-	BOOL okay;
-
-	//if we have a parent
-	if (parentWindowContext != NULL)
-	{
-		//TODO
-		HDC parentDc = parentWindowContext->GetDC_();
-		#if PAINT_USE_CLIP_BOX
-		HRGN clipRegion = CreateRectRgnIndirect(&this->VirtualClientBounds);
-		result = SelectClipRgn(parentDc, clipRegion);
-		okay = DeleteObject(clipRegion);
-		#endif
-		SetViewportOrgEx(parentDc, this->VirtualClientBounds.left, this->VirtualClientBounds.top, NULL);
-		return parentDc;
-	}
-
-	bool useRealDc = !IsVirtualized() || NOD3D;
-
-	if (useRealDc)
-	{
-		this->realDC = GetDC(window);
-		HdcAdd(this->realDC, this);
-		return this->realDC;
-	}
-
-	//Do we already have a DC?
-	if (this->d3dDC != NULL)
-	{
-		HdcAdd(this->d3dDC, this);
-#if REDRAW_AFTER_GETDC
-		//release DC, then proceed to rest of GetDC code
-		ReleaseDC_(this->d3dDC);
-#else
-#if PAINT_USE_CLIP_BOX
-		//Clear clipping region
-		result = SelectClipRgn(this->d3dDC, NULL);
-#endif
-		//return same DC
-		return this->d3dDC;
-#endif
-	}
-
-	//Create Direct3D if it's not ready
-	if (d3d9Context.backBuffer == NULL)
-	{
-		d3d9Context.CreateD3D9(window);
-		upscaler.SetSourceTexture(d3d9Context.texture);
-	}
-	//Get DC from Direct3D
-	if (d3d9Context.textureSurface != NULL)
-	{
-		hr = d3d9Context.textureSurface->GetDC(&this->d3dDC);
-		HdcAdd(this->d3dDC, this);
-#if PAINT_USE_CLIP_BOX
-		result = SelectClipRgn(this->d3dDC, NULL);
-#endif
-		return this->d3dDC;
-	}
-	else
-	{
-		this->realDC= ::GetDC(window);
-		HdcAdd(this->realDC, this);
-		return this->realDC;
-	}
-	*/
 }
 
 int WindowContext::ReleaseDC_()
 {
 	CompleteDraw();
 	return true;
-
-	//HDC hdc = this->d3dDC;
-	//if (hdc == NULL) hdc = this->realDC;
-	//if (hdc == NULL) hdc = this->paintDC;
-	//return ReleaseDC_(hdc);
 }
 
 int WindowContext::ReleaseDC_(HDC hdcToRelease)
 {
 	CompleteDraw();
 	return true;
-
-	/*
-	int result;
-#if PAINT_USE_CLIP_BOX
-	result = SelectClipRgn(hdcToRelease, NULL);
-#endif
-	if (parentWindowContext != NULL)
-	{
-		SetViewportOrgEx(hdcToRelease, 0, 0, NULL);
-		result = parentWindowContext->ReleaseDC_(hdcToRelease);
-		return result;
-	}
-
-	if (hdcToRelease == realDC)
-	{
-		result = ::ReleaseDC(window, realDC);
-		int newRefCount = HdcSubtractRef(realDC);
-		if (newRefCount == 0)
-		{
-			realDC = NULL;
-		}
-
-#if DELAYED_HOOK
-		if (!IsVirtualized())
-		{
-			WantToHook = true;
-		}
-#endif
-		return result;
-	}
-
-	if (d3d9Context.textureSurface != NULL)
-	{
-		result = d3d9Context.textureSurface->ReleaseDC(this->d3dDC);
-		result = SUCCEEDED(result);
-		int refCount = HdcSubtractRef(this->d3dDC);
-		//if (refCount == 0)
-		{
-			this->d3dDC = NULL;
-
-			//Do we want to sleep 1 here or not?  Would fix old programs that have no CPU speed control
-			//Sleep(1);
-		}
-		Redraw();
-	}
-	return result;
-	*/
 }
 
 bool WindowContext::CompleteDraw()
@@ -932,13 +643,6 @@ void WindowContext::ClampPoint(LPPOINT lpPoint) const
 	if (y >= bounds.bottom) y = bounds.bottom - 1;
 }
 
-
-//void WindowContext::RectVirtualToClientClamp(LPRECT lpRect) const
-//{
-//	RectVirtualToClient(lpRect);
-//	ClampRect(lpRect);
-//}
-
 void WindowContext::RectClientToVirtualClamp(LPRECT lpRect) const
 {
 	RectClientToVirtual(lpRect);
@@ -990,15 +694,6 @@ void WindowContext::AddDirtyRectWithPen(int x, int y, int width, int height)
 		AddDirtyRect(x - penWidth, x - penWidth, width + penWidth * 2, height + penWidth * 2);
 	}
 }
-
-/*
-void WindowContext::TryInitializeWindowSize(int width, int height)
-{
-	if (virtualWidth || virtualHeight) return;
-	virtualWidth  = width;
-	virtualHeight = height;
-}
-*/
 
 bool WindowContext::TryHookWindow(HWND hwnd)
 {
@@ -1221,46 +916,6 @@ void WindowContext::UpdateSize(int newWidth, int newHeight)
 		return;
 	}
 	UpdateSize();
-/*
-	if (IgnoreResizeEvents) return;
-	if (!IsVirtualized())
-	{
-		return;
-	}
-	if (RealWidth != newWidth || RealHeight != newHeight)
-	{
-		UpdateSize();
-
-		RealWidth = newWidth;
-		RealHeight = newHeight;
-
-		{
-			float scaleX = (float)RealWidth / (float)VirtualWidth;
-			float scaleY = (float)RealHeight / (float)VirtualHeight;
-			Scale = std::min(scaleX, scaleY);
-		}
-		ScaledWidth = Round(Scale * VirtualWidth);
-		ScaledHeight = Round(Scale * VirtualHeight);
-		LeftPadding = (RealWidth - ScaledWidth) / 2;
-		RightPadding = RealWidth - ScaledWidth - LeftPadding;
-		TopPadding = (RealHeight - ScaledHeight) / 2;
-		BottomPadding = RealHeight - ScaledHeight - TopPadding;
-		XOffset = LeftPadding;
-		YOffset = TopPadding;
-		POINT clientUpperLeftCorner = {};
-		ClientToScreen(window, &clientUpperLeftCorner);
-		RealX = clientUpperLeftCorner.x;
-		RealY = clientUpperLeftCorner.y;
-		upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
-		upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
-
-		MakeWindowResizable();
-
-		InvalidateRect(window, NULL, true);
-		//UpdateWindow(window);
-		//ValidateRect(window, NULL);
-	}
-	*/
 }
 
 void WindowContext::MoveResizeChildWindow()
@@ -1371,7 +1026,6 @@ tryAgain:
 
 	IgnoreResizeEvents = ignoreResizeEvents;
 
-
 	if (clientRect.right - clientRect.left != RealWidth)
 	{
 		if (numberOfAttempts > 0)
@@ -1386,8 +1040,6 @@ tryAgain:
 		UpdateSize();
 		InvalidateRect(window, NULL, true);
 	}
-
-
 }
 
 BOOL WindowContext::GetWindowRect_(LPRECT rect) const
@@ -1439,17 +1091,6 @@ RECT WindowContext::GetClientRect_() const
 		return clientRect;
 	}
 }
-
-/*
-DWORD WindowContext::GetVirtualWindowStyle()
-{
-	if (IsVirtualized())
-	{
-		return VirtualWindowStyle;
-	}
-	return ::GetWindowLong(window, GWL_STYLE);
-}
-*/
 
 bool WindowContext::IsVirtualized() const
 {
@@ -1539,20 +1180,6 @@ BOOL WindowContext::GetUpdateRect_(LPRECT rect, BOOL bErase) //rect in virtual c
 		UpdateRectClientToVirtual(rect);
 	}
 	return okay;
-	/*
-	if (rect == NULL)
-	{
-		return GetUpdateRect(window, NULL, bErase);
-	}
-	BOOL okay;
-	RECT updateRectClient;
-	okay = GetUpdateRect(window, &updateRectClient, bErase);
-	RECT updateRectVirtual = (LastInvalidatedRectReal == updateRectClient) ?
-		LastInvalidatedRectVirtual :
-		RectClientToVirtualClamp(updateRectClient);
-	*rect = updateRectVirtual;
-	return okay;
-	*/
 }
 BOOL WindowContext::InvalidateRect_(LPCRECT rect, BOOL bErase) //rect in virtual coordinates
 {
@@ -1586,12 +1213,6 @@ BOOL WindowContext::ValidateRect_(LPCRECT rect) //rect in virtual coordinates
 	RECT updateRectClient = *rect;
 	UpdateRectVirtualToClient(&updateRectClient);
 
-	//RECT updateRectClient = RectVirtualToClient(*rect);
-	//if (LastInvalidatedRectVirtual == *rect)
-	//{
-	//	updateRectClient = LastInvalidatedRectReal;
-	//}
-
 	BOOL okay;
 	if (*rect == clientRect)
 	{
@@ -1608,9 +1229,6 @@ BOOL WindowContext::ValidateRect_(LPCRECT rect) //rect in virtual coordinates
 			okay = ValidateRect(window, NULL);
 		}
 	}
-
-
-
 	return okay;
 }
 
@@ -1631,28 +1249,6 @@ HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 	CompleteDraw();
 #endif
 	return this->paintDC;
-/*
-	
-	BOOL okay = true;
-	int result = 0;
-	paintDC = BeginPaint(window, lpPaintStruct);
-	lpPaintStruct->hdc = GetDC_();
-	UpdateRectClientToVirtual(&(lpPaintStruct->rcPaint));
-#if PAINT_USE_CLIP_BOX
-	RECT clipRect = lpPaintStruct->rcPaint;
-	if (this->parentWindowContext != NULL)
-	{
-		clipRect.left += this->VirtualClientBounds.left;
-		clipRect.top += this->VirtualClientBounds.top;
-		clipRect.right += this->VirtualClientBounds.left;
-		clipRect.bottom += this->VirtualClientBounds.top;
-	}
-	HRGN clipRegion = CreateRectRgnIndirect(&clipRect);
-	result = SelectClipRgn(lpPaintStruct->hdc, clipRegion);
-	okay = DeleteObject(clipRegion);
-#endif
-	return lpPaintStruct->hdc;
-*/
 }
 
 BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
@@ -1664,26 +1260,6 @@ BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 	okay = EndPaint(window, &paintStructCopy);
 	CompleteDraw();
 	return okay;
-	/*
-	BOOL okay = true;
-	int result = 0;
-	if (lpPaintStruct != NULL)
-	{
-		HDC localDc = lpPaintStruct->hdc;
-#if PAINT_USE_CLIP_BOX
-		result = SelectClipRgn(localDc, NULL);
-#endif
-		PAINTSTRUCT paintStructCopy = *lpPaintStruct;
-		paintStructCopy.hdc = paintDC;
-		//okay = ValidateRect_(&(paintStructCopy.rcPaint));
-		UpdateRectVirtualToClient(&(paintStructCopy.rcPaint));
-		okay = EndPaint(window, &paintStructCopy);
-		okay &= ReleaseDC_(localDc);
-		paintDC = NULL;
-		return okay;
-	}
-	return false;
-	*/
 }
 
 BOOL WindowContext::GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement)
@@ -1724,8 +1300,6 @@ BOOL WindowContext::MoveWindow_(int x, int y, int width, int height, BOOL repain
 		UpdateSize();
 	}
 	return true;
-	//TODO
-	//return MoveWindow(window, x, y, width, height, repaint);
 }
 BOOL WindowContext::SetWindowPlacement_(const WINDOWPLACEMENT* windowPlacement)
 {
@@ -1824,7 +1398,6 @@ HDC WindowContext::GetCurrentDC(HDC inputDC)
 		return d3dDC;
 	}
 	lastDC = inputDC;
-	//RECT clipRect;// = VirtualClientRect;
 	if (inputDC == paintDC)
 	{
 		if (hasParent)

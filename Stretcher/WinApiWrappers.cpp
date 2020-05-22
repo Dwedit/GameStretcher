@@ -11,51 +11,6 @@ struct IUnknown;
 
 extern void EnableVisualStyles();
 
-/*
-DWORD SetPageProtect(ULONG_PTR address, DWORD protection)
-{
-    BOOL okay;
-    DWORD oldProtect;
-    okay = VirtualProtect((LPVOID)address, sizeof(void*), protection, &oldProtect);
-    if (okay)
-    {
-        return oldProtect;
-    }
-    return 0;
-}
-
-DWORD EnsurePageReadWrite(ULONG_PTR address)
-{
-    return SetPageProtect(address, PAGE_READWRITE);
-}
-*/
-
-/*
-FARPROC* FindImportAddress(const PVOID Base, LPCSTR moduleName, LPCSTR functionName);
-
-bool ReplaceImport(LPCSTR dllName, LPCSTR functionName, FARPROC replacementFunction, FARPROC* pOldFunction)
-{
-    FARPROC* importAddress = FindImportAddress(GetModuleHandle(NULL), dllName, functionName);
-    if (importAddress != NULL)
-    {
-        //ensure page is read-write
-        DWORD oldProtect = EnsurePageReadWrite((ULONG_PTR)importAddress);
-
-        if (EnsurePageReadWrite((ULONG_PTR)importAddress))
-        {
-            if (pOldFunction)
-            {
-                *pOldFunction = *importAddress;
-            }
-            *importAddress = replacementFunction;
-            SetPageProtect((ULONG_PTR)importAddress, oldProtect);
-            return true;
-        }
-    }
-    return false;
-}
-*/
-
 #include "ImportReplacer.h"
 
 //Replace the Functions
@@ -127,18 +82,6 @@ void ReplaceImports()
 
     void ReplaceImports_AllGDI(ImportReplacer & replacer);
     ReplaceImports_AllGDI(replacer);
-
-/*
-    ReplaceImport("Gdi32.dll", "BitBlt", (FARPROC)BitBlt_Replacement, (FARPROC*)&BitBlt_OLD);
-    ReplaceImport("Gdi32.dll", "StretchDIBits", (FARPROC)StretchDIBits_Replacement, (FARPROC*)&StretchDIBits_OLD);
-    ReplaceImport("gdi32.dll", "SetDIBits", (FARPROC)SetDIBits_Replacement, (FARPROC*)&SetDIBits_OLD);
-    ReplaceImport("gdi32.dll", "StretchBlt", (FARPROC)StretchBlt_Replacement, (FARPROC*)&StretchBlt_OLD);
-    ReplaceImport("Gdi32.dll", "TextOutA", (FARPROC)TextOutA_Replacement, (FARPROC*)&TextOutA_OLD);
-    ReplaceImport("Gdi32.dll", "TextOutW", (FARPROC)TextOutW_Replacement, (FARPROC*)&TextOutW_OLD);
-    ReplaceImport("Gdi32.dll", "GetClipBox", (FARPROC)GetClipBox_Replacement, (FARPROC*)&GetClipBox_OLD);
-    ReplaceImport("Gdi32.dll", "Rectangle", (FARPROC)Rectangle_Replacement, (FARPROC*)&Rectangle_OLD);
-    ReplaceImport("Gdi32.dll", "RoundRect", (FARPROC)RoundRect_Replacement, (FARPROC*)&RoundRect_OLD);
-*/
 }
 
 //Import Backups (Definitions)
@@ -194,18 +137,6 @@ CallNextHookEx_FUNC CallNextHookEx_OLD = NULL;
 SetWinEventHook_FUNC SetWinEventHook_OLD = NULL;
 IsWinEventHookInstalled_FUNC IsWinEventHookInstalled_OLD = NULL;
 UnhookWinEvent_FUNC UnhookWinEvent_OLD = NULL;
-
-/*
-BitBlt_FUNC BitBlt_OLD = NULL;
-StretchDIBits_FUNC StretchDIBits_OLD = NULL;
-SetDIBits_FUNC SetDIBits_OLD = NULL;
-StretchBlt_FUNC StretchBlt_OLD = NULL;
-TextOutA_FUNC TextOutA_OLD = NULL;
-TextOutW_FUNC TextOutW_OLD = NULL;
-GetClipBox_FUNC GetClipBox_OLD = NULL;
-Rectangle_FUNC Rectangle_OLD = NULL;
-RoundRect_FUNC RoundRect_OLD = NULL;
-*/
 
 /*
 
@@ -623,19 +554,6 @@ BOOL WINAPI ValidateRect_Replacement(HWND hwnd, LPCRECT rect)
     WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return ValidateRect(hwnd, rect);
     return windowContext->ValidateRect_(rect);
-    //if (rect != NULL)
-    //{
-    //    RECT newRect = *rect;
-    //    RECT clientRect;
-    //    windowContext->GetClientRect_(&clientRect);
-    //    if (newRect == clientRect)
-    //    {
-    //        return ValidateRect(hwnd, NULL);
-    //    }
-    //    windowContext->RectVirtualToClient(&newRect);
-    //    return ValidateRect(hwnd, &newRect);
-    //}
-    //return ValidateRect(hwnd, rect);
 }
 HHOOK WINAPI SetWindowsHookA_Replacement(int nFilterType, HOOKPROC pfnFilterProc)
 {
@@ -677,90 +595,6 @@ BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook)
 {
     return UnhookWinEvent_OLD(hWinEventHook);
 }
-
-
-
-/*
-BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
-    hdc = windowContext->GetCurrentDC(hdc);
-    windowContext->AddDirtyRect(x, y, cx, cy);
-    return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
-}
-int WINAPI StretchDIBits_Replacement(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, const void* lpBits, const BITMAPINFO* lpbmi, UINT iUsage, DWORD rop)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
-    hdc = windowContext->GetCurrentDC(hdc);
-    windowContext->AddDirtyRect(xDest, yDest, DestWidth, DestHeight);
-    return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
-}
-int WINAPI SetDIBits_Replacement(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, CONST VOID* lpBits, CONST BITMAPINFO *bitmapInfo, UINT ColorUse)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return SetDIBits_OLD(hdc, hbm, start, cLines, lpBits, bitmapInfo, ColorUse);
-    hdc = windowContext->GetCurrentDC(hdc);
-    return SetDIBits_OLD(hdc, hbm, start, cLines, lpBits, bitmapInfo, ColorUse);
-}
-BOOL WINAPI StretchBlt_Replacement(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdcDest);
-    if (windowContext == NULL) return StretchBlt_OLD(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
-    hdcDest = windowContext->GetCurrentDC(hdcDest);
-    windowContext->AddDirtyRect(xDest, yDest, wDest, hDest);
-    return StretchBlt_OLD(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
-}
-BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return TextOutA_OLD(hdc, x, y, lpString, c);
-    hdc = windowContext->GetCurrentDC(hdc);
-    SIZE size;
-    BOOL okay;
-    okay = GetTextExtentPoint32A(hdc, lpString, c, &size);
-    if (okay)
-    {
-        windowContext->AddDirtyRect(x, y, size.cx, size.cy);
-    }
-    return TextOutA_OLD(hdc, x, y, lpString, c);
-}
-BOOL WINAPI TextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int c)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return TextOutW_OLD(hdc, x, y, lpString, c);
-    hdc = windowContext->GetCurrentDC(hdc);
-    SIZE size;
-    BOOL okay;
-    okay = GetTextExtentPoint32W(hdc, lpString, c, &size);
-    if (okay)
-    {
-        windowContext->AddDirtyRect(x, y, size.cx, size.cy);
-    }
-    return TextOutW_OLD(hdc, x, y, lpString, c);
-}
-int WINAPI GetClipBox_Replacement(HDC hdc, LPRECT rect)
-{
-    return GetClipBox_OLD(hdc, rect);
-}
-BOOL WINAPI Rectangle_Replacement(HDC hdc, int left, int top, int right, int bottom)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return Rectangle_OLD(hdc, left, top, right, bottom);
-    hdc = windowContext->GetCurrentDC(hdc);
-    windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
-    return Rectangle_OLD(hdc, left, top, right, bottom);
-}
-BOOL WINAPI RoundRect_Replacement(HDC hdc, int left, int top, int right, int bottom, int width, int height)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext == NULL) return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
-    hdc = windowContext->GetCurrentDC(hdc);
-    windowContext->AddDirtyRectWithPen(left, top, right - left, bottom - top);
-    return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
-}
-*/
 
 void SubstituteDC(HDC& hdc)
 {
