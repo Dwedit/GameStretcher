@@ -15,6 +15,10 @@ using std::wstring;
 #include "CUpscaler.h"
 #include "TinyMap.h"
 
+#include <mutex>
+using std::mutex;
+using std::unique_lock;
+
 class WindowContext;
 
 static inline bool operator==(const RECT& rect1, const RECT& rect2)
@@ -80,6 +84,8 @@ class WindowContext
 
 	WindowContext* parentWindowContext;
 	vector<WindowContext*> childWindows;
+
+	std::mutex myMutex;
 
 public:
 	LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -174,7 +180,7 @@ public:
 
 	bool IsVirtualized() const;
 	LONG_PTR SetWindowLong_(int index, LONG_PTR newLong);
-	LONG_PTR GetWindowLong_(int index);
+	LONG_PTR GetWindowLong_(int index) const;
 
 	void UpdateRectVirtualToClient(LPRECT lpRect) const;
 	void UpdateRectClientToVirtual(LPRECT lpRect) const;
@@ -186,7 +192,7 @@ public:
 	HDC BeginPaint_(LPPAINTSTRUCT lpPaintStruct);
 	BOOL EndPaint_(const PAINTSTRUCT *lpPaintStruct);
 
-	BOOL GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement);
+	BOOL GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement) const;
 	BOOL MoveWindow_(int x, int y, int width, int height, BOOL repaint);
 	BOOL SetWindowPlacement_(const WINDOWPLACEMENT* windowPlacement);
 	BOOL SetWindowPos_(HWND hwndInsertAfter, int x, int y, int cx, int cy, UINT flags);
@@ -208,4 +214,6 @@ public:
 	HDC& GetLastDC();
 
 	static int SetClipRect(HDC hdc, const RECT* rect);
+
+	unique_lock<mutex> CreateLock();
 };

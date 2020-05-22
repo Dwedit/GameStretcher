@@ -1,7 +1,43 @@
 #include "WinApiWrappers_AllGDI.h"
 #include "ImportReplacer.h"
 
-extern void SubstituteDC(HDC& hdc);
+#include "WindowContext.h"
+#include <mutex>
+
+unique_lock<mutex> SubstituteDC(HDC& hdc)
+{
+	WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+	if (windowContext != NULL)
+	{
+		auto lock = windowContext->CreateLock();
+		hdc = windowContext->GetCurrentDC(hdc);
+		return lock;
+	}
+	return unique_lock<mutex>();
+}
+unique_lock<mutex> SubstituteDC(HDC& hdc, HDC &hdc2)
+{
+	{
+		WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+		if (windowContext != NULL)
+		{
+			auto lock = windowContext->CreateLock();
+			hdc = windowContext->GetCurrentDC(hdc);
+			return lock;
+		}
+	}
+	{
+		WindowContext* windowContext2 = WindowContext::GetByHdc(hdc2);
+		if (windowContext2 != NULL)
+		{
+			auto lock = windowContext2->CreateLock();
+			hdc = windowContext2->GetCurrentDC(hdc);
+			return lock;
+		}
+	}
+	return unique_lock<mutex>();
+}
+
 
 //Replace the Functions
 void ReplaceImports_AllGDI(ImportReplacer &replacer)
@@ -512,1244 +548,1241 @@ wglSwapLayerBuffers_FUNC wglSwapLayerBuffers_OLD = NULL;
 //Replacement Functions Code
 BOOL WINAPI Arc_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Arc_OLD(hdc, x1, y1, x2, y2, x3, y3, x4, y4);
 }
 BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
 }
 BOOL WINAPI CancelDC_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CancelDC_OLD(hdc);
 }
 BOOL WINAPI Chord_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Chord_OLD(hdc, x1, y1, x2, y2, x3, y3, x4, y4);
 }
 int WINAPI ChoosePixelFormat_Replacement(HDC hdc, CONST PIXELFORMATDESCRIPTOR* ppfd)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ChoosePixelFormat_OLD(hdc, ppfd);
 }
 HMETAFILE WINAPI CloseMetaFile_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CloseMetaFile_OLD(hdc);
 }
 HBITMAP WINAPI CreateCompatibleBitmap_Replacement(HDC hdc, int cx, int cy)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateCompatibleBitmap_OLD(hdc, cx, cy);
 }
 HBITMAP WINAPI CreateDiscardableBitmap_Replacement(HDC hdc, int cx, int cy)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateDiscardableBitmap_OLD(hdc, cx, cy);
 }
 HDC WINAPI CreateCompatibleDC_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateCompatibleDC_OLD(hdc);
 }
 HBITMAP WINAPI CreateDIBitmap_Replacement(HDC hdc, CONST BITMAPINFOHEADER* pbmih, DWORD flInit, CONST VOID* pjBits, CONST BITMAPINFO* pbmi, UINT iUsage)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateDIBitmap_OLD(hdc, pbmih, flInit, pjBits, pbmi, iUsage);
 }
 BOOL WINAPI DeleteDC_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return DeleteDC_OLD(hdc);
 }
 int WINAPI DescribePixelFormat_Replacement(HDC hdc, int iPixelFormat, UINT nBytes, LPPIXELFORMATDESCRIPTOR ppfd)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return DescribePixelFormat_OLD(hdc, iPixelFormat, nBytes, ppfd);
 }
 int WINAPI DrawEscape_Replacement(HDC hdc, int iEscape, int cjIn, LPCSTR lpIn)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return DrawEscape_OLD(hdc, iEscape, cjIn, lpIn);
 }
 BOOL WINAPI Ellipse_Replacement(HDC hdc, int left, int top, int right, int bottom)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Ellipse_OLD(hdc, left, top, right, bottom);
 }
 int WINAPI EnumFontFamiliesExA_Replacement(HDC hdc, LPLOGFONTA lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam, DWORD dwFlags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumFontFamiliesExA_OLD(hdc, lpLogfont, lpProc, lParam, dwFlags);
 }
 int WINAPI EnumFontFamiliesExW_Replacement(HDC hdc, LPLOGFONTW lpLogfont, FONTENUMPROCW lpProc, LPARAM lParam, DWORD dwFlags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumFontFamiliesExW_OLD(hdc, lpLogfont, lpProc, lParam, dwFlags);
 }
 int WINAPI EnumFontFamiliesA_Replacement(HDC hdc, LPCSTR lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumFontFamiliesA_OLD(hdc, lpLogfont, lpProc, lParam);
 }
 int WINAPI EnumFontFamiliesW_Replacement(HDC hdc, LPCWSTR lpLogfont, FONTENUMPROCW lpProc, LPARAM lParam)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumFontFamiliesW_OLD(hdc, lpLogfont, lpProc, lParam);
 }
 int WINAPI EnumFontsA_Replacement(HDC hdc, LPCSTR lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumFontsA_OLD(hdc, lpLogfont, lpProc, lParam);
 }
 int WINAPI EnumFontsW_Replacement(HDC hdc, LPCWSTR lpLogfont, FONTENUMPROCW lpProc, LPARAM lParam)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumFontsW_OLD(hdc, lpLogfont, lpProc, lParam);
 }
 int WINAPI EnumObjects_Replacement(HDC hdc, int nType, GOBJENUMPROC lpFunc, LPARAM lParam)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumObjects_OLD(hdc, nType, lpFunc, lParam);
 }
 int WINAPI Escape_Replacement(HDC hdc, int iEscape, int cjIn, LPCSTR pvIn, LPVOID pvOut)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Escape_OLD(hdc, iEscape, cjIn, pvIn, pvOut);
 }
 int WINAPI ExtEscape_Replacement(HDC hdc, int iEscape, int cjInput, LPCSTR lpInData, int cjOutput, LPSTR lpOutData)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ExtEscape_OLD(hdc, iEscape, cjInput, lpInData, cjOutput, lpOutData);
 }
 int WINAPI ExcludeClipRect_Replacement(HDC hdc, int left, int top, int right, int bottom)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ExcludeClipRect_OLD(hdc, left, top, right, bottom);
 }
 BOOL WINAPI ExtFloodFill_Replacement(HDC hdc, int x, int y, COLORREF color, UINT type)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ExtFloodFill_OLD(hdc, x, y, color, type);
 }
 BOOL WINAPI FillRgn_Replacement(HDC hdc, HRGN hrgn, HBRUSH hbr)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return FillRgn_OLD(hdc, hrgn, hbr);
 }
 BOOL WINAPI FloodFill_Replacement(HDC hdc, int x, int y, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return FloodFill_OLD(hdc, x, y, color);
 }
 int WINAPI GetROP2_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetROP2_OLD(hdc);
 }
 BOOL WINAPI GetAspectRatioFilterEx_Replacement(HDC hdc, LPSIZE lpsize)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetAspectRatioFilterEx_OLD(hdc, lpsize);
 }
 COLORREF WINAPI GetBkColor_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetBkColor_OLD(hdc);
 }
 COLORREF WINAPI GetDCBrushColor_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDCBrushColor_OLD(hdc);
 }
 COLORREF WINAPI GetDCPenColor_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDCPenColor_OLD(hdc);
 }
 int WINAPI GetBkMode_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetBkMode_OLD(hdc);
 }
 UINT WINAPI GetBoundsRect_Replacement(HDC hdc, LPRECT lprect, UINT flags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetBoundsRect_OLD(hdc, lprect, flags);
 }
 BOOL WINAPI GetBrushOrgEx_Replacement(HDC hdc, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetBrushOrgEx_OLD(hdc, lppt);
 }
 BOOL WINAPI GetCharWidthA_Replacement(HDC hdc, UINT iFirst, UINT iLast, LPINT lpBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharWidthA_OLD(hdc, iFirst, iLast, lpBuffer);
 }
 BOOL WINAPI GetCharWidthW_Replacement(HDC hdc, UINT iFirst, UINT iLast, LPINT lpBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharWidthW_OLD(hdc, iFirst, iLast, lpBuffer);
 }
 BOOL WINAPI GetCharWidth32A_Replacement(HDC hdc, UINT iFirst, UINT iLast, LPINT lpBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharWidth32A_OLD(hdc, iFirst, iLast, lpBuffer);
 }
 BOOL WINAPI GetCharWidth32W_Replacement(HDC hdc, UINT iFirst, UINT iLast, LPINT lpBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharWidth32W_OLD(hdc, iFirst, iLast, lpBuffer);
 }
 BOOL APIENTRY GetCharWidthFloatA_Replacement(HDC hdc, UINT iFirst, UINT iLast, PFLOAT lpBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharWidthFloatA_OLD(hdc, iFirst, iLast, lpBuffer);
 }
 BOOL APIENTRY GetCharWidthFloatW_Replacement(HDC hdc, UINT iFirst, UINT iLast, PFLOAT lpBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharWidthFloatW_OLD(hdc, iFirst, iLast, lpBuffer);
 }
 BOOL APIENTRY GetCharABCWidthsA_Replacement(HDC hdc, UINT wFirst, UINT wLast, LPABC lpABC)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharABCWidthsA_OLD(hdc, wFirst, wLast, lpABC);
 }
 BOOL APIENTRY GetCharABCWidthsW_Replacement(HDC hdc, UINT wFirst, UINT wLast, LPABC lpABC)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharABCWidthsW_OLD(hdc, wFirst, wLast, lpABC);
 }
 BOOL APIENTRY GetCharABCWidthsFloatA_Replacement(HDC hdc, UINT iFirst, UINT iLast, LPABCFLOAT lpABC)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharABCWidthsFloatA_OLD(hdc, iFirst, iLast, lpABC);
 }
 BOOL APIENTRY GetCharABCWidthsFloatW_Replacement(HDC hdc, UINT iFirst, UINT iLast, LPABCFLOAT lpABC)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharABCWidthsFloatW_OLD(hdc, iFirst, iLast, lpABC);
 }
 int WINAPI GetClipBox_Replacement(HDC hdc, LPRECT lprect)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetClipBox_OLD(hdc, lprect);
 }
 int WINAPI GetClipRgn_Replacement(HDC hdc, HRGN hrgn)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetClipRgn_OLD(hdc, hrgn);
 }
 int WINAPI GetMetaRgn_Replacement(HDC hdc, HRGN hrgn)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetMetaRgn_OLD(hdc, hrgn);
 }
 HGDIOBJ WINAPI GetCurrentObject_Replacement(HDC hdc, UINT type)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCurrentObject_OLD(hdc, type);
 }
 BOOL WINAPI GetCurrentPositionEx_Replacement(HDC hdc, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCurrentPositionEx_OLD(hdc, lppt);
 }
 int WINAPI GetDeviceCaps_Replacement(HDC hdc, int index)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDeviceCaps_OLD(hdc, index);
 }
 int WINAPI GetDIBits_Replacement(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, LPVOID lpvBits, LPBITMAPINFO lpbmi, UINT usage)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDIBits_OLD(hdc, hbm, start, cLines, lpvBits, lpbmi, usage);
 }
 DWORD WINAPI GetFontData_Replacement(HDC hdc, DWORD dwTable, DWORD dwOffset, PVOID pvBuffer, DWORD cjBuffer)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetFontData_OLD(hdc, dwTable, dwOffset, pvBuffer, cjBuffer);
 }
 DWORD WINAPI GetGlyphOutlineA_Replacement(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, CONST MAT2* lpmat2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetGlyphOutlineA_OLD(hdc, uChar, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 }
 DWORD WINAPI GetGlyphOutlineW_Replacement(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, CONST MAT2* lpmat2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetGlyphOutlineW_OLD(hdc, uChar, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 }
 int WINAPI GetGraphicsMode_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetGraphicsMode_OLD(hdc);
 }
 int WINAPI GetMapMode_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetMapMode_OLD(hdc);
 }
 COLORREF WINAPI GetNearestColor_Replacement(HDC hdc, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetNearestColor_OLD(hdc, color);
 }
 UINT APIENTRY GetOutlineTextMetricsA_Replacement(HDC hdc, UINT cjCopy, LPOUTLINETEXTMETRICA potm)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetOutlineTextMetricsA_OLD(hdc, cjCopy, potm);
 }
 UINT APIENTRY GetOutlineTextMetricsW_Replacement(HDC hdc, UINT cjCopy, LPOUTLINETEXTMETRICW potm)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetOutlineTextMetricsW_OLD(hdc, cjCopy, potm);
 }
 COLORREF WINAPI GetPixel_Replacement(HDC hdc, int x, int y)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetPixel_OLD(hdc, x, y);
 }
 int WINAPI GetPixelFormat_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetPixelFormat_OLD(hdc);
 }
 int WINAPI GetPolyFillMode_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetPolyFillMode_OLD(hdc);
 }
 int WINAPI GetRandomRgn_Replacement(HDC hdc, HRGN hrgn, INT i)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetRandomRgn_OLD(hdc, hrgn, i);
 }
 int WINAPI GetStretchBltMode_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetStretchBltMode_OLD(hdc);
 }
 UINT WINAPI GetSystemPaletteEntries_Replacement(HDC hdc, UINT iStart, UINT cEntries, LPPALETTEENTRY pPalEntries)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetSystemPaletteEntries_OLD(hdc, iStart, cEntries, pPalEntries);
 }
 UINT WINAPI GetSystemPaletteUse_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetSystemPaletteUse_OLD(hdc);
 }
 int WINAPI GetTextCharacterExtra_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextCharacterExtra_OLD(hdc);
 }
 UINT WINAPI GetTextAlign_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextAlign_OLD(hdc);
 }
 COLORREF WINAPI GetTextColor_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextColor_OLD(hdc);
 }
 BOOL APIENTRY GetTextExtentPointA_Replacement(HDC hdc, LPCSTR lpString, int c, LPSIZE lpsz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentPointA_OLD(hdc, lpString, c, lpsz);
 }
 BOOL APIENTRY GetTextExtentPointW_Replacement(HDC hdc, LPCWSTR lpString, int c, LPSIZE lpsz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentPointW_OLD(hdc, lpString, c, lpsz);
 }
 BOOL APIENTRY GetTextExtentPoint32A_Replacement(HDC hdc, LPCSTR lpString, int c, LPSIZE psizl)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentPoint32A_OLD(hdc, lpString, c, psizl);
 }
 BOOL APIENTRY GetTextExtentPoint32W_Replacement(HDC hdc, LPCWSTR lpString, int c, LPSIZE psizl)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentPoint32W_OLD(hdc, lpString, c, psizl);
 }
 BOOL APIENTRY GetTextExtentExPointA_Replacement(HDC hdc, LPCSTR lpszString, int cchString, int nMaxExtent, LPINT lpnFit, LPINT lpnDx, LPSIZE lpSize)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentExPointA_OLD(hdc, lpszString, cchString, nMaxExtent, lpnFit, lpnDx, lpSize);
 }
 BOOL APIENTRY GetTextExtentExPointW_Replacement(HDC hdc, LPCWSTR lpszString, int cchString, int nMaxExtent, LPINT lpnFit, LPINT lpnDx, LPSIZE lpSize)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentExPointW_OLD(hdc, lpszString, cchString, nMaxExtent, lpnFit, lpnDx, lpSize);
 }
 int WINAPI GetTextCharset_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextCharset_OLD(hdc);
 }
 int WINAPI GetTextCharsetInfo_Replacement(HDC hdc, LPFONTSIGNATURE lpSig, DWORD dwFlags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextCharsetInfo_OLD(hdc, lpSig, dwFlags);
 }
 DWORD WINAPI GetFontLanguageInfo_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetFontLanguageInfo_OLD(hdc);
 }
 DWORD WINAPI GetCharacterPlacementA_Replacement(HDC hdc, LPCSTR lpString, int nCount, int nMexExtent, LPGCP_RESULTSA lpResults, DWORD dwFlags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharacterPlacementA_OLD(hdc, lpString, nCount, nMexExtent, lpResults, dwFlags);
 }
 DWORD WINAPI GetCharacterPlacementW_Replacement(HDC hdc, LPCWSTR lpString, int nCount, int nMexExtent, LPGCP_RESULTSW lpResults, DWORD dwFlags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetCharacterPlacementW_OLD(hdc, lpString, nCount, nMexExtent, lpResults, dwFlags);
 }
 DWORD WINAPI GetFontUnicodeRanges_Replacement(HDC hdc, LPGLYPHSET lpgs)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetFontUnicodeRanges_OLD(hdc, lpgs);
 }
 DWORD WINAPI GetGlyphIndicesA_Replacement(HDC hdc, LPCSTR lpstr, int c, LPWORD pgi, DWORD fl)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetGlyphIndicesA_OLD(hdc, lpstr, c, pgi, fl);
 }
 DWORD WINAPI GetGlyphIndicesW_Replacement(HDC hdc, LPCWSTR lpstr, int c, LPWORD pgi, DWORD fl)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetGlyphIndicesW_OLD(hdc, lpstr, c, pgi, fl);
 }
 BOOL WINAPI GetTextExtentExPointI_Replacement(HDC hdc, LPWORD lpwszString, int cwchString, int nMaxExtent, LPINT lpnFit, LPINT lpnDx, LPSIZE lpSize)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextExtentExPointI_OLD(hdc, lpwszString, cwchString, nMaxExtent, lpnFit, lpnDx, lpSize);
 }
 BOOL WINAPI GetViewportExtEx_Replacement(HDC hdc, LPSIZE lpsize)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetViewportExtEx_OLD(hdc, lpsize);
 }
 BOOL WINAPI GetViewportOrgEx_Replacement(HDC hdc, LPPOINT lppoint)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetViewportOrgEx_OLD(hdc, lppoint);
 }
 BOOL WINAPI GetWindowExtEx_Replacement(HDC hdc, LPSIZE lpsize)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetWindowExtEx_OLD(hdc, lpsize);
 }
 BOOL WINAPI GetWindowOrgEx_Replacement(HDC hdc, LPPOINT lppoint)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetWindowOrgEx_OLD(hdc, lppoint);
 }
 int WINAPI IntersectClipRect_Replacement(HDC hdc, int left, int top, int right, int bottom)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return IntersectClipRect_OLD(hdc, left, top, right, bottom);
 }
 BOOL WINAPI InvertRgn_Replacement(HDC hdc, HRGN hrgn)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return InvertRgn_OLD(hdc, hrgn);
 }
 BOOL WINAPI LineTo_Replacement(HDC hdc, int x, int y)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return LineTo_OLD(hdc, x, y);
 }
 BOOL WINAPI MaskBlt_Replacement(HDC hdcDest, int xDest, int yDest, int width, int height, HDC hdcSrc, int xSrc, int ySrc, HBITMAP hbmMask, int xMask, int yMask, DWORD rop)
 {
-	SubstituteDC(hdcDest);
-	SubstituteDC(hdcSrc);
+	auto lock = SubstituteDC(hdcDest, hdcSrc);
 	return MaskBlt_OLD(hdcDest, xDest, yDest, width, height, hdcSrc, xSrc, ySrc, hbmMask, xMask, yMask, rop);
 }
 BOOL WINAPI PlgBlt_Replacement(HDC hdcDest, CONST POINT* lpPoint, HDC hdcSrc, int xSrc, int ySrc, int width, int height, HBITMAP hbmMask, int xMask, int yMask)
 {
-	SubstituteDC(hdcDest);
-	SubstituteDC(hdcSrc);
+	auto lock = SubstituteDC(hdcDest, hdcSrc);
 	return PlgBlt_OLD(hdcDest, lpPoint, hdcSrc, xSrc, ySrc, width, height, hbmMask, xMask, yMask);
 }
 int WINAPI OffsetClipRgn_Replacement(HDC hdc, int x, int y)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return OffsetClipRgn_OLD(hdc, x, y);
 }
 BOOL WINAPI PatBlt_Replacement(HDC hdc, int x, int y, int w, int h, DWORD rop)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PatBlt_OLD(hdc, x, y, w, h, rop);
 }
 BOOL WINAPI Pie_Replacement(HDC hdc, int left, int top, int right, int bottom, int xr1, int yr1, int xr2, int yr2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Pie_OLD(hdc, left, top, right, bottom, xr1, yr1, xr2, yr2);
 }
 BOOL WINAPI PlayMetaFile_Replacement(HDC hdc, HMETAFILE hmf)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PlayMetaFile_OLD(hdc, hmf);
 }
 BOOL WINAPI PaintRgn_Replacement(HDC hdc, HRGN hrgn)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PaintRgn_OLD(hdc, hrgn);
 }
 BOOL WINAPI PolyPolygon_Replacement(HDC hdc, CONST POINT* apt, CONST INT* asz, int csz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyPolygon_OLD(hdc, apt, asz, csz);
 }
 BOOL WINAPI PtVisible_Replacement(HDC hdc, int x, int y)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PtVisible_OLD(hdc, x, y);
 }
 BOOL WINAPI RectVisible_Replacement(HDC hdc, CONST RECT* lprect)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return RectVisible_OLD(hdc, lprect);
 }
 BOOL WINAPI Rectangle_Replacement(HDC hdc, int left, int top, int right, int bottom)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Rectangle_OLD(hdc, left, top, right, bottom);
 }
 BOOL WINAPI RestoreDC_Replacement(HDC hdc, int nSavedDC)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return RestoreDC_OLD(hdc, nSavedDC);
 }
 HDC WINAPI ResetDCA_Replacement(HDC hdc, CONST DEVMODEA* lpdm)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ResetDCA_OLD(hdc, lpdm);
 }
 HDC WINAPI ResetDCW_Replacement(HDC hdc, CONST DEVMODEW* lpdm)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ResetDCW_OLD(hdc, lpdm);
 }
 UINT WINAPI RealizePalette_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return RealizePalette_OLD(hdc);
 }
 BOOL WINAPI RoundRect_Replacement(HDC hdc, int left, int top, int right, int bottom, int width, int height)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return RoundRect_OLD(hdc, left, top, right, bottom, width, height);
 }
 int WINAPI SaveDC_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SaveDC_OLD(hdc);
 }
 int WINAPI SelectClipRgn_Replacement(HDC hdc, HRGN hrgn)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SelectClipRgn_OLD(hdc, hrgn);
 }
 int WINAPI ExtSelectClipRgn_Replacement(HDC hdc, HRGN hrgn, int mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ExtSelectClipRgn_OLD(hdc, hrgn, mode);
 }
 int WINAPI SetMetaRgn_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetMetaRgn_OLD(hdc);
 }
 HGDIOBJ WINAPI SelectObject_Replacement(HDC hdc, HGDIOBJ h)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SelectObject_OLD(hdc, h);
 }
 HPALETTE WINAPI SelectPalette_Replacement(HDC hdc, HPALETTE hPal, BOOL bForceBkgd)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SelectPalette_OLD(hdc, hPal, bForceBkgd);
 }
 COLORREF WINAPI SetBkColor_Replacement(HDC hdc, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetBkColor_OLD(hdc, color);
 }
 COLORREF WINAPI SetDCBrushColor_Replacement(HDC hdc, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetDCBrushColor_OLD(hdc, color);
 }
 COLORREF WINAPI SetDCPenColor_Replacement(HDC hdc, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetDCPenColor_OLD(hdc, color);
 }
 int WINAPI SetBkMode_Replacement(HDC hdc, int mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetBkMode_OLD(hdc, mode);
 }
 UINT WINAPI SetBoundsRect_Replacement(HDC hdc, CONST RECT* lprect, UINT flags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetBoundsRect_OLD(hdc, lprect, flags);
 }
 int WINAPI SetDIBits_Replacement(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, CONST VOID* lpBits, CONST BITMAPINFO* lpbmi, UINT ColorUse)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetDIBits_OLD(hdc, hbm, start, cLines, lpBits, lpbmi, ColorUse);
 }
 int WINAPI SetDIBitsToDevice_Replacement(HDC hdc, int xDest, int yDest, DWORD w, DWORD h, int xSrc, int ySrc, UINT StartScan, UINT cLines, CONST VOID* lpvBits, CONST BITMAPINFO* lpbmi, UINT ColorUse)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetDIBitsToDevice_OLD(hdc, xDest, yDest, w, h, xSrc, ySrc, StartScan, cLines, lpvBits, lpbmi, ColorUse);
 }
 DWORD WINAPI SetMapperFlags_Replacement(HDC hdc, DWORD flags)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetMapperFlags_OLD(hdc, flags);
 }
 int WINAPI SetGraphicsMode_Replacement(HDC hdc, int iMode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetGraphicsMode_OLD(hdc, iMode);
 }
 int WINAPI SetMapMode_Replacement(HDC hdc, int iMode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetMapMode_OLD(hdc, iMode);
 }
 DWORD WINAPI SetLayout_Replacement(HDC hdc, DWORD l)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetLayout_OLD(hdc, l);
 }
 DWORD WINAPI GetLayout_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetLayout_OLD(hdc);
 }
 COLORREF WINAPI SetPixel_Replacement(HDC hdc, int x, int y, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetPixel_OLD(hdc, x, y, color);
 }
 BOOL WINAPI SetPixelV_Replacement(HDC hdc, int x, int y, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetPixelV_OLD(hdc, x, y, color);
 }
 BOOL WINAPI SetPixelFormat_Replacement(HDC hdc, int format, CONST PIXELFORMATDESCRIPTOR* ppfd)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetPixelFormat_OLD(hdc, format, ppfd);
 }
 int WINAPI SetPolyFillMode_Replacement(HDC hdc, int mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetPolyFillMode_OLD(hdc, mode);
 }
 BOOL WINAPI StretchBlt_Replacement(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop)
 {
-	SubstituteDC(hdcDest);
-	SubstituteDC(hdcSrc);
+	auto lock = SubstituteDC(hdcDest, hdcSrc);
 	return StretchBlt_OLD(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
 }
 int WINAPI StretchDIBits_Replacement(HDC hdc, int xDest, int yDest, int DestWidth, int DestHeight, int xSrc, int ySrc, int SrcWidth, int SrcHeight, CONST VOID* lpBits, CONST BITMAPINFO* lpbmi, UINT iUsage, DWORD rop)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return StretchDIBits_OLD(hdc, xDest, yDest, DestWidth, DestHeight, xSrc, ySrc, SrcWidth, SrcHeight, lpBits, lpbmi, iUsage, rop);
 }
 int WINAPI SetROP2_Replacement(HDC hdc, int rop2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetROP2_OLD(hdc, rop2);
 }
 int WINAPI SetStretchBltMode_Replacement(HDC hdc, int mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetStretchBltMode_OLD(hdc, mode);
 }
 UINT WINAPI SetSystemPaletteUse_Replacement(HDC hdc, UINT use)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetSystemPaletteUse_OLD(hdc, use);
 }
 int WINAPI SetTextCharacterExtra_Replacement(HDC hdc, int extra)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetTextCharacterExtra_OLD(hdc, extra);
 }
 COLORREF WINAPI SetTextColor_Replacement(HDC hdc, COLORREF color)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetTextColor_OLD(hdc, color);
 }
 UINT WINAPI SetTextAlign_Replacement(HDC hdc, UINT align)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetTextAlign_OLD(hdc, align);
 }
 BOOL WINAPI SetTextJustification_Replacement(HDC hdc, int extra, int count)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetTextJustification_OLD(hdc, extra, count);
 }
 BOOL WINAPI UpdateColors_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return UpdateColors_OLD(hdc);
 }
 BOOL WINAPI AlphaBlend_Replacement(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, BLENDFUNCTION ftn)
 {
-	SubstituteDC(hdcDest);
+	auto lock = SubstituteDC(hdcDest);
 	return AlphaBlend_OLD(hdcDest, xoriginDest, yoriginDest, wDest, hDest, hdcSrc, xoriginSrc, yoriginSrc, wSrc, hSrc, ftn);
 }
 BOOL WINAPI TransparentBlt_Replacement(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, UINT crTransparent)
 {
-	SubstituteDC(hdcDest);
+	auto lock = SubstituteDC(hdcDest);
 	return TransparentBlt_OLD(hdcDest, xoriginDest, yoriginDest, wDest, hDest, hdcSrc, xoriginSrc, yoriginSrc, wSrc, hSrc, crTransparent);
 }
 BOOL WINAPI GradientFill_Replacement(HDC hdc, PTRIVERTEX pVertex, ULONG nVertex, PVOID pMesh, ULONG nMesh, ULONG ulMode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GradientFill_OLD(hdc, pVertex, nVertex, pMesh, nMesh, ulMode);
 }
 BOOL WINAPI PlayMetaFileRecord_Replacement(HDC hdc, LPHANDLETABLE lpHandleTable, LPMETARECORD lpMR, UINT noObjs)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PlayMetaFileRecord_OLD(hdc, lpHandleTable, lpMR, noObjs);
 }
 BOOL WINAPI EnumMetaFile_Replacement(HDC hdc, HMETAFILE hmf, MFENUMPROC proc, LPARAM param)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumMetaFile_OLD(hdc, hmf, proc, param);
 }
 HENHMETAFILE WINAPI CloseEnhMetaFile_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CloseEnhMetaFile_OLD(hdc);
 }
 HDC WINAPI CreateEnhMetaFileA_Replacement(HDC hdc, LPCSTR lpFilename, CONST RECT* lprc, LPCSTR lpDesc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateEnhMetaFileA_OLD(hdc, lpFilename, lprc, lpDesc);
 }
 HDC WINAPI CreateEnhMetaFileW_Replacement(HDC hdc, LPCWSTR lpFilename, CONST RECT* lprc, LPCWSTR lpDesc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateEnhMetaFileW_OLD(hdc, lpFilename, lprc, lpDesc);
 }
 BOOL WINAPI EnumEnhMetaFile_Replacement(HDC hdc, HENHMETAFILE hmf, ENHMFENUMPROC proc, LPVOID param, CONST RECT* lpRect)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumEnhMetaFile_OLD(hdc, hmf, proc, param, lpRect);
 }
 UINT WINAPI GetWinMetaFileBits_Replacement(HENHMETAFILE hemf, UINT cbData16, LPBYTE pData16, INT iMapMode, HDC hdcRef)
 {
-	SubstituteDC(hdcRef);
+	auto lock = SubstituteDC(hdcRef);
 	return GetWinMetaFileBits_OLD(hemf, cbData16, pData16, iMapMode, hdcRef);
 }
 BOOL WINAPI PlayEnhMetaFile_Replacement(HDC hdc, HENHMETAFILE hmf, CONST RECT* lprect)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PlayEnhMetaFile_OLD(hdc, hmf, lprect);
 }
 BOOL WINAPI PlayEnhMetaFileRecord_Replacement(HDC hdc, LPHANDLETABLE pht, CONST ENHMETARECORD* pmr, UINT cht)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PlayEnhMetaFileRecord_OLD(hdc, pht, pmr, cht);
 }
 HENHMETAFILE WINAPI SetWinMetaFileBits_Replacement(UINT nSize, CONST BYTE* lpMeta16Data, HDC hdcRef, CONST METAFILEPICT* lpMFP)
 {
-	SubstituteDC(hdcRef);
+	auto lock = SubstituteDC(hdcRef);
 	return SetWinMetaFileBits_OLD(nSize, lpMeta16Data, hdcRef, lpMFP);
 }
 BOOL WINAPI GdiComment_Replacement(HDC hdc, UINT nSize, CONST BYTE* lpData)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GdiComment_OLD(hdc, nSize, lpData);
 }
 BOOL WINAPI GetTextMetricsA_Replacement(HDC hdc, LPTEXTMETRICA lptm)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextMetricsA_OLD(hdc, lptm);
 }
 BOOL WINAPI GetTextMetricsW_Replacement(HDC hdc, LPTEXTMETRICW lptm)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextMetricsW_OLD(hdc, lptm);
 }
 BOOL WINAPI AngleArc_Replacement(HDC hdc, int x, int y, DWORD r, FLOAT StartAngle, FLOAT SweepAngle)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return AngleArc_OLD(hdc, x, y, r, StartAngle, SweepAngle);
 }
 BOOL WINAPI PolyPolyline_Replacement(HDC hdc, CONST POINT* apt, CONST DWORD* asz, DWORD csz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyPolyline_OLD(hdc, apt, asz, csz);
 }
 BOOL WINAPI GetWorldTransform_Replacement(HDC hdc, LPXFORM lpxf)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetWorldTransform_OLD(hdc, lpxf);
 }
 BOOL WINAPI SetWorldTransform_Replacement(HDC hdc, CONST XFORM* lpxf)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetWorldTransform_OLD(hdc, lpxf);
 }
 BOOL WINAPI ModifyWorldTransform_Replacement(HDC hdc, CONST XFORM* lpxf, DWORD mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ModifyWorldTransform_OLD(hdc, lpxf, mode);
 }
 HBITMAP WINAPI CreateDIBSection_Replacement(HDC hdc, CONST BITMAPINFO* pbmi, UINT usage, VOID** ppvBits, HANDLE hSection, DWORD offset)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateDIBSection_OLD(hdc, pbmi, usage, ppvBits, hSection, offset);
 }
 UINT WINAPI GetDIBColorTable_Replacement(HDC hdc, UINT iStart, UINT cEntries, RGBQUAD* prgbq)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDIBColorTable_OLD(hdc, iStart, cEntries, prgbq);
 }
 UINT WINAPI SetDIBColorTable_Replacement(HDC hdc, UINT iStart, UINT cEntries, CONST RGBQUAD* prgbq)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetDIBColorTable_OLD(hdc, iStart, cEntries, prgbq);
 }
 BOOL WINAPI SetColorAdjustment_Replacement(HDC hdc, CONST COLORADJUSTMENT* lpca)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetColorAdjustment_OLD(hdc, lpca);
 }
 BOOL WINAPI GetColorAdjustment_Replacement(HDC hdc, LPCOLORADJUSTMENT lpca)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetColorAdjustment_OLD(hdc, lpca);
 }
 HPALETTE WINAPI CreateHalftonePalette_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CreateHalftonePalette_OLD(hdc);
 }
 int WINAPI StartDocA_Replacement(HDC hdc, CONST DOCINFOA* lpdi)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return StartDocA_OLD(hdc, lpdi);
 }
 int WINAPI StartDocW_Replacement(HDC hdc, CONST DOCINFOW* lpdi)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return StartDocW_OLD(hdc, lpdi);
 }
 int WINAPI EndDoc_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EndDoc_OLD(hdc);
 }
 int WINAPI StartPage_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return StartPage_OLD(hdc);
 }
 int WINAPI EndPage_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EndPage_OLD(hdc);
 }
 int WINAPI AbortDoc_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return AbortDoc_OLD(hdc);
 }
 int WINAPI SetAbortProc_Replacement(HDC hdc, ABORTPROC proc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetAbortProc_OLD(hdc, proc);
 }
 BOOL WINAPI AbortPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return AbortPath_OLD(hdc);
 }
 BOOL WINAPI ArcTo_Replacement(HDC hdc, int left, int top, int right, int bottom, int xr1, int yr1, int xr2, int yr2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ArcTo_OLD(hdc, left, top, right, bottom, xr1, yr1, xr2, yr2);
 }
 BOOL WINAPI BeginPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return BeginPath_OLD(hdc);
 }
 BOOL WINAPI CloseFigure_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CloseFigure_OLD(hdc);
 }
 BOOL WINAPI EndPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EndPath_OLD(hdc);
 }
 BOOL WINAPI FillPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return FillPath_OLD(hdc);
 }
 BOOL WINAPI FlattenPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return FlattenPath_OLD(hdc);
 }
 int WINAPI GetPath_Replacement(HDC hdc, LPPOINT apt, LPBYTE aj, int cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetPath_OLD(hdc, apt, aj, cpt);
 }
 HRGN WINAPI PathToRegion_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PathToRegion_OLD(hdc);
 }
 BOOL WINAPI PolyDraw_Replacement(HDC hdc, CONST POINT* apt, CONST BYTE* aj, int cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyDraw_OLD(hdc, apt, aj, cpt);
 }
 BOOL WINAPI SelectClipPath_Replacement(HDC hdc, int mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SelectClipPath_OLD(hdc, mode);
 }
 int WINAPI SetArcDirection_Replacement(HDC hdc, int dir)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetArcDirection_OLD(hdc, dir);
 }
 BOOL WINAPI SetMiterLimit_Replacement(HDC hdc, FLOAT limit, PFLOAT old)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetMiterLimit_OLD(hdc, limit, old);
 }
 BOOL WINAPI StrokeAndFillPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return StrokeAndFillPath_OLD(hdc);
 }
 BOOL WINAPI StrokePath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return StrokePath_OLD(hdc);
 }
 BOOL WINAPI WidenPath_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return WidenPath_OLD(hdc);
 }
 BOOL WINAPI GetMiterLimit_Replacement(HDC hdc, PFLOAT plimit)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetMiterLimit_OLD(hdc, plimit);
 }
 int WINAPI GetArcDirection_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetArcDirection_OLD(hdc);
 }
 BOOL WINAPI MoveToEx_Replacement(HDC hdc, int x, int y, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return MoveToEx_OLD(hdc, x, y, lppt);
 }
 BOOL WINAPI TextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int c)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return TextOutA_OLD(hdc, x, y, lpString, c);
 }
 BOOL WINAPI TextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int c)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return TextOutW_OLD(hdc, x, y, lpString, c);
 }
 BOOL WINAPI ExtTextOutA_Replacement(HDC hdc, int x, int y, UINT options, CONST RECT* lprect, LPCSTR lpString, UINT c, CONST INT* lpDx)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ExtTextOutA_OLD(hdc, x, y, options, lprect, lpString, c, lpDx);
 }
 BOOL WINAPI ExtTextOutW_Replacement(HDC hdc, int x, int y, UINT options, CONST RECT* lprect, LPCWSTR lpString, UINT c, CONST INT* lpDx)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ExtTextOutW_OLD(hdc, x, y, options, lprect, lpString, c, lpDx);
 }
 BOOL WINAPI PolyTextOutA_Replacement(HDC hdc, CONST POLYTEXTA* ppt, int nstrings)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyTextOutA_OLD(hdc, ppt, nstrings);
 }
 BOOL WINAPI PolyTextOutW_Replacement(HDC hdc, CONST POLYTEXTW* ppt, int nstrings)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyTextOutW_OLD(hdc, ppt, nstrings);
 }
 BOOL WINAPI DPtoLP_Replacement(HDC hdc, LPPOINT lppt, int c)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return DPtoLP_OLD(hdc, lppt, c);
 }
 BOOL WINAPI LPtoDP_Replacement(HDC hdc, LPPOINT lppt, int c)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return LPtoDP_OLD(hdc, lppt, c);
 }
 BOOL WINAPI Polygon_Replacement(HDC hdc, CONST POINT* apt, int cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Polygon_OLD(hdc, apt, cpt);
 }
 BOOL WINAPI Polyline_Replacement(HDC hdc, CONST POINT* apt, int cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return Polyline_OLD(hdc, apt, cpt);
 }
 BOOL WINAPI PolyBezier_Replacement(HDC hdc, CONST POINT* apt, DWORD cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyBezier_OLD(hdc, apt, cpt);
 }
 BOOL WINAPI PolyBezierTo_Replacement(HDC hdc, CONST POINT* apt, DWORD cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolyBezierTo_OLD(hdc, apt, cpt);
 }
 BOOL WINAPI PolylineTo_Replacement(HDC hdc, CONST POINT* apt, DWORD cpt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return PolylineTo_OLD(hdc, apt, cpt);
 }
 BOOL WINAPI SetViewportExtEx_Replacement(HDC hdc, int x, int y, LPSIZE lpsz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetViewportExtEx_OLD(hdc, x, y, lpsz);
 }
 BOOL WINAPI SetViewportOrgEx_Replacement(HDC hdc, int x, int y, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetViewportOrgEx_OLD(hdc, x, y, lppt);
 }
 BOOL WINAPI SetWindowExtEx_Replacement(HDC hdc, int x, int y, LPSIZE lpsz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetWindowExtEx_OLD(hdc, x, y, lpsz);
 }
 BOOL WINAPI SetWindowOrgEx_Replacement(HDC hdc, int x, int y, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetWindowOrgEx_OLD(hdc, x, y, lppt);
 }
 BOOL WINAPI OffsetViewportOrgEx_Replacement(HDC hdc, int x, int y, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return OffsetViewportOrgEx_OLD(hdc, x, y, lppt);
 }
 BOOL WINAPI OffsetWindowOrgEx_Replacement(HDC hdc, int x, int y, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return OffsetWindowOrgEx_OLD(hdc, x, y, lppt);
 }
 BOOL WINAPI ScaleViewportExtEx_Replacement(HDC hdc, int xn, int dx, int yn, int yd, LPSIZE lpsz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ScaleViewportExtEx_OLD(hdc, xn, dx, yn, yd, lpsz);
 }
 BOOL WINAPI ScaleWindowExtEx_Replacement(HDC hdc, int xn, int xd, int yn, int yd, LPSIZE lpsz)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ScaleWindowExtEx_OLD(hdc, xn, xd, yn, yd, lpsz);
 }
 BOOL WINAPI SetBrushOrgEx_Replacement(HDC hdc, int x, int y, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetBrushOrgEx_OLD(hdc, x, y, lppt);
 }
 int WINAPI GetTextFaceA_Replacement(HDC hdc, int c, LPSTR lpName)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextFaceA_OLD(hdc, c, lpName);
 }
 int WINAPI GetTextFaceW_Replacement(HDC hdc, int c, LPWSTR lpName)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetTextFaceW_OLD(hdc, c, lpName);
 }
 DWORD WINAPI GetKerningPairsA_Replacement(HDC hdc, DWORD nPairs, LPKERNINGPAIR lpKernPair)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetKerningPairsA_OLD(hdc, nPairs, lpKernPair);
 }
 DWORD WINAPI GetKerningPairsW_Replacement(HDC hdc, DWORD nPairs, LPKERNINGPAIR lpKernPair)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetKerningPairsW_OLD(hdc, nPairs, lpKernPair);
 }
 BOOL WINAPI GetDCOrgEx_Replacement(HDC hdc, LPPOINT lppt)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDCOrgEx_OLD(hdc, lppt);
 }
 BOOL WINAPI FixBrushOrgEx_Replacement(HDC hdc, int x, int y, LPPOINT ptl)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return FixBrushOrgEx_OLD(hdc, x, y, ptl);
 }
 int WINAPI SetICMMode_Replacement(HDC hdc, int mode)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetICMMode_OLD(hdc, mode);
 }
 BOOL WINAPI CheckColorsInGamut_Replacement(HDC hdc, LPRGBTRIPLE lpRGBTriple, LPVOID dlpBuffer, DWORD nCount)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return CheckColorsInGamut_OLD(hdc, lpRGBTriple, dlpBuffer, nCount);
 }
 HCOLORSPACE WINAPI GetColorSpace_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetColorSpace_OLD(hdc);
 }
 HCOLORSPACE WINAPI SetColorSpace_Replacement(HDC hdc, HCOLORSPACE hcs)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetColorSpace_OLD(hdc, hcs);
 }
 BOOL WINAPI GetICMProfileA_Replacement(HDC hdc, LPDWORD pBufSize, LPSTR pszFilename)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetICMProfileA_OLD(hdc, pBufSize, pszFilename);
 }
 BOOL WINAPI GetICMProfileW_Replacement(HDC hdc, LPDWORD pBufSize, LPWSTR pszFilename)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetICMProfileW_OLD(hdc, pBufSize, pszFilename);
 }
 BOOL WINAPI SetICMProfileA_Replacement(HDC hdc, LPSTR lpFileName)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetICMProfileA_OLD(hdc, lpFileName);
 }
 BOOL WINAPI SetICMProfileW_Replacement(HDC hdc, LPWSTR lpFileName)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetICMProfileW_OLD(hdc, lpFileName);
 }
 BOOL WINAPI GetDeviceGammaRamp_Replacement(HDC hdc, LPVOID lpRamp)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return GetDeviceGammaRamp_OLD(hdc, lpRamp);
 }
 BOOL WINAPI SetDeviceGammaRamp_Replacement(HDC hdc, LPVOID lpRamp)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SetDeviceGammaRamp_OLD(hdc, lpRamp);
 }
 BOOL WINAPI ColorMatchToTarget_Replacement(HDC hdc, HDC hdcTarget, DWORD action)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ColorMatchToTarget_OLD(hdc, hdcTarget, action);
 }
 int WINAPI EnumICMProfilesA_Replacement(HDC hdc, ICMENUMPROCA proc, LPARAM param)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumICMProfilesA_OLD(hdc, proc, param);
 }
 int WINAPI EnumICMProfilesW_Replacement(HDC hdc, ICMENUMPROCW proc, LPARAM param)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return EnumICMProfilesW_OLD(hdc, proc, param);
 }
 BOOL WINAPI ColorCorrectPalette_Replacement(HDC hdc, HPALETTE hPal, DWORD deFirst, DWORD num)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return ColorCorrectPalette_OLD(hdc, hPal, deFirst, num);
 }
 HGLRC WINAPI wglCreateContext_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglCreateContext_OLD(hdc);
 }
 HGLRC WINAPI wglCreateLayerContext_Replacement(HDC hdc, int _arg2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglCreateLayerContext_OLD(hdc, _arg2);
 }
 BOOL WINAPI wglMakeCurrent_Replacement(HDC hdc, HGLRC _arg2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglMakeCurrent_OLD(hdc, _arg2);
 }
 BOOL WINAPI wglUseFontBitmapsA_Replacement(HDC hdc, DWORD _arg2, DWORD _arg3, DWORD _arg4)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglUseFontBitmapsA_OLD(hdc, _arg2, _arg3, _arg4);
 }
 BOOL WINAPI wglUseFontBitmapsW_Replacement(HDC hdc, DWORD _arg2, DWORD _arg3, DWORD _arg4)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglUseFontBitmapsW_OLD(hdc, _arg2, _arg3, _arg4);
 }
 BOOL WINAPI SwapBuffers_Replacement(HDC hdc)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return SwapBuffers_OLD(hdc);
 }
 BOOL WINAPI wglUseFontOutlinesA_Replacement(HDC hdc, DWORD _arg2, DWORD _arg3, DWORD _arg4, FLOAT _arg5, FLOAT _arg6, int _arg7, LPGLYPHMETRICSFLOAT _arg8)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglUseFontOutlinesA_OLD(hdc, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8);
 }
 BOOL WINAPI wglUseFontOutlinesW_Replacement(HDC hdc, DWORD _arg2, DWORD _arg3, DWORD _arg4, FLOAT _arg5, FLOAT _arg6, int _arg7, LPGLYPHMETRICSFLOAT _arg8)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglUseFontOutlinesW_OLD(hdc, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8);
 }
 BOOL WINAPI wglDescribeLayerPlane_Replacement(HDC hdc, int _arg2, int _arg3, UINT _arg4, LPLAYERPLANEDESCRIPTOR _arg5)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglDescribeLayerPlane_OLD(hdc, _arg2, _arg3, _arg4, _arg5);
 }
 int WINAPI wglSetLayerPaletteEntries_Replacement(HDC hdc, int _arg2, int _arg3, int _arg4, CONST COLORREF* _arg5)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglSetLayerPaletteEntries_OLD(hdc, _arg2, _arg3, _arg4, _arg5);
 }
 int WINAPI wglGetLayerPaletteEntries_Replacement(HDC hdc, int _arg2, int _arg3, int _arg4, COLORREF* _arg5)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglGetLayerPaletteEntries_OLD(hdc, _arg2, _arg3, _arg4, _arg5);
 }
 BOOL WINAPI wglRealizeLayerPalette_Replacement(HDC hdc, int _arg2, BOOL _arg3)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglRealizeLayerPalette_OLD(hdc, _arg2, _arg3);
 }
 BOOL WINAPI wglSwapLayerBuffers_Replacement(HDC hdc, UINT _arg2)
 {
-	SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc);
 	return wglSwapLayerBuffers_OLD(hdc, _arg2);
 }

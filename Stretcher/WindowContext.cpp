@@ -507,6 +507,7 @@ bool WindowContext::CompleteDraw()
 	}
 
 	//Want a lock here
+	auto lock = CreateLock();
 	HRESULT hr = 0;
 	int result = 0;
 	bool okay = true;
@@ -530,13 +531,14 @@ bool WindowContext::CompleteDraw()
 
 HDC WindowContext::GetD3DDC()
 {
+	//Create a lock before calling this
+
 	if (this->parentWindowContext != NULL)
 	{
 		return this->parentWindowContext->GetD3DDC();
 	}
 	if (this->d3dDC != NULL) return this->d3dDC;
 
-	//Want a lock here
 	HRESULT hr = 0;
 	int result = 0;
 	//Create Direct3D if it's not ready
@@ -1134,7 +1136,7 @@ LONG_PTR WindowContext::SetWindowLong_(int index, LONG_PTR newLong)
 	}
 	return _SetWindowLongPtr(window, index, newLong);
 }
-LONG_PTR WindowContext::GetWindowLong_(int index)
+LONG_PTR WindowContext::GetWindowLong_(int index) const
 {
 	switch (index)
 	{
@@ -1143,8 +1145,9 @@ LONG_PTR WindowContext::GetWindowLong_(int index)
 		{
 			LONG_PTR windowLong = _GetWindowLongPtr(window, index);
 			windowLong &= WS_DISABLED | WS_MINIMIZE | WS_VISIBLE;
-			VirtualWindowStyle &= ~(WS_DISABLED | WS_MINIMIZE | WS_VISIBLE);
-			windowLong |= VirtualWindowStyle;
+			LONG_PTR virtualWindowStyle = VirtualWindowStyle;
+			virtualWindowStyle &= ~(WS_DISABLED | WS_MINIMIZE | WS_VISIBLE);
+			windowLong |= virtualWindowStyle;
 			return windowLong;
 		}
 		break;
@@ -1274,7 +1277,7 @@ BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 	return okay;
 }
 
-BOOL WindowContext::GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement)
+BOOL WindowContext::GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement) const
 {
 	if (!IsVirtualized())
 	{
@@ -1399,7 +1402,7 @@ void WindowContext::GetRealNonClientArea(int& extraLeft, int& extraTop, int& ext
 
 HDC WindowContext::GetCurrentDC(HDC inputDC)
 {
-	//want a lock here
+	//Create a lock before calling this
 	HDC d3dDC = GetD3DDC();
 	if (d3dDC == NULL) return inputDC;
 
@@ -1479,4 +1482,9 @@ int WindowContext::SetClipRect(HDC hdc, const RECT* clipRect) //static
 	int result = SelectClipRgn(hdc, clipRgn);
 	DeleteObject(clipRgn);
 	return result;
+}
+
+unique_lock<mutex> WindowContext::CreateLock()
+{
+	return unique_lock<mutex>(this->myMutex);
 }

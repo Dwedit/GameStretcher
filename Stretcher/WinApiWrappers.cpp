@@ -227,7 +227,7 @@ BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
 {
     if (lpPoint == NULL) return false;
     BOOL okay = GetCursorPos_OLD(lpPoint);
-    WindowContext* windowContext = WindowContext::GetWindowContext();
+    const WindowContext* windowContext = WindowContext::GetWindowContext();
     if (windowContext == NULL) return okay;
     windowContext->MouseScreenToVirtualScreen(lpPoint);
     return okay;
@@ -235,7 +235,7 @@ BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
 BOOL WINAPI SetCursorPos_Replacement(int x, int y)
 {
     POINT point{ x,y };
-    WindowContext* windowContext = WindowContext::GetWindowContext();
+    const WindowContext* windowContext = WindowContext::GetWindowContext();
     if (windowContext == NULL) return SetCursorPos_OLD(x, y);
     windowContext->MouseVirtualScreenToScreen(&point);
     return SetCursorPos_OLD(point.x, point.y);
@@ -385,19 +385,19 @@ restart:
 
 BOOL WINAPI GetClientRect_Replacement(HWND hwnd, LPRECT clientRect)
 {
-    WindowContext* windowContext = WindowContext::Get(hwnd);
+    const WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return GetClientRect_OLD(hwnd, clientRect);
     return windowContext->GetClientRect_(clientRect);
 }
 BOOL WINAPI GetWindowPlacement_Replacement(HWND hwnd, WINDOWPLACEMENT *windowPlacement)
 {
-    WindowContext* windowContext = WindowContext::Get(hwnd);
+    const WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return GetWindowPlacement_OLD(hwnd, windowPlacement);
     return windowContext->GetWindowPlacement_(windowPlacement);
 }
 BOOL WINAPI GetWindowRect_Replacement(HWND hwnd, LPRECT windowRect)
 {
-    WindowContext* windowContext = WindowContext::Get(hwnd);
+    const WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return GetWindowRect_OLD(hwnd, windowRect);
     return windowContext->GetWindowRect_(windowRect);
 }
@@ -441,25 +441,25 @@ ULONG_PTR WINAPI SetClassLongPtrW_Replacement(HWND hWnd, int nIndex, LONG_PTR dw
 }
 LONG WINAPI GetWindowLongA_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = WindowContext::Get(hWnd);
+    const WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return GetWindowLongA_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG WINAPI GetWindowLongW_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = WindowContext::Get(hWnd);
+    const WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return GetWindowLongW_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG_PTR WINAPI GetWindowLongPtrA_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = WindowContext::Get(hWnd);
+    const WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return GetWindowLongPtrA_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
 LONG_PTR WINAPI GetWindowLongPtrW_Replacement(HWND hWnd, int nIndex)
 {
-    WindowContext* windowContext = WindowContext::Get(hWnd);
+    const WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return GetWindowLongW_OLD(hWnd, nIndex);
     return windowContext->GetWindowLong_(nIndex);
 }
@@ -594,13 +594,4 @@ BOOL WINAPI IsWinEventHookInstalled_Replacement(DWORD event)
 BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook)
 {
     return UnhookWinEvent_OLD(hWinEventHook);
-}
-
-void SubstituteDC(HDC& hdc)
-{
-    WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-    if (windowContext != NULL)
-    {
-        hdc = windowContext->GetCurrentDC(hdc);
-    }
 }
