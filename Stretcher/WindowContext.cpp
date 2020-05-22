@@ -498,6 +498,15 @@ bool WindowContext::CompleteDraw()
 		return this->parentWindowContext->CompleteDraw();
 	}
 	if (this->d3dDC == NULL) return true;
+
+	RECT boundsRect = {};
+	UINT boundsRectMode = GetBoundsRect(this->d3dDC, &boundsRect, DCB_RESET);
+	if (boundsRectMode == DCB_RESET)
+	{
+		return true;
+	}
+
+	//Want a lock here
 	HRESULT hr = 0;
 	int result = 0;
 	bool okay = true;
@@ -526,6 +535,8 @@ HDC WindowContext::GetD3DDC()
 		return this->parentWindowContext->GetD3DDC();
 	}
 	if (this->d3dDC != NULL) return this->d3dDC;
+
+	//Want a lock here
 	HRESULT hr = 0;
 	int result = 0;
 	//Create Direct3D if it's not ready
@@ -542,6 +553,7 @@ HDC WindowContext::GetD3DDC()
 #if PAINT_USE_CLIP_BOX
 		result = SelectClipRgn(this->d3dDC, NULL);
 #endif
+		UINT oldBoundsRectMode = SetBoundsRect(this->d3dDC, NULL, DCB_ENABLE | DCB_RESET);
 		return this->d3dDC;
 	}
 	return NULL;
@@ -1387,6 +1399,7 @@ void WindowContext::GetRealNonClientArea(int& extraLeft, int& extraTop, int& ext
 
 HDC WindowContext::GetCurrentDC(HDC inputDC)
 {
+	//want a lock here
 	HDC d3dDC = GetD3DDC();
 	if (d3dDC == NULL) return inputDC;
 
