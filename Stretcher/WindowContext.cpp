@@ -16,12 +16,9 @@ using std::wstring;
 //#define USE_IDLE_HOOK 0
 
 #include "WindowClassContext.h"
-#include "HDCMap.h"
 
-//TinyMapUnique<HWND, WindowContext> windowMap;
-TinyMap<HWND, std::unique_ptr<WindowContext>> windowMap;
-HDCMap hdcMap;
-//TinyMap<HDC, WindowContext*> hdcMap;
+CachedVectorMap<HWND, std::unique_ptr<WindowContext>> windowMap;
+CachedVectorMap<HDC, WindowContext*> hdcMap;
 
 #define _DefWindowProc(hwnd, uMsg, wParam, lParam)\
  (isWindowUnicode ? DefWindowProcW((hwnd), (uMsg), (wParam), (lParam))\
@@ -90,53 +87,8 @@ void WindowContext::Init(HWND hwnd)
 	}
 }
 
-WindowContext* WindowContext::Get(HWND hwnd)	//static
-{
-	return GetWindowContext(hwnd);
-}
-WindowContext* WindowContext::GetByHdc(HDC hdc)	//static
-{
-	return hdcMap.Get(hdc);
-}
-int WindowContext::HdcAddRef(HDC hdc, WindowContext* windowContext)	//static
-{
-	return hdcMap.AddRef(hdc, windowContext);
-}
-int WindowContext::HdcSubtractRef(HDC hdc)	//static
-{
-	return hdcMap.SubtractRef(hdc);
-}
-WindowContext* WindowContext::GetWindowContext(HWND hwnd)	//static
-{
-	auto result = windowMap.GetReference(hwnd);
-	if (result == NULL) return NULL;
-	return (*result).get();
-}
-WindowContext* WindowContext::GetWindowContext()	//static
-{
-	auto result = windowMap.GetMostRecentValue();
-	if (result == NULL) return NULL;
-	return (*result).get();
-}
-WindowContext* WindowContext::CreateNewWindowContext(HWND hwnd)	//static
-{
-	windowMap.Emplace(hwnd, std::make_unique<WindowContext>());
-	WindowContext* windowContext = GetWindowContext(hwnd);
-	windowContext->Init(hwnd);
-	return windowContext;
-}
-bool WindowContext::DeleteWindowContext(HWND hwnd)	//static
-{
-	return windowMap.Remove(hwnd);
-}
-bool WindowContext::WindowContextExists(HWND hwnd)	//static
-{
-	return windowMap.ContainsKey(hwnd);
-}
-
-
 template <class T>
-void RemoveFromVector(std::vector<T> &vec, const T& item)
+void RemoveFromVector(std::vector<T>& vec, const T& item)
 {
 	auto found = std::find(vec.begin(), vec.end(), item);
 	if (found == vec.end()) return;
@@ -151,6 +103,13 @@ void WindowContext::Release()
 		this->parentWindowContext = NULL;
 	}
 
+	if (this->realDC != NULL)
+	{
+		ReleaseDC(window, this->realDC);
+		this->realDC = NULL;
+	}
+	HdcRemoveWindow(this);
+
 	if (IsWindow(window) && oldWindowProc != NULL)
 	{
 		_SetWindowLongPtr(window, GWL_WNDPROC, (LONG_PTR)oldWindowProc);
@@ -163,6 +122,62 @@ void WindowContext::Release()
 	//	texture->Release();
 	//	texture = NULL;
 	//}
+}
+
+WindowContext* WindowContext::Get(HWND hwnd)	//static
+{
+	return GetWindowContext(hwnd);
+}
+WindowContext* WindowContext::GetByHdc(HDC hdc)	//static
+{
+	return hdcMap.Get(hdc);
+	//WindowContext **ref = hdcMap.GetReference(hdc);
+	//if (ref == NULL) return NULL;
+	//return *ref;
+}
+void WindowContext::HdcAdd(HDC hdc, WindowContext* windowContext)	//static
+{
+	hdcMap.Set(hdc, windowContext);
+}
+bool WindowContext::HdcRemove(HDC hdc)	//static
+{
+	return hdcMap.Remove(hdc);
+}
+bool WindowContext::HdcRemoveWindow(WindowContext* windowContext)	//static
+{
+	return hdcMap.RemoveValue(windowContext);
+}
+
+WindowContext* lastWindowContext = NULL;
+WindowContext* WindowContext::GetWindowContext(HWND hwnd)	//static
+{
+	auto result = windowMap.GetReference(hwnd);
+	if (result == NULL) return NULL;
+	//return (*result).get();
+	lastWindowContext = (*result).get();
+	return lastWindowContext;
+}
+WindowContext* WindowContext::GetWindowContext()	//static
+{
+	return lastWindowContext;
+	//auto result = windowMap.GetMostRecentValue();
+	//if (result == NULL) return NULL;
+	//return (*result).get();
+}
+WindowContext* WindowContext::CreateNewWindowContext(HWND hwnd)	//static
+{
+	windowMap.Set(hwnd, std::make_unique<WindowContext>());
+	WindowContext* windowContext = GetWindowContext(hwnd);
+	windowContext->Init(hwnd);
+	return windowContext;
+}
+bool WindowContext::DeleteWindowContext(HWND hwnd)	//static
+{
+	return windowMap.Remove(hwnd);
+}
+bool WindowContext::WindowContextExists(HWND hwnd)	//static
+{
+	return windowMap.ContainsKey(hwnd);
 }
 
 /*
@@ -618,6 +633,20 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 HDC WindowContext::GetDC_()
 {
+#if REDRAW_AFTER_GETDC
+	CompleteDraw();
+#endif
+	if (this->realDC == NULL)
+	{
+		this->realDC = ::GetDC(window);
+		HdcAdd(this->realDC, this);
+	}
+
+
+	return this->realDC;
+/*
+
+
 	HRESULT hr;
 	int result;
 	BOOL okay;
@@ -641,14 +670,14 @@ HDC WindowContext::GetDC_()
 	if (useRealDc)
 	{
 		this->realDC = GetDC(window);
-		HdcAddRef(this->realDC, this);
+		HdcAdd(this->realDC, this);
 		return this->realDC;
 	}
 
 	//Do we already have a DC?
 	if (this->d3dDC != NULL)
 	{
-		HdcAddRef(this->d3dDC, this);
+		HdcAdd(this->d3dDC, this);
 #if REDRAW_AFTER_GETDC
 		//release DC, then proceed to rest of GetDC code
 		ReleaseDC_(this->d3dDC);
@@ -672,7 +701,7 @@ HDC WindowContext::GetDC_()
 	if (d3d9Context.textureSurface != NULL)
 	{
 		hr = d3d9Context.textureSurface->GetDC(&this->d3dDC);
-		HdcAddRef(this->d3dDC, this);
+		HdcAdd(this->d3dDC, this);
 #if PAINT_USE_CLIP_BOX
 		result = SelectClipRgn(this->d3dDC, NULL);
 #endif
@@ -681,21 +710,29 @@ HDC WindowContext::GetDC_()
 	else
 	{
 		this->realDC= ::GetDC(window);
-		HdcAddRef(this->realDC, this);
+		HdcAdd(this->realDC, this);
 		return this->realDC;
 	}
+	*/
 }
 
 int WindowContext::ReleaseDC_()
 {
-	HDC hdc = this->d3dDC;
-	if (hdc == NULL) hdc = this->realDC;
-	if (hdc == NULL) hdc = this->paintDc;
-	return ReleaseDC_(hdc);
+	CompleteDraw();
+	return true;
+
+	//HDC hdc = this->d3dDC;
+	//if (hdc == NULL) hdc = this->realDC;
+	//if (hdc == NULL) hdc = this->paintDC;
+	//return ReleaseDC_(hdc);
 }
 
 int WindowContext::ReleaseDC_(HDC hdcToRelease)
 {
+	CompleteDraw();
+	return true;
+
+	/*
 	int result;
 #if PAINT_USE_CLIP_BOX
 	result = SelectClipRgn(hdcToRelease, NULL);
@@ -740,6 +777,63 @@ int WindowContext::ReleaseDC_(HDC hdcToRelease)
 		Redraw();
 	}
 	return result;
+	*/
+}
+
+bool WindowContext::CompleteDraw()
+{
+	if (this->parentWindowContext != NULL)
+	{
+		return this->parentWindowContext->CompleteDraw();
+	}
+	if (this->d3dDC == NULL) return true;
+	HRESULT hr = 0;
+	int result = 0;
+	bool okay = true;
+	if (d3d9Context.textureSurface != NULL)
+	{
+		#if PAINT_USE_CLIP_BOX
+		result = SelectClipRgn(this->d3dDC, NULL);
+		result = SetViewportOrgEx(this->d3dDC, 0, 0, NULL);
+		#endif
+		this->lastDC = NULL;
+		hr = d3d9Context.textureSurface->ReleaseDC(this->d3dDC);
+		okay &= !SUCCEEDED(hr);
+		//int refCount = HdcRemove(this->d3dDC);
+		this->d3dDC = NULL;
+		//Do we want to sleep 1 here or not?  Would fix old programs that have no CPU speed control
+		//Sleep(1);
+		okay &= Redraw();
+	}
+	return okay;
+}
+
+HDC WindowContext::GetD3DDC()
+{
+	if (this->parentWindowContext != NULL)
+	{
+		return this->parentWindowContext->GetD3DDC();
+	}
+	if (this->d3dDC != NULL) return this->d3dDC;
+	HRESULT hr = 0;
+	int result = 0;
+	//Create Direct3D if it's not ready
+	if (d3d9Context.backBuffer == NULL)
+	{
+		d3d9Context.CreateD3D9(window);
+		upscaler.SetSourceTexture(d3d9Context.texture);
+	}
+	//Get DC from Direct3D
+	if (d3d9Context.textureSurface != NULL)
+	{
+		hr = d3d9Context.textureSurface->GetDC(&this->d3dDC);
+		//HdcAdd(this->d3dDC, this);
+#if PAINT_USE_CLIP_BOX
+		result = SelectClipRgn(this->d3dDC, NULL);
+#endif
+		return this->d3dDC;
+	}
+	return NULL;
 }
 
 bool WindowContext::Redraw()
@@ -1522,13 +1616,26 @@ BOOL WindowContext::ValidateRect_(LPCRECT rect) //rect in virtual coordinates
 
 HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 {
-	if (lpPaintStruct == NULL)
+	if (lpPaintStruct == NULL) return NULL;
+	HDC oldPaintDC = this->paintDC;
+	this->paintDC = BeginPaint(window, lpPaintStruct);
+	this->paintClipRectReal = lpPaintStruct->rcPaint;
+	UpdateRectClientToVirtual(&(lpPaintStruct->rcPaint));
+	this->paintClipRectVirtual = lpPaintStruct->rcPaint;
+
+	if (oldPaintDC != this->paintDC)
 	{
-		return NULL;
+		HdcAdd(this->paintDC, this);
 	}
+#if REDRAW_AFTER_GETDC
+	CompleteDraw();
+#endif
+	return this->paintDC;
+/*
+	
 	BOOL okay = true;
 	int result = 0;
-	paintDc = BeginPaint(window, lpPaintStruct);
+	paintDC = BeginPaint(window, lpPaintStruct);
 	lpPaintStruct->hdc = GetDC_();
 	UpdateRectClientToVirtual(&(lpPaintStruct->rcPaint));
 #if PAINT_USE_CLIP_BOX
@@ -1545,10 +1652,19 @@ HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 	okay = DeleteObject(clipRegion);
 #endif
 	return lpPaintStruct->hdc;
+*/
 }
 
 BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 {
+	if (lpPaintStruct == NULL) return false;
+	BOOL okay = true;
+	PAINTSTRUCT paintStructCopy = *lpPaintStruct;
+	UpdateRectVirtualToClient(&(paintStructCopy.rcPaint));
+	okay = EndPaint(window, &paintStructCopy);
+	CompleteDraw();
+	return okay;
+	/*
 	BOOL okay = true;
 	int result = 0;
 	if (lpPaintStruct != NULL)
@@ -1558,15 +1674,16 @@ BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 		result = SelectClipRgn(localDc, NULL);
 #endif
 		PAINTSTRUCT paintStructCopy = *lpPaintStruct;
-		paintStructCopy.hdc = paintDc;
+		paintStructCopy.hdc = paintDC;
 		//okay = ValidateRect_(&(paintStructCopy.rcPaint));
 		UpdateRectVirtualToClient(&(paintStructCopy.rcPaint));
 		okay = EndPaint(window, &paintStructCopy);
 		okay &= ReleaseDC_(localDc);
-		paintDc = NULL;
+		paintDC = NULL;
 		return okay;
 	}
 	return false;
+	*/
 }
 
 BOOL WindowContext::GetWindowPlacement_(WINDOWPLACEMENT* windowPlacement)
@@ -1696,10 +1813,84 @@ void WindowContext::GetRealNonClientArea(int& extraLeft, int& extraTop, int& ext
 
 HDC WindowContext::GetCurrentDC(HDC inputDC)
 {
-	if (this->d3dDC != NULL)
+	HDC d3dDC = GetD3DDC();
+	if (d3dDC == NULL) return inputDC;
+
+	bool hasParent = this->parentWindowContext != NULL;
+
+	HDC& lastDC = GetLastDC();
+	if (lastDC == inputDC)
 	{
-		return this->d3dDC;
+		return d3dDC;
 	}
-	if (inputDC == realDC) return realDC;
-	return GetDC_();
+	lastDC = inputDC;
+	//RECT clipRect;// = VirtualClientRect;
+	if (inputDC == paintDC)
+	{
+		if (hasParent)
+		{
+			//set clip rect to Paint's clip rectangle (moved into client bounds within parent)
+			#if PAINT_USE_CLIP_BOX
+			RECT clipRect = this->paintClipRectVirtual;
+			clipRect.left += VirtualClientBounds.left;
+			clipRect.top += VirtualClientBounds.top;
+			clipRect.right += VirtualClientBounds.left;
+			clipRect.bottom += VirtualClientBounds.top;
+			#endif
+			SetClipRect(d3dDC, &clipRect);
+			//set origin to upper-left corner of client bound within parent
+			SetViewportOrgEx(d3dDC, VirtualClientBounds.left, VirtualClientBounds.top, NULL);
+		}
+		else
+		{
+			//set clip rect to Paint's clip rectangle
+			#if PAINT_USE_CLIP_BOX
+			SetClipRect(d3dDC, &this->paintClipRectVirtual);
+			#endif
+			//set origin to 0,0
+			SetViewportOrgEx(d3dDC, 0, 0, NULL);
+		}
+	}
+	else
+	{
+		if (hasParent)
+		{
+			//set clip rect to client bounds within parent
+			#if PAINT_USE_CLIP_BOX
+			SetClipRect(d3dDC, &VirtualClientBounds);
+			#endif
+			//set origin to upper-left corner of client bounds within parent
+			SetViewportOrgEx(d3dDC, VirtualClientBounds.left, VirtualClientBounds.top, NULL);
+		}
+		else
+		{
+			//set clip rect to entire window client area
+			#if PAINT_USE_CLIP_BOX
+			SetClipRect(d3dDC, &VirtualClientRect);
+			#endif
+			//set origin to 0,0
+			SetViewportOrgEx(d3dDC, 0, 0, NULL);
+		}
+	}
+	return d3dDC;
+}
+
+HDC& WindowContext::GetLastDC()
+{
+	if (this->parentWindowContext != NULL)
+	{
+		return this->parentWindowContext->GetLastDC();
+	}
+	else
+	{
+		return this->lastDC;
+	}
+}
+
+int WindowContext::SetClipRect(HDC hdc, const RECT* clipRect) //static
+{
+	HRGN clipRgn = CreateRectRgnIndirect(clipRect);
+	int result = SelectClipRgn(hdc, clipRgn);
+	DeleteObject(clipRgn);
+	return result;
 }

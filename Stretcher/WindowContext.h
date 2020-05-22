@@ -14,11 +14,11 @@ using std::wstring;
 #include <string.h>
 #include "CUpscaler.h"
 #include "TinyMap.h"
-#include "HDCMap.h"
+//#include "HDCMap.h"
 
 class WindowContext;
-extern TinyMap<HWND, std::unique_ptr<WindowContext>> windowMap;
-extern HDCMap hdcMap;
+//extern TinyMap<HWND, std::unique_ptr<WindowContext>> windowMap;
+//extern TinyMap<HDC, WindowContext*> hdcMap;
 
 static inline bool operator==(const RECT& rect1, const RECT& rect2)
 {
@@ -95,9 +95,13 @@ class WindowContext
 	float Scale{};
 	int XOffset, YOffset;
 	int LeftPadding, TopPadding, BottomPadding, RightPadding;
-	HDC paintDc;
+	HDC paintDC;
 	HDC realDC;
+	HDC lastDC;
 	HDC d3dDC;
+
+	RECT paintClipRectReal;
+	RECT paintClipRectVirtual;
 
 	//int hdcRefCount;
 	Region dirtyRegion;
@@ -121,7 +125,7 @@ public:
 
 	WindowContext() :
 		Scale(1.0f),
-		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), d3dDC(), paintDc(),
+		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), d3dDC(), paintDC(),
 		LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
 		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
 		ResizeHandler(), MovingWindow(), realDC(),
@@ -135,8 +139,9 @@ public:
 
 	static WindowContext* Get(HWND hwnd);
 	static WindowContext* GetByHdc(HDC hdc);
-	static int HdcAddRef(HDC hdc, WindowContext* windowContext);
-	static int HdcSubtractRef(HDC hdc);
+	static void HdcAdd(HDC hdc, WindowContext* windowContext);
+	static bool HdcRemove(HDC hdc);
+	static bool HdcRemoveWindow(WindowContext* windowContext);
 	static WindowContext* GetWindowContext(HWND hwnd);
 	static WindowContext* GetWindowContext();
 	static bool TryHookWindow(HWND hwnd);
@@ -175,6 +180,8 @@ public:
 	int ReleaseDC_(HDC hdcToRelease);
 	int ReleaseDC_();
 
+	bool CompleteDraw();	//TODO
+	HDC GetD3DDC();	//TODO
 	bool Redraw();	//TODO
 
 	void AddDirtyRect(const RECT &rect);
@@ -232,4 +239,7 @@ public:
 	void GetRealNonClientArea(int& left, int& top, int& right, int& bottom) const;
 
 	HDC GetCurrentDC(HDC inputDC);
+	HDC& GetLastDC();
+
+	static int SetClipRect(HDC hdc, const RECT* rect);
 };

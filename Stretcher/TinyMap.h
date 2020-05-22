@@ -14,6 +14,89 @@ using std::swap;
 using std::unordered_map;
 
 template <class TKey, class TValue>
+class HashMap
+{
+	unordered_map<TKey, TValue> map;
+public:
+	bool ContainsKey(const TKey& key) const
+	{
+		return map.find(key) != map.end();
+	}
+	bool ContainsValue(const TValue& value) const
+	{
+		for (auto iterator = map.begin(); iterator != map.end(); iterator++)
+		{
+			if (iterator->second == value) return true;
+		}
+		return false;
+	}
+	TValue& Set(const TKey& key, TValue&& value)
+	{
+		auto iteratorAndBool = map.emplace(key, std::forward<TValue>(value));
+		bool wasInserted = iteratorAndBool.second;
+		auto iterator = iteratorAndBool.first;
+		auto& pair = *iterator;
+		if (!wasInserted)
+		{
+			pair.second = std::forward<TValue>(value);
+		}
+		return pair.second;
+	}
+	TValue& Set(const TKey& key, const TValue& value)
+	{
+		auto iteratorAndBool = map.emplace(key, value);
+		bool wasInserted = iteratorAndBool.second;
+		auto iterator = iteratorAndBool.first;
+		auto& pair = *iterator;
+		if (!wasInserted)
+		{
+			pair.second = value;
+		}
+		return pair.second;
+	}
+	bool Remove(const TKey& key)
+	{
+		return 0 != map.erase(key);
+	}
+	bool RemoveValue(const TValue& value)
+	{
+		bool anythingRemoved = false;
+		auto iterator = map.begin();
+		while (iterator != map.end())
+		{
+			if (iterator->second == value)
+			{
+				anythingRemoved = true;
+				iterator = map.erase(iterator);
+			}
+			else
+			{
+				iterator++;
+			}
+		}
+		return anythingRemoved;
+	}
+	TValue* GetReference(const TKey& key)
+	{
+		auto found = map.find(key);
+		if (found == map.end()) return NULL;
+		return &found->second;
+	}
+	const TValue* GetReference(const TKey& key) const
+	{
+		auto found = map.find(key);
+		if (found == map.end()) return NULL;
+		return &found->second;
+	}
+	TValue Get(const TKey& key)
+	{
+		auto found = map.find(key);
+		if (found == map.end()) return TValue();
+		return found->second;
+	}
+};
+
+template <class TKey, class TValue>
 class VectorMap
 {
 	vector<pair<TKey, TValue>> vec;
@@ -35,7 +118,6 @@ private:
 		return -1;
 	}
 public:
-	VectorMap() { }
 	bool ContainsKey(const TKey& key) const
 	{
 		return Find(key) != -1;
@@ -44,42 +126,32 @@ public:
 	{
 		return FindValue(value) != -1;
 	}
-	bool Add(const TKey& key, TValue value)
-	{
-		if (ContainsKey(key)) return false;
-		vec.push_back(make_pair(key, value));
-		return true;
-	}
-	pair<TKey, TValue> & Emplace(const TKey& key, TValue&& value)
+	TValue& Set(const TKey& key, TValue&& value)
 	{
 		int index = Find(key);
-		if (index != 0)
+		if (index != -1)
 		{
-			std::swap(vec[index].second, value);
-			return vec[index];
+			vec[index].second = std::forward<TValue>(value);
+			return vec[index].second;
 		}
 		else
 		{
 			vec.emplace_back(make_pair(key, std::forward<TValue>(value)));
-			return vec[vec.size() - 1];
+			return vec[vec.size() - 1].second;
 		}
 	}
-
-	pair<TKey, TValue> &AddDefault(const TKey& key)
-	{
-		return Emplace(key, TValue());
-	}
-
-	void Set(const TKey& key, TValue value)
+	TValue& Set(const TKey& key, const TValue& value)
 	{
 		int index = Find(key);
-		if (index >= 0)
+		if (index != -1)
 		{
-			vec[index].second = value;
+			vec[index] = make_pair(key, value);
+			return vec[index].second;
 		}
 		else
 		{
-			vec.push_back(make_pair(key, value));
+			vec.emplace_back(make_pair(key, value));
+			return vec[vec.size() - 1].second;
 		}
 	}
 
@@ -89,6 +161,20 @@ public:
 		if (index == -1) return false;
 		vec.erase(vec.begin() + index, vec.begin() + index + 1);
 		return true;
+	}
+
+	bool RemoveValue(const TValue& value)
+	{
+		bool anythingRemoved = false;
+		for (size_t i = 0; i < vec.size(); i++)
+		{
+			if (vec[i].second == value)
+			{
+				vec.erase(vec.begin() + i, vec.begin() + i + 1);
+				i--;
+			}
+		}
+		return anythingRemoved;
 	}
 
 	TValue Get(const TKey& key) const
@@ -110,6 +196,203 @@ public:
 		int index = Find(key);
 		if (index == -1) return NULL;
 		return &vec[index].second;
+	}
+};
+
+template <class TKey, class TValue, class TMap>
+class CachedMap
+{
+	TMap map;
+	mutable TKey mostRecentKey;
+	mutable TValue* pMostRecentValue;
+public:
+	bool ContainsKey(const TKey& key) const
+	{
+		if (pMostRecentValue != NULL && mostRecentKey == key) return true;
+		pMostRecentValue = const_cast<TValue*>(map.GetReference(key));
+		mostRecentKey = key;
+		return pMostRecentValue != NULL;
+	}
+
+	bool ContainsValue(const TValue& value) const
+	{
+		if (pMostRecentValue != NULL && *pMostRecentValue == value) return true;
+		return map.ContainsValue(value);
+	}
+
+	TValue& Set(const TKey& key, TValue&& value)
+	{
+		TValue& result = map.Set(key, std::forward<TValue>(value));
+		mostRecentKey = key;
+		pMostRecentValue = &result;
+		return result;
+	}
+
+	TValue& Set(const TKey& key, const TValue& value)
+	{
+		TValue& result = map.Set(key, value);
+		mostRecentKey = key;
+		pMostRecentValue = &result;
+		return result;
+	}
+
+	bool Remove(const TKey& key)
+	{
+		if (mostRecentKey == key)
+		{
+			mostRecentKey = TKey();
+			pMostRecentValue = NULL;
+		}
+		return map.Remove(key);
+	}
+
+	bool RemoveValue(const TValue& value)
+	{
+		if (pMostRecentValue != NULL && *pMostRecentValue == value)
+		{
+			pMostRecentValue = NULL;
+		}
+		return map.RemoveValue(value);
+	}
+
+	TValue Get(const TKey& key)
+	{
+		if (ContainsKey(key)) return *pMostRecentValue;
+		return TValue();
+	}
+
+	TValue* GetReference(const TKey& key)
+	{
+		ContainsKey(key);
+		return pMostRecentValue;
+	}
+
+	TValue* GetMostRecentValue()
+	{
+		if (pMostRecentValue != NULL) return pMostRecentValue;
+		return NULL;
+	}
+};
+
+template <class TKey, class TValue>
+class CachedVectorMap : public CachedMap<TKey, TValue, VectorMap<TKey, TValue>> {};
+template <class TKey, class TValue>
+class CachedHashMap : public CachedMap<TKey, TValue, HashMap<TKey, TValue>> {};
+
+
+//template <class TKey, class TValue>
+//typedef CachedMap<TKey, TValue, VectorMap<TKey, TValue>> CachedVectorMap;
+
+//template <class TKey, class TValue>
+//typedef CachedMap<TKey, TValue, VectorMap<TKey, TValue>> CachedHashMap;
+
+
+/*
+template <class TKey, class TValue, class TMap>
+class CachedMap
+{
+	TMap map;
+	mutable TKey mostRecentKey;
+	mutable TValue* pMostRecentValue;
+public:
+	bool ContainsKey(const TKey& key)
+	{
+		if (pMostRecentValue != NULL && mostRecentKey == key) return true;
+		return map.ContainsKey(key);
+	}
+
+	bool ContainsValue(const TValue& value)
+	{
+		if (pMostRecentValue != NULL && *pMostRecentValue == value) return true;
+		return map.ContainsValue(value);
+	}
+
+	bool Add(const TKey& key, TValue value)
+	{
+		if (ContainsKey(key)) return false;
+		Set(key, value);
+		return true;
+	}
+
+	bool Emplace(const TKey& key, TValue&& value)
+	{
+		if (ContainsKey(key)) return false;
+		auto &newItem = map.Emplace(key, std::forward<TValue>(value));
+		mostRecentKey = newItem.first;
+		pMostRecentValue = &newItem.second;
+		return true;
+	}
+
+	bool AddDefault(const TKey& key)
+	{
+		return Emplace(key, TValue());
+	}
+
+	void Set(const TKey& key, TValue value)
+	{
+		std::pair<unordered_map<TKey, TValue>::iterator, bool> newItem = map.emplace(key, std::forward<TValue>(value));
+		mostRecentKey = newItem.first->first;
+		pMostRecentValue = &newItem.first->second;
+	}
+
+	bool Remove(const TKey& key)
+	{
+		if (mostRecentKey == key)
+		{
+			map.erase(key);
+			mostRecentKey = TKey();
+			pMostRecentValue = NULL;
+			return true;
+		}
+		return map.erase(key) > 0;
+	}
+
+	bool RemoveValue(const TValue& value)
+	{
+		bool anythingRemoved = false;
+		auto iterator = map.begin();
+		while (iterator != map.end())
+		{
+			if (iterator->second == value)
+			{
+				anythingRemoved = true;
+				iterator = map.erase(iterator);
+			}
+			else
+			{
+				iterator++;
+			}
+		}
+		if (anythingRemoved)
+		{
+			mostRecentKey = TKey();
+			pMostRecentValue = NULL;
+		}
+		return anythingRemoved;
+	}
+
+	TValue Get(const TKey& key)
+	{
+		if (ContainsKey(key)) return *pMostRecentValue;
+		return TValue();
+	}
+
+	TValue* GetReference(const TKey& key)
+	{
+		if (ContainsKey(key)) return pMostRecentValue;
+		return NULL;
+	}
+
+	TValue* GetMostRecentValue()
+	{
+		if (pMostRecentValue != NULL) return pMostRecentValue;
+		auto iterator = map.begin();
+		if (iterator != map.end())
+		{
+			pMostRecentValue = &iterator->second;
+			return pMostRecentValue;
+		}
+		return NULL;
 	}
 };
 
@@ -180,9 +463,9 @@ public:
 
 	void Set(const TKey &key, TValue value)
 	{
-		TValue &valueRef = map[key] = value;
-		mostRecentKey = key;
-		pMostRecentValue = &valueRef;
+		std::pair<unordered_map<TKey, TValue>::iterator, bool> newItem = map.emplace(key, std::forward<TValue>(value));
+		mostRecentKey = newItem.first->first;
+		pMostRecentValue = &newItem.first->second;
 	}
 
 	bool Remove(const TKey& key)
@@ -195,6 +478,30 @@ public:
 			return true;
 		}
 		return map.erase(key) > 0;
+	}
+
+	bool RemoveValue(const TValue& value)
+	{
+		bool anythingRemoved = false;
+		auto iterator = map.begin();
+		while (iterator != map.end())
+		{
+			if (iterator->second == value)
+			{
+				anythingRemoved = true;
+				iterator = map.erase(iterator);
+			}
+			else
+			{
+				iterator++;
+			}
+		}
+		if (anythingRemoved)
+		{
+			mostRecentKey = TKey();
+			pMostRecentValue = NULL;
+		}
+		return anythingRemoved;
 	}
 
 	TValue Get(const TKey& key)
@@ -220,7 +527,14 @@ public:
 		}
 		return NULL;
 	}
-};
+
+	/*
+	unordered_map<TKey, TValue>& UnsafeGetInnerMap()
+	{
+		return this->map;
+	}
+	*/
+//};
 
 /*
 
