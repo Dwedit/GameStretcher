@@ -176,7 +176,10 @@
     <ClCompile Include="Region.cpp" />
     <ClCompile Include="StringUtil.cpp" />
     <ClCompile Include="WinApiWrappers.cpp" />
-    <ClCompile Include="WinApiWrappers_AllGDI.cpp" />
+    <ClCompile Include="WinApiWrappers_AllGDI.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MinSpace</Optimization>
+      <FavorSizeOrSpeed Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Size</FavorSizeOrSpeed>
+    </ClCompile>
     <ClCompile Include="WindowClassContext.cpp" />
     <ClCompile Include="WindowContext.cpp" />
   </ItemGroup>

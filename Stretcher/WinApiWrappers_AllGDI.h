@@ -253,6 +253,31 @@ typedef int(WINAPI* wglSetLayerPaletteEntries_FUNC)(HDC hdc, int _arg2, int _arg
 typedef int(WINAPI* wglGetLayerPaletteEntries_FUNC)(HDC hdc, int _arg2, int _arg3, int _arg4, COLORREF*);
 typedef BOOL(WINAPI* wglRealizeLayerPalette_FUNC)(HDC hdc, int _arg2, BOOL _arg3);
 typedef BOOL(WINAPI* wglSwapLayerBuffers_FUNC)(HDC hdc, UINT _arg2);
+//From User32:
+typedef BOOL(WINAPI* DrawEdge_FUNC)(HDC hdc, LPRECT qrc, UINT edge, UINT grfFlags);
+typedef BOOL(WINAPI* DrawFrameControl_FUNC)(HDC hdc, LPRECT _arg2, UINT _arg3, UINT _arg4);
+typedef BOOL(WINAPI* DrawCaption_FUNC)(HWND hwnd, HDC hdc, CONST RECT* lprect, UINT flags);
+typedef BOOL(WINAPI* DrawIcon_FUNC)(HDC hDC, int X, int Y, HICON hIcon);
+typedef int(WINAPI* DrawTextA_FUNC)(HDC hdc, LPCSTR lpchText, int cchText, LPRECT lprc, UINT format);
+typedef int(WINAPI* DrawTextW_FUNC)(HDC hdc, LPCWSTR lpchText, int cchText, LPRECT lprc, UINT format);
+typedef int(WINAPI* DrawTextExA_FUNC)(HDC hdc, LPSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp);
+typedef int(WINAPI* DrawTextExW_FUNC)(HDC hdc, LPWSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp);
+typedef BOOL(WINAPI* GrayStringA_FUNC)(HDC hDC, HBRUSH hBrush, GRAYSTRINGPROC lpOutputFunc, LPARAM lpData, int nCount, int X, int Y, int nWidth, int nHeight);
+typedef BOOL(WINAPI* GrayStringW_FUNC)(HDC hDC, HBRUSH hBrush, GRAYSTRINGPROC lpOutputFunc, LPARAM lpData, int nCount, int X, int Y, int nWidth, int nHeight);
+typedef BOOL(WINAPI* DrawStateA_FUNC)(HDC hdc, HBRUSH hbrFore, DRAWSTATEPROC qfnCallBack, LPARAM lData, WPARAM wData, int x, int y, int cx, int cy, UINT uFlags);
+typedef BOOL(WINAPI* DrawStateW_FUNC)(HDC hdc, HBRUSH hbrFore, DRAWSTATEPROC qfnCallBack, LPARAM lData, WPARAM wData, int x, int y, int cx, int cy, UINT uFlags);
+typedef LONG(WINAPI* TabbedTextOutA_FUNC)(HDC hdc, int x, int y, LPCSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions, int nTabOrigin);
+typedef LONG(WINAPI* TabbedTextOutW_FUNC)(HDC hdc, int x, int y, LPCWSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions, int nTabOrigin);
+typedef DWORD(WINAPI* GetTabbedTextExtentA_FUNC)(HDC hdc, LPCSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions);
+typedef DWORD(WINAPI* GetTabbedTextExtentW_FUNC)(HDC hdc, LPCWSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions);
+typedef BOOL(WINAPI* PaintDesktop_FUNC)(HDC hdc);
+typedef int(WINAPI* ExcludeUpdateRgn_FUNC)(HDC hDC, HWND hWnd);
+typedef BOOL(WINAPI* ScrollDC_FUNC)(HDC hDC, int dx, int dy, CONST RECT* lprcScroll, CONST RECT* lprcClip, HRGN hrgnUpdate, LPRECT lprcUpdate);
+typedef BOOL(WINAPI* DrawFocusRect_FUNC)(HDC hDC, CONST RECT* lprc);
+typedef int(WINAPI* FillRect_FUNC)(HDC hDC, CONST RECT* lprc, HBRUSH hbr);
+typedef int(WINAPI* FrameRect_FUNC)(HDC hDC, CONST RECT* lprc, HBRUSH hbr);
+typedef BOOL(WINAPI* InvertRect_FUNC)(HDC hDC, CONST RECT* lprc);
+typedef BOOL(WINAPI* DrawIconEx_FUNC)(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur, HBRUSH hbrFlickerFreeDraw, UINT diFlags);
 
 //Import Backups (Declarations)
 extern Arc_FUNC Arc_OLD;
@@ -503,6 +528,31 @@ extern wglSetLayerPaletteEntries_FUNC wglSetLayerPaletteEntries_OLD;
 extern wglGetLayerPaletteEntries_FUNC wglGetLayerPaletteEntries_OLD;
 extern wglRealizeLayerPalette_FUNC wglRealizeLayerPalette_OLD;
 extern wglSwapLayerBuffers_FUNC wglSwapLayerBuffers_OLD;
+//from User32:
+extern DrawEdge_FUNC DrawEdge_OLD;
+extern DrawFrameControl_FUNC DrawFrameControl_OLD;
+extern DrawCaption_FUNC DrawCaption_OLD;
+extern DrawIcon_FUNC DrawIcon_OLD;
+extern DrawTextA_FUNC DrawTextA_OLD;
+extern DrawTextW_FUNC DrawTextW_OLD;
+extern DrawTextExA_FUNC DrawTextExA_OLD;
+extern DrawTextExW_FUNC DrawTextExW_OLD;
+extern GrayStringA_FUNC GrayStringA_OLD;
+extern GrayStringW_FUNC GrayStringW_OLD;
+extern DrawStateA_FUNC DrawStateA_OLD;
+extern DrawStateW_FUNC DrawStateW_OLD;
+extern TabbedTextOutA_FUNC TabbedTextOutA_OLD;
+extern TabbedTextOutW_FUNC TabbedTextOutW_OLD;
+extern GetTabbedTextExtentA_FUNC GetTabbedTextExtentA_OLD;
+extern GetTabbedTextExtentW_FUNC GetTabbedTextExtentW_OLD;
+extern PaintDesktop_FUNC PaintDesktop_OLD;
+extern ExcludeUpdateRgn_FUNC ExcludeUpdateRgn_OLD;
+extern ScrollDC_FUNC ScrollDC_OLD;
+extern DrawFocusRect_FUNC DrawFocusRect_OLD;
+extern FillRect_FUNC FillRect_OLD;
+extern FrameRect_FUNC FrameRect_OLD;
+extern InvertRect_FUNC InvertRect_OLD;
+extern DrawIconEx_FUNC DrawIconEx_OLD;
 
 //Replacement Functions (Declarations)
 BOOL WINAPI Arc_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4);
@@ -753,3 +803,28 @@ int WINAPI wglSetLayerPaletteEntries_Replacement(HDC hdc, int _arg2, int _arg3, 
 int WINAPI wglGetLayerPaletteEntries_Replacement(HDC hdc, int _arg2, int _arg3, int _arg4, COLORREF*);
 BOOL WINAPI wglRealizeLayerPalette_Replacement(HDC hdc, int _arg2, BOOL _arg3);
 BOOL WINAPI wglSwapLayerBuffers_Replacement(HDC hdc, UINT _arg2);
+//from User32
+BOOL WINAPI DrawEdge_Replacement(HDC hdc, LPRECT qrc, UINT edge, UINT grfFlags);
+BOOL WINAPI DrawFrameControl_Replacement(HDC hdc, LPRECT _arg2, UINT _arg3, UINT _arg4);
+BOOL WINAPI DrawCaption_Replacement(HWND hwnd, HDC hdc, CONST RECT* lprect, UINT flags);
+BOOL WINAPI DrawIcon_Replacement(HDC hDC, int X, int Y, HICON hIcon);
+int WINAPI DrawTextA_Replacement(HDC hdc, LPCSTR lpchText, int cchText, LPRECT lprc, UINT format);
+int WINAPI DrawTextW_Replacement(HDC hdc, LPCWSTR lpchText, int cchText, LPRECT lprc, UINT format);
+int WINAPI DrawTextExA_Replacement(HDC hdc, LPSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp);
+int WINAPI DrawTextExW_Replacement(HDC hdc, LPWSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp);
+BOOL WINAPI GrayStringA_Replacement(HDC hDC, HBRUSH hBrush, GRAYSTRINGPROC lpOutputFunc, LPARAM lpData, int nCount, int X, int Y, int nWidth, int nHeight);
+BOOL WINAPI GrayStringW_Replacement(HDC hDC, HBRUSH hBrush, GRAYSTRINGPROC lpOutputFunc, LPARAM lpData, int nCount, int X, int Y, int nWidth, int nHeight);
+BOOL WINAPI DrawStateA_Replacement(HDC hdc, HBRUSH hbrFore, DRAWSTATEPROC qfnCallBack, LPARAM lData, WPARAM wData, int x, int y, int cx, int cy, UINT uFlags);
+BOOL WINAPI DrawStateW_Replacement(HDC hdc, HBRUSH hbrFore, DRAWSTATEPROC qfnCallBack, LPARAM lData, WPARAM wData, int x, int y, int cx, int cy, UINT uFlags);
+LONG WINAPI TabbedTextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions, int nTabOrigin);
+LONG WINAPI TabbedTextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions, int nTabOrigin);
+DWORD WINAPI GetTabbedTextExtentA_Replacement(HDC hdc, LPCSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions);
+DWORD WINAPI GetTabbedTextExtentW_Replacement(HDC hdc, LPCWSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions);
+BOOL WINAPI PaintDesktop_Replacement(HDC hdc);
+int WINAPI ExcludeUpdateRgn_Replacement(HDC hDC, HWND hWnd);
+BOOL WINAPI ScrollDC_Replacement(HDC hDC, int dx, int dy, CONST RECT* lprcScroll, CONST RECT* lprcClip, HRGN hrgnUpdate, LPRECT lprcUpdate);
+BOOL WINAPI DrawFocusRect_Replacement(HDC hDC, CONST RECT* lprc);
+int WINAPI FillRect_Replacement(HDC hDC, CONST RECT* lprc, HBRUSH hbr);
+int WINAPI FrameRect_Replacement(HDC hDC, CONST RECT* lprc, HBRUSH hbr);
+BOOL WINAPI InvertRect_Replacement(HDC hDC, CONST RECT* lprc);
+BOOL WINAPI DrawIconEx_Replacement(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur, HBRUSH hbrFlickerFreeDraw, UINT diFlags);

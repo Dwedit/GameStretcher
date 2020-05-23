@@ -57,6 +57,13 @@ typedef LRESULT(WINAPI* CallNextHookEx_FUNC)(HHOOK hhk, int nCode, WPARAM wParam
 typedef HWINEVENTHOOK(WINAPI* SetWinEventHook_FUNC)(DWORD eventMin, DWORD eventMax, HMODULE hmodWinEventProc, WINEVENTPROC pfnWinEventProc, DWORD idProcess, DWORD idThread, DWORD dwFlags);
 typedef BOOL(WINAPI* IsWinEventHookInstalled_FUNC)(DWORD event);
 typedef BOOL(WINAPI* UnhookWinEvent_FUNC)(HWINEVENTHOOK hWinEventHook);
+typedef BOOL(WINAPI* TrackPopupMenu_FUNC)(HMENU hMenu, UINT uFlags, int x, int y, int nReserved, HWND hWnd, CONST RECT* prcRect);
+typedef BOOL(WINAPI* TrackPopupMenuEx_FUNC)(HMENU hMenu, UINT uFlags, int x, int y, HWND hwnd, LPTPMPARAMS lptpm);
+typedef HDC(WINAPI* GetDCEx_FUNC)(HWND hWnd, HRGN hrgnClip, DWORD flags);
+typedef BOOL(WINAPI* GetUpdateRect_FUNC)(HWND hWnd, LPRECT lpRect, BOOL bErase);
+typedef int(WINAPI* GetUpdateRgn_FUNC)(HWND hWnd, HRGN hRgn, BOOL bErase);
+typedef BOOL(WINAPI* InvalidateRgn_FUNC)(HWND hWnd, HRGN hRgn, BOOL bErase);
+typedef BOOL(WINAPI* RedrawWindow_FUNC)(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags);
 
 //Import Backups (Declarations)
 extern ClientToScreen_FUNC ClientToScreen_OLD;
@@ -111,6 +118,13 @@ extern CallNextHookEx_FUNC CallNextHookEx_OLD;
 extern SetWinEventHook_FUNC SetWinEventHook_OLD;
 extern IsWinEventHookInstalled_FUNC IsWinEventHookInstalled_OLD;
 extern UnhookWinEvent_FUNC UnhookWinEvent_OLD;
+extern TrackPopupMenu_FUNC TrackPopupMenu_OLD;
+extern TrackPopupMenuEx_FUNC TrackPopupMenuEx_OLD;
+extern GetDCEx_FUNC GetDCEx_OLD;
+extern GetUpdateRect_FUNC GetUpdateRect_OLD;
+extern GetUpdateRgn_FUNC GetUpdateRgn_OLD;
+extern InvalidateRgn_FUNC InvalidateRgn_OLD;
+extern RedrawWindow_FUNC RedrawWindow_OLD;
 
 //Replacement Functions (Declarations)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint);
@@ -165,5 +179,13 @@ LRESULT WINAPI CallNextHookEx_Replacement(HHOOK hhk, int nCode, WPARAM wParam, L
 HWINEVENTHOOK WINAPI SetWinEventHook_Replacement(DWORD eventMin, DWORD eventMax, HMODULE hmodWinEventProc, WINEVENTPROC pfnWinEventProc, DWORD idProcess, DWORD idThread, DWORD dwFlags);
 BOOL WINAPI IsWinEventHookInstalled_Replacement(DWORD event);
 BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook);
+BOOL WINAPI TrackPopupMenu_Replacement(HMENU hMenu, UINT uFlags, int x, int y, int nReserved, HWND hWnd, CONST RECT* prcRect);
+BOOL WINAPI TrackPopupMenuEx_Replacement(HMENU hMenu, UINT uFlags, int x, int y, HWND hwnd, LPTPMPARAMS lptpm);
+HDC WINAPI GetDCEx_Replacement(HWND hWnd, HRGN hrgnClip, DWORD flags);
+BOOL WINAPI GetUpdateRect_Replacement(HWND hWnd, LPRECT lpRect, BOOL bErase);
+int WINAPI GetUpdateRgn_Replacement(HWND hWnd, HRGN hRgn, BOOL bErase);
+BOOL WINAPI InvalidateRgn_Replacement(HWND hWnd, HRGN hRgn, BOOL bErase);
+BOOL WINAPI RedrawWindow_Replacement(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags);
+
 
 void ReplaceImports();

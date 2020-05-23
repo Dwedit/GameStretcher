@@ -479,6 +479,20 @@ HDC WindowContext::GetDC_()
 	return this->realDC;
 }
 
+HDC WindowContext::GetDCEx_(HRGN hrgnClip, DWORD flags)
+{
+	if (flags & DCX_WINDOW)
+	{
+		return ::GetDCEx(window, hrgnClip, flags);
+	}
+
+	//TODO
+	return GetDC_();
+/*
+
+*/
+}
+
 int WindowContext::ReleaseDC_()
 {
 	CompleteDraw();
@@ -726,6 +740,22 @@ bool WindowContext::TryHookWindow(HWND hwnd)
 	{
 		doHook = true;
 	}
+	DWORD threadId = 0;
+	DWORD processId = 0;
+	threadId = GetWindowThreadProcessId(hwnd, &processId);
+	if (processId != GetCurrentProcessId())
+	{
+		doHook = false;
+	}
+	{
+		char buffer[256];
+		GetClassNameA(hwnd, &buffer[0], 256);
+		if (0 == strcmp(buffer, "#32770"))
+		{
+			doHook = false;
+		}
+	}
+
 	if (doHook)
 	{
 		CreateNewWindowContext(hwnd);
@@ -1196,6 +1226,13 @@ BOOL WindowContext::GetUpdateRect_(LPRECT rect, BOOL bErase) //rect in virtual c
 	}
 	return okay;
 }
+int WindowContext::GetUpdateRgn_(HRGN hrgn, BOOL bErase) //rect in virtual coordinates
+{
+	BOOL okay;
+	int result = GetUpdateRgn(window, hrgn, bErase);
+	TransformRegionRealToVirtual(hrgn);
+	return result;
+}
 BOOL WindowContext::InvalidateRect_(LPCRECT rect, BOOL bErase) //rect in virtual coordinates
 {
 	const RECT clientRect = GetClientRect_();
@@ -1487,4 +1524,42 @@ int WindowContext::SetClipRect(HDC hdc, const RECT* clipRect) //static
 unique_lock<mutex> WindowContext::CreateLock()
 {
 	return unique_lock<mutex>(this->myMutex);
+}
+
+void WindowContext::TransformRegionVirtualToReal(HRGN hrgn) const
+{
+	if (XOffset == 0 && YOffset == 0 && Scale == 1.0f) return;
+	Region region;
+	region.AttachHrgn(hrgn);
+	region = region.ZoomAndDialate(this->Scale, 0.0f, XOffset, YOffset, XOffset, YOffset, XOffset + ScaledWidth, YOffset + ScaledHeight);
+	region.DetachHrgn();
+}
+
+HRGN WindowContext::TransformRegionVirtualToRealCopy(HRGN hrgn) const
+{
+	Region region = hrgn;
+	HRGN returnRgn = region.DetachHrgn();
+	TransformRegionVirtualToReal(returnRgn);
+	return returnRgn;
+}
+
+void WindowContext::TransformRegionRealToVirtual(HRGN hrgn) const
+{
+	if (XOffset == 0 && YOffset == 0 && Scale == 1.0f) return;
+	Region region;
+	region.AttachHrgn(hrgn);
+	if (XOffset != 0 || YOffset != 0)
+	{
+		region = region.ZoomAndDialate(1.0f, 0.0f, -XOffset, -YOffset, -65536, -65536, 65536, 65536);
+	}
+	region = region.ZoomAndDialate(1.0f / Scale, 0.0f, 0, 0, 0, 0, VirtualWidth, VirtualHeight);
+	region.DetachHrgn();
+}
+
+HRGN WindowContext::TransformRegionRealToVirtualCopy(HRGN hrgn) const
+{
+	Region region = hrgn;
+	HRGN returnRgn = region.DetachHrgn();
+	TransformRegionRealToVirtual(returnRgn);
+	return returnRgn;
 }

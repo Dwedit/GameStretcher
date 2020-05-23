@@ -67,6 +67,12 @@ void Region::AddRectangle(const RECT& rect)
 	AddRectangle(&rect);
 }
 
+void Region::AddRectangle(int x, int y, int width, int height)
+{
+	RECT rect{ x, y, x + width, y + height };
+	AddRectangle(&rect);
+}
+
 void Region::Clear()
 {
 	//Release();
@@ -128,8 +134,27 @@ Region::Region(Region&& region) noexcept
 	this->hRegion = NULL;
 	this->hRegionTemp = NULL;
 	this->isEmpty = true;
-	swap(*this, region);
+	*this = std::forward<Region>(region);
+	//swap(*this, region);
 }
+
+Region::Region(HRGN hRgn)
+{
+	this->hRegion = NULL;
+	this->hRegionTemp = NULL;
+	this->isEmpty = true;
+	*this = hRgn;
+}
+void Region::operator=(HRGN hRgn)
+{
+	isEmpty = false;
+	if (this->hRegion == NULL)
+	{
+		this->hRegion = CreateRectRgn(0, 0, 0, 0);
+	}
+	CombineRgn(this->hRegion, hRgn, NULL, RGN_COPY);
+}
+
 void Region::operator=(const Region& region)
 {
 	if (region.IsEmpty())
@@ -146,7 +171,14 @@ void Region::operator=(const Region& region)
 }
 void Region::operator=(Region&& region) noexcept
 {
-	swap(*this, region);
+	if (this->hRegion == NULL)
+	{
+		swap(*this, region);
+	}
+	else
+	{
+		*this = region;
+	}
 }
 void Region::swap(Region& region1, Region&& region2) noexcept
 {
@@ -185,6 +217,18 @@ Region Region::Union(Region&& otherRegion) const
 	Region newRegion = otherRegion;
 	newRegion.UnionWith(*this);
 	return newRegion;
+}
+HRGN Region::DetachHrgn()
+{
+	HRGN hRgn = this->hRegion;
+	this->hRegion = NULL;
+	return hRgn;
+}
+void Region::AttachHrgn(HRGN hrgn)
+{
+	Release();
+	this->hRegion = hrgn;
+	this->isEmpty = false;
 }
 
 #pragma float_control(precise, off)

@@ -149,6 +149,7 @@ public:
 	void MouseVirtualToVirtualScreen(LPPOINT lpPoint) const;
 
 	HDC GetDC_();
+	HDC GetDCEx_(HRGN hrgnClip, DWORD flags);
 	int ReleaseDC_(HDC hdcToRelease);
 	int ReleaseDC_();
 
@@ -185,9 +186,10 @@ public:
 	void UpdateRectVirtualToClient(LPRECT lpRect) const;
 	void UpdateRectClientToVirtual(LPRECT lpRect) const;
 	BOOL HasUpdateRect() const; //Returns true if an update rect exists
-	BOOL GetUpdateRect_(LPRECT rect, BOOL bErase); //rect in virtual coordinates
-	BOOL InvalidateRect_(LPCRECT rect, BOOL bErase); //rect in virtual coordinates
-	BOOL ValidateRect_(LPCRECT rect); //rect in virtual coordinates
+	BOOL GetUpdateRect_(LPRECT rect, BOOL bErase); //rect Real => Virtual coordinates
+	int GetUpdateRgn_(HRGN hrgn, BOOL bErase); //region Real => Virtual coordinates
+	BOOL InvalidateRect_(LPCRECT rect, BOOL bErase); //rect virtual => real coordinates
+	BOOL ValidateRect_(LPCRECT rect); //rect virtual => real coordinates
 
 	HDC BeginPaint_(LPPAINTSTRUCT lpPaintStruct);
 	BOOL EndPaint_(const PAINTSTRUCT *lpPaintStruct);
@@ -216,4 +218,9 @@ public:
 	static int SetClipRect(HDC hdc, const RECT* rect);
 
 	unique_lock<mutex> CreateLock();
+
+	void TransformRegionVirtualToReal(HRGN hrgn) const;
+	HRGN TransformRegionVirtualToRealCopy(HRGN hrgn) const;
+	void TransformRegionRealToVirtual(HRGN hrgn) const;
+	HRGN TransformRegionRealToVirtualCopy(HRGN hrgn) const;
 };

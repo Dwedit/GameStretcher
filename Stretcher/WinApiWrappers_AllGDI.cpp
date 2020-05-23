@@ -293,6 +293,30 @@ void ReplaceImports_AllGDI(ImportReplacer &replacer)
 	ReplaceImport("Gdi32.dll", "wglGetLayerPaletteEntries", (FARPROC)wglGetLayerPaletteEntries_Replacement, (FARPROC*)&wglGetLayerPaletteEntries_OLD);
 	ReplaceImport("Gdi32.dll", "wglRealizeLayerPalette", (FARPROC)wglRealizeLayerPalette_Replacement, (FARPROC*)&wglRealizeLayerPalette_OLD);
 	ReplaceImport("Gdi32.dll", "wglSwapLayerBuffers", (FARPROC)wglSwapLayerBuffers_Replacement, (FARPROC*)&wglSwapLayerBuffers_OLD);
+	ReplaceImport("User32.dll", "DrawEdge", (FARPROC)DrawEdge_Replacement, (FARPROC*)&DrawEdge_OLD);
+	ReplaceImport("User32.dll", "DrawFrameControl", (FARPROC)DrawFrameControl_Replacement, (FARPROC*)&DrawFrameControl_OLD);
+	ReplaceImport("User32.dll", "DrawCaption", (FARPROC)DrawCaption_Replacement, (FARPROC*)&DrawCaption_OLD);
+	ReplaceImport("User32.dll", "DrawIcon", (FARPROC)DrawIcon_Replacement, (FARPROC*)&DrawIcon_OLD);
+	ReplaceImport("User32.dll", "DrawTextA", (FARPROC)DrawTextA_Replacement, (FARPROC*)&DrawTextA_OLD);
+	ReplaceImport("User32.dll", "DrawTextW", (FARPROC)DrawTextW_Replacement, (FARPROC*)&DrawTextW_OLD);
+	ReplaceImport("User32.dll", "DrawTextExA", (FARPROC)DrawTextExA_Replacement, (FARPROC*)&DrawTextExA_OLD);
+	ReplaceImport("User32.dll", "DrawTextExW", (FARPROC)DrawTextExW_Replacement, (FARPROC*)&DrawTextExW_OLD);
+	ReplaceImport("User32.dll", "GrayStringA", (FARPROC)GrayStringA_Replacement, (FARPROC*)&GrayStringA_OLD);
+	ReplaceImport("User32.dll", "GrayStringW", (FARPROC)GrayStringW_Replacement, (FARPROC*)&GrayStringW_OLD);
+	ReplaceImport("User32.dll", "DrawStateA", (FARPROC)DrawStateA_Replacement, (FARPROC*)&DrawStateA_OLD);
+	ReplaceImport("User32.dll", "DrawStateW", (FARPROC)DrawStateW_Replacement, (FARPROC*)&DrawStateW_OLD);
+	ReplaceImport("User32.dll", "TabbedTextOutA", (FARPROC)TabbedTextOutA_Replacement, (FARPROC*)&TabbedTextOutA_OLD);
+	ReplaceImport("User32.dll", "TabbedTextOutW", (FARPROC)TabbedTextOutW_Replacement, (FARPROC*)&TabbedTextOutW_OLD);
+	ReplaceImport("User32.dll", "GetTabbedTextExtentA", (FARPROC)GetTabbedTextExtentA_Replacement, (FARPROC*)&GetTabbedTextExtentA_OLD);
+	ReplaceImport("User32.dll", "GetTabbedTextExtentW", (FARPROC)GetTabbedTextExtentW_Replacement, (FARPROC*)&GetTabbedTextExtentW_OLD);
+	ReplaceImport("User32.dll", "PaintDesktop", (FARPROC)PaintDesktop_Replacement, (FARPROC*)&PaintDesktop_OLD);
+	ReplaceImport("User32.dll", "ExcludeUpdateRgn", (FARPROC)ExcludeUpdateRgn_Replacement, (FARPROC*)&ExcludeUpdateRgn_OLD);
+	ReplaceImport("User32.dll", "ScrollDC", (FARPROC)ScrollDC_Replacement, (FARPROC*)&ScrollDC_OLD);
+	ReplaceImport("User32.dll", "DrawFocusRect", (FARPROC)DrawFocusRect_Replacement, (FARPROC*)&DrawFocusRect_OLD);
+	ReplaceImport("User32.dll", "FillRect", (FARPROC)FillRect_Replacement, (FARPROC*)&FillRect_OLD);
+	ReplaceImport("User32.dll", "FrameRect", (FARPROC)FrameRect_Replacement, (FARPROC*)&FrameRect_OLD);
+	ReplaceImport("User32.dll", "InvertRect", (FARPROC)InvertRect_Replacement, (FARPROC*)&InvertRect_OLD);
+	ReplaceImport("User32.dll", "DrawIconEx", (FARPROC)DrawIconEx_Replacement, (FARPROC*)&DrawIconEx_OLD);
 }
 
 //Import Backups (Definitions)
@@ -544,6 +568,31 @@ wglSetLayerPaletteEntries_FUNC wglSetLayerPaletteEntries_OLD = NULL;
 wglGetLayerPaletteEntries_FUNC wglGetLayerPaletteEntries_OLD = NULL;
 wglRealizeLayerPalette_FUNC wglRealizeLayerPalette_OLD = NULL;
 wglSwapLayerBuffers_FUNC wglSwapLayerBuffers_OLD = NULL;
+//from User32
+DrawEdge_FUNC DrawEdge_OLD = NULL;
+DrawFrameControl_FUNC DrawFrameControl_OLD = NULL;
+DrawCaption_FUNC DrawCaption_OLD = NULL;
+DrawIcon_FUNC DrawIcon_OLD = NULL;
+DrawTextA_FUNC DrawTextA_OLD = NULL;
+DrawTextW_FUNC DrawTextW_OLD = NULL;
+DrawTextExA_FUNC DrawTextExA_OLD = NULL;
+DrawTextExW_FUNC DrawTextExW_OLD = NULL;
+GrayStringA_FUNC GrayStringA_OLD = NULL;
+GrayStringW_FUNC GrayStringW_OLD = NULL;
+DrawStateA_FUNC DrawStateA_OLD = NULL;
+DrawStateW_FUNC DrawStateW_OLD = NULL;
+TabbedTextOutA_FUNC TabbedTextOutA_OLD = NULL;
+TabbedTextOutW_FUNC TabbedTextOutW_OLD = NULL;
+GetTabbedTextExtentA_FUNC GetTabbedTextExtentA_OLD = NULL;
+GetTabbedTextExtentW_FUNC GetTabbedTextExtentW_OLD = NULL;
+PaintDesktop_FUNC PaintDesktop_OLD = NULL;
+ExcludeUpdateRgn_FUNC ExcludeUpdateRgn_OLD = NULL;
+ScrollDC_FUNC ScrollDC_OLD = NULL;
+DrawFocusRect_FUNC DrawFocusRect_OLD = NULL;
+FillRect_FUNC FillRect_OLD = NULL;
+FrameRect_FUNC FrameRect_OLD = NULL;
+InvertRect_FUNC InvertRect_OLD = NULL;
+DrawIconEx_FUNC DrawIconEx_OLD = NULL;
 
 //Replacement Functions Code
 BOOL WINAPI Arc_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
@@ -1785,4 +1834,126 @@ BOOL WINAPI wglSwapLayerBuffers_Replacement(HDC hdc, UINT _arg2)
 {
 	auto lock = SubstituteDC(hdc);
 	return wglSwapLayerBuffers_OLD(hdc, _arg2);
+}
+//From User32
+BOOL WINAPI DrawEdge_Replacement(HDC hdc, LPRECT qrc, UINT edge, UINT grfFlags)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawEdge_OLD(hdc, qrc, edge, grfFlags);
+}
+BOOL WINAPI DrawFrameControl_Replacement(HDC hdc, LPRECT _arg2, UINT _arg3, UINT _arg4)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawFrameControl_OLD(hdc, _arg2, _arg3, _arg4);
+}
+BOOL WINAPI DrawCaption_Replacement(HWND hwnd, HDC hdc, CONST RECT* lprect, UINT flags)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawCaption_OLD(hwnd, hdc, lprect, flags);
+}
+BOOL WINAPI DrawIcon_Replacement(HDC hDC, int X, int Y, HICON hIcon)
+{
+	auto lock = SubstituteDC(hDC);
+	return DrawIcon_OLD(hDC, X, Y, hIcon);
+}
+int WINAPI DrawTextA_Replacement(HDC hdc, LPCSTR lpchText, int cchText, LPRECT lprc, UINT format)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawTextA_OLD(hdc, lpchText, cchText, lprc, format);
+}
+int WINAPI DrawTextW_Replacement(HDC hdc, LPCWSTR lpchText, int cchText, LPRECT lprc, UINT format)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawTextW_OLD(hdc, lpchText, cchText, lprc, format);
+}
+int WINAPI DrawTextExA_Replacement(HDC hdc, LPSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawTextExA_OLD(hdc, lpchText, cchText, lprc, format, lpdtp);
+}
+int WINAPI DrawTextExW_Replacement(HDC hdc, LPWSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawTextExW_OLD(hdc, lpchText, cchText, lprc, format, lpdtp);
+}
+BOOL WINAPI GrayStringA_Replacement(HDC hDC, HBRUSH hBrush, GRAYSTRINGPROC lpOutputFunc, LPARAM lpData, int nCount, int X, int Y, int nWidth, int nHeight)
+{
+	auto lock = SubstituteDC(hDC);
+	return GrayStringA_OLD(hDC, hBrush, lpOutputFunc, lpData, nCount, X, Y, nWidth, nHeight);
+}
+BOOL WINAPI GrayStringW_Replacement(HDC hDC, HBRUSH hBrush, GRAYSTRINGPROC lpOutputFunc, LPARAM lpData, int nCount, int X, int Y, int nWidth, int nHeight)
+{
+	auto lock = SubstituteDC(hDC);
+	return GrayStringW_OLD(hDC, hBrush, lpOutputFunc, lpData, nCount, X, Y, nWidth, nHeight);
+}
+BOOL WINAPI DrawStateA_Replacement(HDC hdc, HBRUSH hbrFore, DRAWSTATEPROC qfnCallBack, LPARAM lData, WPARAM wData, int x, int y, int cx, int cy, UINT uFlags)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawStateA_OLD(hdc, hbrFore, qfnCallBack, lData, wData, x, y, cx, cy, uFlags);
+}
+BOOL WINAPI DrawStateW_Replacement(HDC hdc, HBRUSH hbrFore, DRAWSTATEPROC qfnCallBack, LPARAM lData, WPARAM wData, int x, int y, int cx, int cy, UINT uFlags)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawStateW_OLD(hdc, hbrFore, qfnCallBack, lData, wData, x, y, cx, cy, uFlags);
+}
+LONG WINAPI TabbedTextOutA_Replacement(HDC hdc, int x, int y, LPCSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions, int nTabOrigin)
+{
+	auto lock = SubstituteDC(hdc);
+	return TabbedTextOutA_OLD(hdc, x, y, lpString, chCount, nTabPositions, lpnTabStopPositions, nTabOrigin);
+}
+LONG WINAPI TabbedTextOutW_Replacement(HDC hdc, int x, int y, LPCWSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions, int nTabOrigin)
+{
+	auto lock = SubstituteDC(hdc);
+	return TabbedTextOutW_OLD(hdc, x, y, lpString, chCount, nTabPositions, lpnTabStopPositions, nTabOrigin);
+}
+DWORD WINAPI GetTabbedTextExtentA_Replacement(HDC hdc, LPCSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions)
+{
+	auto lock = SubstituteDC(hdc);
+	return GetTabbedTextExtentA_OLD(hdc, lpString, chCount, nTabPositions, lpnTabStopPositions);
+}
+DWORD WINAPI GetTabbedTextExtentW_Replacement(HDC hdc, LPCWSTR lpString, int chCount, int nTabPositions, CONST INT* lpnTabStopPositions)
+{
+	auto lock = SubstituteDC(hdc);
+	return GetTabbedTextExtentW_OLD(hdc, lpString, chCount, nTabPositions, lpnTabStopPositions);
+}
+BOOL WINAPI PaintDesktop_Replacement(HDC hdc)
+{
+	auto lock = SubstituteDC(hdc);
+	return PaintDesktop_OLD(hdc);
+}
+int WINAPI ExcludeUpdateRgn_Replacement(HDC hDC, HWND hWnd)
+{
+	//TODO: Fixme (if this is ever used)
+	auto lock = SubstituteDC(hDC);
+	return ExcludeUpdateRgn_OLD(hDC, hWnd);
+}
+BOOL WINAPI ScrollDC_Replacement(HDC hDC, int dx, int dy, CONST RECT* lprcScroll, CONST RECT* lprcClip, HRGN hrgnUpdate, LPRECT lprcUpdate)
+{
+	auto lock = SubstituteDC(hDC);
+	return ScrollDC_OLD(hDC, dx, dy, lprcScroll, lprcClip, hrgnUpdate, lprcUpdate);
+}
+BOOL WINAPI DrawFocusRect_Replacement(HDC hDC, CONST RECT* lprc)
+{
+	auto lock = SubstituteDC(hDC);
+	return DrawFocusRect_OLD(hDC, lprc);
+}
+int WINAPI FillRect_Replacement(HDC hDC, CONST RECT* lprc, HBRUSH hbr)
+{
+	auto lock = SubstituteDC(hDC);
+	return FillRect_OLD(hDC, lprc, hbr);
+}
+int WINAPI FrameRect_Replacement(HDC hDC, CONST RECT* lprc, HBRUSH hbr)
+{
+	auto lock = SubstituteDC(hDC);
+	return FrameRect_OLD(hDC, lprc, hbr);
+}
+BOOL WINAPI InvertRect_Replacement(HDC hDC, CONST RECT* lprc)
+{
+	auto lock = SubstituteDC(hDC);
+	return InvertRect_OLD(hDC, lprc);
+}
+BOOL WINAPI DrawIconEx_Replacement(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur, HBRUSH hbrFlickerFreeDraw, UINT diFlags)
+{
+	auto lock = SubstituteDC(hdc);
+	return DrawIconEx_OLD(hdc, xLeft, yTop, hIcon, cxWidth, cyWidth, istepIfAniCur, hbrFlickerFreeDraw, diFlags);
 }

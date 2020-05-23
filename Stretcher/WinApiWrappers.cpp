@@ -79,6 +79,13 @@ void ReplaceImports()
     ReplaceImport("User32.dll", "SetWinEventHook", (FARPROC)SetWinEventHook_Replacement, (FARPROC*)&SetWinEventHook_OLD);
     ReplaceImport("User32.dll", "IsWinEventHookInstalled", (FARPROC)IsWinEventHookInstalled_Replacement, (FARPROC*)&IsWinEventHookInstalled_OLD);
     ReplaceImport("User32.dll", "UnhookWinEvent", (FARPROC)UnhookWinEvent_Replacement, (FARPROC*)&UnhookWinEvent_OLD);
+    ReplaceImport("User32.dll", "TrackPopupMenu", (FARPROC)TrackPopupMenu_Replacement, (FARPROC*)&TrackPopupMenu_OLD);
+    ReplaceImport("User32.dll", "TrackPopupMenuEx", (FARPROC)TrackPopupMenuEx_Replacement, (FARPROC*)&TrackPopupMenuEx_OLD);
+    ReplaceImport("User32.dll", "GetDCEx", (FARPROC)GetDCEx_Replacement, (FARPROC*)&GetDCEx_OLD);
+    ReplaceImport("User32.dll", "GetUpdateRect", (FARPROC)GetUpdateRect_Replacement, (FARPROC*)&GetUpdateRect_OLD);
+    ReplaceImport("User32.dll", "GetUpdateRgn", (FARPROC)GetUpdateRgn_Replacement, (FARPROC*)&GetUpdateRgn_OLD);
+    ReplaceImport("User32.dll", "InvalidateRgn", (FARPROC)InvalidateRgn_Replacement, (FARPROC*)&InvalidateRgn_OLD);
+    ReplaceImport("User32.dll", "RedrawWindow", (FARPROC)RedrawWindow_Replacement, (FARPROC*)&RedrawWindow_OLD);
 
     void ReplaceImports_AllGDI(ImportReplacer & replacer);
     ReplaceImports_AllGDI(replacer);
@@ -137,6 +144,13 @@ CallNextHookEx_FUNC CallNextHookEx_OLD = NULL;
 SetWinEventHook_FUNC SetWinEventHook_OLD = NULL;
 IsWinEventHookInstalled_FUNC IsWinEventHookInstalled_OLD = NULL;
 UnhookWinEvent_FUNC UnhookWinEvent_OLD = NULL;
+TrackPopupMenu_FUNC TrackPopupMenu_OLD = NULL;
+TrackPopupMenuEx_FUNC TrackPopupMenuEx_OLD = NULL;
+GetDCEx_FUNC GetDCEx_OLD = NULL;
+GetUpdateRect_FUNC GetUpdateRect_OLD = NULL;
+GetUpdateRgn_FUNC GetUpdateRgn_OLD = NULL;
+InvalidateRgn_FUNC InvalidateRgn_OLD = NULL;
+RedrawWindow_FUNC RedrawWindow_OLD = NULL;
 
 /*
 
@@ -194,20 +208,20 @@ void TryOverrideWindowClassA(LPCSTR windowClassName)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint)
 {
     return ClientToScreen_OLD(hWnd, lpPoint);
-    //convert Virtual Client coordinates to Virtual Screen coordinates
+    ////convert Virtual Client coordinates to Virtual Screen coordinates
     //if (lpPoint == NULL) return false;
     //WindowContext *windowContext = WindowContext::Get(hWnd);
-    //if (windowContext == NULL) return ClientToScreen_OLD(hWnd, lpPoint);
+    //if (windowContext == NULL) return ClientToScreen(hWnd, lpPoint);
     //windowContext->MouseVirtualToVirtualScreen(lpPoint);
     //return true;
 }
 BOOL WINAPI ScreenToClient_Replacement(HWND hWnd, LPPOINT lpPoint)
 {
     return ScreenToClient_OLD(hWnd, lpPoint);
-    //convert Virtual Screen coordinates to Virtual Client coordinates
+    ////convert Virtual Screen coordinates to Virtual Client coordinates
     //if (lpPoint == NULL) return false;
     //WindowContext* windowContext = WindowContext::Get(hWnd);
-    //if (windowContext == NULL) return ScreenToClient_OLD(hWnd, lpPoint);
+    //if (windowContext == NULL) return ScreenToClient(hWnd, lpPoint);
     //windowContext->MouseVirtualScreenToVirtual(lpPoint);
     //return true;
 }
@@ -219,8 +233,43 @@ int WINAPI MapWindowPoints_Replacement(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoi
     //{
     //    for (UINT i = 0; i < cPoints; i++)
     //    {
-    //        ScreenToClient_Replacement(
+    //        ScreenToClient_Replacement(hWndTo, &lpPoints[i]);
     //    }
+    //    SetLastError(0);
+    //    return 0;
+    //}
+    //else if (hWndFrom != NULL && hWndTo == NULL)
+    //{
+    //    for (UINT i = 0; i < cPoints; i++)
+    //    {
+    //        ClientToScreen_Replacement(hWndFrom, &lpPoints[i]);
+    //    }
+    //    SetLastError(0);
+    //    return 0;
+    //}
+    //else
+    //{
+
+
+
+
+    //    WindowContext* windowContextFrom = WindowContext::Get(hWndFrom);
+    //    WindowContext* windowContextTo = WindowContext::Get(hWndTo);
+
+
+
+
+    //    if (windowContextFrom != NULL && windowContextTo != NULL)
+    //    {
+
+    //    }
+
+
+
+
+
+    //    //TODO
+    //    return MapWindowPoints_OLD(hWndFrom, hWndTo, lpPoints, cPoints);
     //}
 }
 BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
@@ -372,7 +421,7 @@ restart:
     if (windowContext == NULL)
     {
 #if USE_SHOW_HOOK
-        if (WindowContext::TryHookWindow(hWnd))
+        if (GetParent(hWnd) == NULL && WindowContext::TryHookWindow(hWnd))
         {
             goto restart;
         }
@@ -386,25 +435,37 @@ restart:
 BOOL WINAPI GetClientRect_Replacement(HWND hwnd, LPRECT clientRect)
 {
     const WindowContext* windowContext = WindowContext::Get(hwnd);
-    if (windowContext == NULL) return GetClientRect_OLD(hwnd, clientRect);
+    if (windowContext == NULL)
+    {
+        return GetClientRect_OLD(hwnd, clientRect);
+    }
     return windowContext->GetClientRect_(clientRect);
 }
 BOOL WINAPI GetWindowPlacement_Replacement(HWND hwnd, WINDOWPLACEMENT *windowPlacement)
 {
     const WindowContext* windowContext = WindowContext::Get(hwnd);
-    if (windowContext == NULL) return GetWindowPlacement_OLD(hwnd, windowPlacement);
+    if (windowContext == NULL)
+    {
+        return GetWindowPlacement_OLD(hwnd, windowPlacement);
+    }
     return windowContext->GetWindowPlacement_(windowPlacement);
 }
 BOOL WINAPI GetWindowRect_Replacement(HWND hwnd, LPRECT windowRect)
 {
     const WindowContext* windowContext = WindowContext::Get(hwnd);
-    if (windowContext == NULL) return GetWindowRect_OLD(hwnd, windowRect);
+    if (windowContext == NULL)
+    {
+        return GetWindowRect_OLD(hwnd, windowRect);
+    }
     return windowContext->GetWindowRect_(windowRect);
 }
 BOOL WINAPI MoveWindow_Replacement(HWND hwnd, int x, int y, int width, int height, BOOL repaint)
 {
     WindowContext* windowContext = WindowContext::Get(hwnd);
-    if (windowContext == NULL) return MoveWindow_OLD(hwnd, x, y, width, height, repaint);
+    if (windowContext == NULL)
+    {
+        return MoveWindow_OLD(hwnd, x, y, width, height, repaint);
+    }
     return windowContext->MoveWindow_(x, y, width, height, repaint);
 }
 DWORD WINAPI GetClassLongA_Replacement(HWND hWnd, int nIndex)
@@ -594,4 +655,56 @@ BOOL WINAPI IsWinEventHookInstalled_Replacement(DWORD event)
 BOOL WINAPI UnhookWinEvent_Replacement(HWINEVENTHOOK hWinEventHook)
 {
     return UnhookWinEvent_OLD(hWinEventHook);
+}
+BOOL WINAPI TrackPopupMenu_Replacement(HMENU hMenu, UINT uFlags, int x, int y, int nReserved, HWND hWnd, CONST RECT* prcRect)
+{
+    WindowContext* windowContext = WindowContext::GetWindowContext();
+    if (windowContext == NULL) return TrackPopupMenu_OLD(hMenu, uFlags, x, y, nReserved, hWnd, prcRect);
+    POINT pt{ x,y };
+    windowContext->MouseVirtualScreenToScreen(&pt);
+    return TrackPopupMenu_OLD(hMenu, uFlags, pt.x, pt.y, nReserved, hWnd, prcRect);
+}
+BOOL WINAPI TrackPopupMenuEx_Replacement(HMENU hMenu, UINT uFlags, int x, int y, HWND hwnd, LPTPMPARAMS lptpm)
+{
+    WindowContext* windowContext = WindowContext::Get(hwnd);
+    if (windowContext == NULL) return TrackPopupMenuEx_OLD(hMenu, uFlags, x, y, hwnd, lptpm);
+    POINT pt{ x,y };
+    windowContext->MouseVirtualScreenToScreen(&pt);
+    return TrackPopupMenuEx_OLD(hMenu, uFlags, x, y, hwnd, lptpm);
+}
+HDC WINAPI GetDCEx_Replacement(HWND hWnd, HRGN hrgnClip, DWORD flags)
+{
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetDCEx_OLD(hWnd, hrgnClip, flags);
+    return windowContext->GetDCEx_(hrgnClip, flags);
+}
+BOOL WINAPI GetUpdateRect_Replacement(HWND hWnd, LPRECT lpRect, BOOL bErase)
+{
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetUpdateRect_OLD(hWnd, lpRect, bErase);
+    return windowContext->GetUpdateRect_(lpRect, bErase);
+}
+int WINAPI GetUpdateRgn_Replacement(HWND hWnd, HRGN hRgn, BOOL bErase)
+{
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return GetUpdateRgn_OLD(hWnd, hRgn, bErase);
+    return windowContext->GetUpdateRgn_(hRgn, bErase);
+}
+BOOL WINAPI InvalidateRgn_Replacement(HWND hWnd, HRGN hRgn, BOOL bErase)
+{
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return InvalidateRgn_OLD(hWnd, hRgn, bErase);
+    HRGN transformedRgn = windowContext->TransformRegionVirtualToRealCopy(hRgn);
+    BOOL result = InvalidateRgn_OLD(hWnd, transformedRgn, bErase);
+    DeleteObject(transformedRgn);
+    return result;
+}
+BOOL WINAPI RedrawWindow_Replacement(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags)
+{
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return RedrawWindow_OLD(hWnd, lprcUpdate, hrgnUpdate, flags);
+    HRGN transformedRgn = windowContext->TransformRegionVirtualToRealCopy(hrgnUpdate);
+    BOOL result = RedrawWindow_OLD(hWnd, lprcUpdate, transformedRgn, flags);
+    DeleteObject(transformedRgn);
+    return result;
 }
