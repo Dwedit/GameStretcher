@@ -17,25 +17,23 @@ unique_lock<mutex> SubstituteDC(HDC& hdc)
 }
 unique_lock<mutex> SubstituteDC(HDC& hdc, HDC &hdc2)
 {
+	auto lock = unique_lock<mutex>();
+	WindowContext* windowContext = WindowContext::GetByHdc(hdc);
+	if (windowContext != NULL)
 	{
-		WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-		if (windowContext != NULL)
-		{
-			auto lock = windowContext->CreateLock();
-			hdc = windowContext->GetCurrentDC(hdc);
-			return lock;
-		}
+		lock = windowContext->CreateLock();
+		hdc = windowContext->GetCurrentDC(hdc);
 	}
+	WindowContext* windowContext2 = WindowContext::GetByHdc(hdc2);
+	if (windowContext2 != NULL)
 	{
-		WindowContext* windowContext2 = WindowContext::GetByHdc(hdc2);
-		if (windowContext2 != NULL)
+		if (!lock.owns_lock())
 		{
-			auto lock = windowContext2->CreateLock();
-			hdc = windowContext2->GetCurrentDC(hdc);
-			return lock;
+			lock = windowContext2->CreateLock();
 		}
+		hdc2 = windowContext2->GetCurrentDC(hdc2);
 	}
-	return unique_lock<mutex>();
+	return lock;
 }
 
 
@@ -602,7 +600,7 @@ BOOL WINAPI Arc_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int
 }
 BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
-	auto lock = SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc, hdcSrc);
 	return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
 }
 BOOL WINAPI CancelDC_Replacement(HDC hdc)
@@ -1297,12 +1295,12 @@ BOOL WINAPI UpdateColors_Replacement(HDC hdc)
 }
 BOOL WINAPI AlphaBlend_Replacement(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, BLENDFUNCTION ftn)
 {
-	auto lock = SubstituteDC(hdcDest);
+	auto lock = SubstituteDC(hdcDest, hdcSrc);
 	return AlphaBlend_OLD(hdcDest, xoriginDest, yoriginDest, wDest, hDest, hdcSrc, xoriginSrc, yoriginSrc, wSrc, hSrc, ftn);
 }
 BOOL WINAPI TransparentBlt_Replacement(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, UINT crTransparent)
 {
-	auto lock = SubstituteDC(hdcDest);
+	auto lock = SubstituteDC(hdcDest, hdcSrc);
 	return TransparentBlt_OLD(hdcDest, xoriginDest, yoriginDest, wDest, hDest, hdcSrc, xoriginSrc, yoriginSrc, wSrc, hSrc, crTransparent);
 }
 BOOL WINAPI GradientFill_Replacement(HDC hdc, PTRIVERTEX pVertex, ULONG nVertex, PVOID pMesh, ULONG nMesh, ULONG ulMode)
@@ -1752,7 +1750,7 @@ BOOL WINAPI SetDeviceGammaRamp_Replacement(HDC hdc, LPVOID lpRamp)
 }
 BOOL WINAPI ColorMatchToTarget_Replacement(HDC hdc, HDC hdcTarget, DWORD action)
 {
-	auto lock = SubstituteDC(hdc);
+	auto lock = SubstituteDC(hdc, hdcTarget);
 	return ColorMatchToTarget_OLD(hdc, hdcTarget, action);
 }
 int WINAPI EnumICMProfilesA_Replacement(HDC hdc, ICMENUMPROCA proc, LPARAM param)

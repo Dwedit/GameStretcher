@@ -73,12 +73,8 @@ void WindowContext::Init(HWND hwnd)
 	}
 	_SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG_PTR)SimpleWndProc);
 	
-	//Initialize Virtual Client Bounds
+	//Initialize Virtual Client Bounds (For a brand new window, this is zeroes)
 	UpdateSize();
-	if (parentWindow == NULL)
-	{
-		SetForegroundWindow(hwnd);
-	}
 }
 
 template <class T>
@@ -527,14 +523,9 @@ bool WindowContext::CompleteDraw()
 	bool okay = true;
 	if (d3d9Context.textureSurface != NULL)
 	{
-		#if PAINT_USE_CLIP_BOX
-		result = SelectClipRgn(this->d3dDC, NULL);
-		result = SetViewportOrgEx(this->d3dDC, 0, 0, NULL);
-		#endif
 		this->lastDC = NULL;
 		hr = d3d9Context.textureSurface->ReleaseDC(this->d3dDC);
 		okay &= !SUCCEEDED(hr);
-		//int refCount = HdcRemove(this->d3dDC);
 		this->d3dDC = NULL;
 		//Do we want to sleep 1 here or not?  Would fix old programs that have no CPU speed control
 		//Sleep(1);
@@ -565,10 +556,6 @@ HDC WindowContext::GetD3DDC()
 	if (d3d9Context.textureSurface != NULL)
 	{
 		hr = d3d9Context.textureSurface->GetDC(&this->d3dDC);
-		//HdcAdd(this->d3dDC, this);
-#if PAINT_USE_CLIP_BOX
-		result = SelectClipRgn(this->d3dDC, NULL);
-#endif
 		UINT oldBoundsRectMode = SetBoundsRect(this->d3dDC, NULL, DCB_ENABLE | DCB_RESET);
 		return this->d3dDC;
 	}
@@ -852,7 +839,6 @@ void WindowContext::VirtualizeWindow()
 		UpdateSizeNonVirtualized();
 		VirtualWindowStyle = GetWindowLong(window, GWL_STYLE);
 		VirtualizeWindowSize = true;
-		UpdateSize();
 		HWND parent = GetParent(window);
 		if (parent == NULL)
 		{
@@ -1038,16 +1024,33 @@ void WindowContext::FinishBorderChange()
 	int oldRealHeight = this->RealClientBounds.bottom - this->RealClientBounds.top;
 
 tryAgain:
-	RECT windowRect;
-	RECT clientRect;
-	::GetWindowRect(window, &windowRect);
-	::GetClientRect(window, &clientRect);
-	POINT clientZero = {};
-	ClientToScreen(window, &clientZero);
-	int leftBorder = clientZero.x - windowRect.left;
-	int topBorder = clientZero.y - windowRect.top;
-	int extraWidth = (windowRect.right - windowRect.left) - (clientRect.right - clientRect.left);
-	int extraHeight = (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
+	RECT windowRect = GetRealWindowRect();
+	RECT clientRect = GetRealClientRect();
+	RECT clientRectScreen = GetRealClientBounds();
+	
+	int currentClientWidth, futureClientWidth, currentClientHeight, futureClientHeight;
+	{
+		RECT futureClientRect = GetFutureClientRect(windowRect);
+
+		currentClientWidth = clientRect.right - clientRect.left;
+		futureClientWidth = futureClientRect.right - futureClientRect.left;
+		currentClientHeight = clientRect.bottom - clientRect.top;
+		futureClientHeight = futureClientRect.bottom - futureClientRect.top;
+	}
+	int currentWindowWidth = windowRect.right - windowRect.left;
+	int currentWindowHeight = windowRect.bottom - windowRect.top;
+
+	int addedWindowWidth = currentClientWidth - futureClientWidth;
+	int addedWindowHeight = currentClientHeight - futureClientHeight;
+
+	int currentLeftBorder = clientRectScreen.left - windowRect.left;
+	int currentTopBorder = clientRectScreen.top - windowRect.top;
+
+	int leftBorder = currentLeftBorder + addedWindowWidth / 2;
+	int topBorder = currentTopBorder + addedWindowHeight / 2;
+
+	int extraWidth = currentWindowWidth + addedWindowWidth - currentClientWidth;
+	int extraHeight = currentWindowHeight + addedWindowHeight - currentClientHeight;
 
 	bool ignoreResizeEvents = IgnoreResizeEvents;
 	IgnoreResizeEvents = true;
@@ -1077,7 +1080,6 @@ tryAgain:
 			numberOfAttempts--;
 			goto tryAgain;
 		}
-
 	}
 	if (oldRealWidth != RealWidth || oldRealHeight != RealHeight)
 	{
@@ -1439,6 +1441,9 @@ void WindowContext::GetRealNonClientArea(int& extraLeft, int& extraTop, int& ext
 
 HDC WindowContext::GetCurrentDC(HDC inputDC)
 {
+	#if NOD3D
+	return inputDC;
+	#endif
 	//Create a lock before calling this
 	HDC d3dDC = GetD3DDC();
 	if (d3dDC == NULL) return inputDC;
@@ -1515,9 +1520,29 @@ HDC& WindowContext::GetLastDC()
 
 int WindowContext::SetClipRect(HDC hdc, const RECT* clipRect) //static
 {
-	HRGN clipRgn = CreateRectRgnIndirect(clipRect);
-	int result = SelectClipRgn(hdc, clipRgn);
-	DeleteObject(clipRgn);
+	int result;
+	if (clipRect == NULL)
+	{
+		result = SelectClipRgn(hdc, NULL);
+	}
+	else
+	{
+		HRGN clipRgn = CreateRectRgnIndirect(clipRect);
+		result = SelectClipRgn(hdc, clipRgn);
+		DeleteObject(clipRgn);
+	}
+	return result;
+}
+
+int WindowContext::SetClipRect(const RECT* clipRect)
+{
+	return SetClipRect(this->d3dDC, clipRect);
+}
+
+RECT WindowContext::GetClipRect() const
+{
+	RECT result = {};
+	int returnValue = GetClipBox(this->d3dDC, &result);
 	return result;
 }
 
@@ -1562,4 +1587,44 @@ HRGN WindowContext::TransformRegionRealToVirtualCopy(HRGN hrgn) const
 	HRGN returnRgn = region.DetachHrgn();
 	TransformRegionRealToVirtual(returnRgn);
 	return returnRgn;
+}
+
+RECT WindowContext::GetFutureClientRect(const RECT &windowRect)
+{
+	bool movingWindow = this->MovingWindow;
+	this->MovingWindow = true;
+	RECT newClientRect = windowRect;
+	SendMessage(window, WM_NCCALCSIZE, FALSE, reinterpret_cast<LPARAM>(&newClientRect));
+	this->MovingWindow = movingWindow;
+	return newClientRect;
+}
+
+float WindowContext::GetScale() const
+{
+	return Scale;
+}
+
+BOOL WindowContext::RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags)
+{
+	if (hrgnUpdate != NULL)
+	{
+		HRGN transformedRgn = TransformRegionVirtualToRealCopy(hrgnUpdate);
+		BOOL result = RedrawWindow(window, lprcUpdate, transformedRgn, flags);
+		DeleteObject(transformedRgn);
+		return result;
+	}
+	else if (lprcUpdate != NULL)
+	{
+		LastInvalidatedRectVirtual = *lprcUpdate;
+		LastInvalidatedRectReal = RectVirtualToClient(*lprcUpdate);
+		BOOL result = RedrawWindow(window, &LastInvalidatedRectReal, hrgnUpdate, flags);
+		return result;
+	}
+	else
+	{
+		LastInvalidatedRectVirtual = VirtualClientRect;
+		LastInvalidatedRectReal = RealClientRect;
+		BOOL result = RedrawWindow(window, NULL, NULL, flags);
+		return result;
+	}
 }

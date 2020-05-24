@@ -692,8 +692,11 @@ int WINAPI GetUpdateRgn_Replacement(HWND hWnd, HRGN hRgn, BOOL bErase)
 }
 BOOL WINAPI InvalidateRgn_Replacement(HWND hWnd, HRGN hRgn, BOOL bErase)
 {
+    if (hRgn == NULL) return InvalidateRgn_OLD(hWnd, hRgn, bErase);
     WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return InvalidateRgn_OLD(hWnd, hRgn, bErase);
+    if (windowContext->GetScale() == 1.0f) return InvalidateRgn_OLD(hWnd, hRgn, bErase);
+    
     HRGN transformedRgn = windowContext->TransformRegionVirtualToRealCopy(hRgn);
     BOOL result = InvalidateRgn_OLD(hWnd, transformedRgn, bErase);
     DeleteObject(transformedRgn);
@@ -703,8 +706,5 @@ BOOL WINAPI RedrawWindow_Replacement(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrg
 {
     WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return RedrawWindow_OLD(hWnd, lprcUpdate, hrgnUpdate, flags);
-    HRGN transformedRgn = windowContext->TransformRegionVirtualToRealCopy(hrgnUpdate);
-    BOOL result = RedrawWindow_OLD(hWnd, lprcUpdate, transformedRgn, flags);
-    DeleteObject(transformedRgn);
-    return result;
+    return windowContext->RedrawWindow_(lprcUpdate, hrgnUpdate, flags);
 }

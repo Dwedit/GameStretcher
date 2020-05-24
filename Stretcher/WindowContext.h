@@ -216,6 +216,8 @@ public:
 	HDC& GetLastDC();
 
 	static int SetClipRect(HDC hdc, const RECT* rect);
+	int SetClipRect(const RECT* rect);
+	RECT GetClipRect() const;
 
 	unique_lock<mutex> CreateLock();
 
@@ -223,4 +225,9 @@ public:
 	HRGN TransformRegionVirtualToRealCopy(HRGN hrgn) const;
 	void TransformRegionRealToVirtual(HRGN hrgn) const;
 	HRGN TransformRegionRealToVirtualCopy(HRGN hrgn) const;
+	RECT GetFutureClientRect(const RECT &windowRect);
+
+	float GetScale() const;
+
+	BOOL RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags);
 };
