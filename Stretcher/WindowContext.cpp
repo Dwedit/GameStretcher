@@ -1143,7 +1143,7 @@ tryAgain:
 	
 	if (windowStyle & WS_CAPTION)
 	{
-		flags = SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOZORDER;
+		flags = SWP_FRAMECHANGED;// | SWP_NOACTIVATE | SWP_NOZORDER;
 	}
 	else
 	{
@@ -1169,6 +1169,7 @@ tryAgain:
 		UpdateSize();
 		InvalidateRect(window, NULL, true);
 	}
+	SetForegroundWindow(window);
 }
 
 BOOL WindowContext::GetWindowRect_(LPRECT rect) const
