@@ -30,7 +30,7 @@ public:
 		}
 		return false;
 	}
-	TValue& Set(const TKey& key, TValue&& value)
+	TValue& Set(const TKey& key, TValue&& value) noexcept
 	{
 		auto iteratorAndBool = map.emplace(key, std::forward<TValue>(value));
 		bool wasInserted = iteratorAndBool.second;
@@ -126,7 +126,7 @@ public:
 	{
 		return FindValue(value) != -1;
 	}
-	TValue& Set(const TKey& key, TValue&& value)
+	TValue& Set(const TKey& key, TValue&& value) noexcept
 	{
 		int index = Find(key);
 		if (index != -1)
@@ -220,7 +220,7 @@ public:
 		return map.ContainsValue(value);
 	}
 
-	TValue& Set(const TKey& key, TValue&& value)
+	TValue& Set(const TKey& key, TValue&& value) noexcept
 	{
 		TValue& result = map.Set(key, std::forward<TValue>(value));
 		mostRecentKey = key;
@@ -447,7 +447,7 @@ public:
 		return true;
 	}
 
-	bool Emplace(const TKey& key, TValue&& value)
+	bool Emplace(const TKey& key, TValue&& value) noexcept
 	{
 		if (ContainsKey(key)) return false;
 		std::pair<unordered_map<TKey, TValue>::iterator, bool> newItem = map.emplace(key, std::forward<TValue>(value));
@@ -661,7 +661,7 @@ public:
 		}
 		return true;
 	}
-	bool Emplace(const TKey& key, TValue&& value)
+	bool Emplace(const TKey& key, TValue&& value) noexcept
 	{
 		if (Get(key) != NULL) return false;
 		if (firstPair.second == nullptr)
