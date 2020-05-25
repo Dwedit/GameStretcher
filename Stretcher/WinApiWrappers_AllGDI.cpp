@@ -600,8 +600,23 @@ BOOL WINAPI Arc_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int
 }
 BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
+	HDC inputHDC = hdc;
+
 	auto lock = SubstituteDC(hdc, hdcSrc);
-	return BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
+	if (rop == BLACKNESS)
+	{
+		//hack for Space Cadet Pinball - deny blacking out the screen on a released Paint DC
+		WindowContext* windowContext = WindowContext::GetByHdc(inputHDC);
+		if (windowContext != NULL)
+		{
+			if (windowContext->PaintDCIsExpired(inputHDC))
+			{
+				return true;
+			}
+		}
+	}
+	BOOL value = BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
+	return value;
 }
 BOOL WINAPI CancelDC_Replacement(HDC hdc)
 {

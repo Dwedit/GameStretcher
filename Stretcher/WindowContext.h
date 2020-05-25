@@ -88,6 +88,8 @@ class WindowContext
 	WindowContext* parentWindowContext;
 	vector<WindowContext*> childWindows;
 
+	bool paintDCIsOpen;
+
 	std::mutex myMutex;
 
 public:
@@ -105,7 +107,7 @@ public:
 		window(), oldWindowProc(), windowClassAtom(), isWindowUnicode(), VirtualizeWindowSize(), IgnoreResizeEvents(), SuspendDrawing(), VirtualWidth(), VirtualHeight(), RealWidth(), RealHeight(), ScaledWidth(), ScaledHeight(), RealX(), RealY(), XOffset(), YOffset(), LeftPadding(), TopPadding(), BottomPadding(), RightPadding(), d3dDC(), paintDC(),
 		LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
 		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
-		ResizeHandler(), MovingWindow(), realDC(),
+		ResizeHandler(), MovingWindow(), realDC(), paintDCIsOpen(),
 		parentWindowContext()
 	{
 	}
@@ -234,4 +236,5 @@ public:
 	float GetScale() const;
 
 	BOOL RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags);
+	bool PaintDCIsExpired(HDC hdc) const;
 };

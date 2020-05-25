@@ -521,7 +521,10 @@ HDC WindowContext::GetDC_()
 	if (this->realDC == NULL)
 	{
 		this->realDC = ::GetDC(window);
-		HdcAdd(this->realDC, this);
+		if (this->realDC != NULL)
+		{
+			HdcAdd(this->realDC, this);
+		}
 	}
 
 	return this->realDC;
@@ -1371,6 +1374,7 @@ HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 	if (lpPaintStruct == NULL) return NULL;
 	HDC oldPaintDC = this->paintDC;
 	this->paintDC = BeginPaint(window, lpPaintStruct);
+	this->paintDCIsOpen = true;
 	this->paintClipRectReal = lpPaintStruct->rcPaint;
 	UpdateRectClientToVirtual(&(lpPaintStruct->rcPaint));
 	this->paintClipRectVirtual = lpPaintStruct->rcPaint;
@@ -1392,6 +1396,7 @@ BOOL WindowContext::EndPaint_(const PAINTSTRUCT* lpPaintStruct)
 	PAINTSTRUCT paintStructCopy = *lpPaintStruct;
 	UpdateRectVirtualToClient(&(paintStructCopy.rcPaint));
 	okay = EndPaint(window, &paintStructCopy);
+	this->paintDCIsOpen = false;
 	CompleteDraw();
 	return okay;
 }
@@ -1707,4 +1712,9 @@ BOOL WindowContext::RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT 
 		BOOL result = RedrawWindow(window, NULL, NULL, flags);
 		return result;
 	}
+}
+
+bool WindowContext::PaintDCIsExpired(HDC hdc) const
+{
+	return hdc != NULL && hdc == paintDC && !paintDCIsOpen;
 }
