@@ -1,5 +1,8 @@
 #pragma once
 
+#define USE_REAL_MOUSE_COORDINATES 0
+#define MOVE_WINDOW_TO_UPPER_LEFT 0
+
 struct IUnknown;
 #define NOMINMAX
 #include <Windows.h>
@@ -165,6 +168,7 @@ public:
 	void VirtualizeWindow();
 	void UpdateSize(int newWidth, int newHeight);
 	void UpdateSize();
+	void UpdateSizeVirtual();
 	void UpdateSizeReal();		//Updates Real size and position from real window coordinates
 	void UpdateSizeNonVirtualized();	//Assigns real client bounds and real window rect to all size variables
 	void UpdateSizeScaled();	//Updates Scale factor, and Scaled dimensions.  Ensure that Virtual dimensions and Real dimensions are up to date before calling.

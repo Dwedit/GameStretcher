@@ -255,23 +255,37 @@ void WindowContext::MouseClientToVirtualClamp(LPPOINT lpPoint) const
 
 void WindowContext::MouseScreenToVirtualScreen(LPPOINT lpPoint) const
 {
+#if !USE_REAL_MOUSE_COORDINATES
 	ScreenToClient(window, lpPoint);
 	MouseClientToVirtual(lpPoint);
 	ClientToScreen(window, lpPoint);
+#endif
 }
 void WindowContext::MouseVirtualScreenToScreen(LPPOINT lpPoint) const
 {
+#if !USE_REAL_MOUSE_COORDINATES
 	ScreenToClient(window, lpPoint);
 	MouseVirtualToClient(lpPoint);
 	ClientToScreen(window, lpPoint);
+#endif
 }
 void WindowContext::MouseVirtualScreenToVirtual(LPPOINT lpPoint) const
 {
+#if !USE_REAL_MOUSE_COORDINATES
 	ScreenToClient(window, lpPoint);
+#else
+	ScreenToClient(window, lpPoint);
+	MouseClientToVirtual(lpPoint);
+#endif
 }
 void WindowContext::MouseVirtualToVirtualScreen(LPPOINT lpPoint) const
 {
+#if !USE_REAL_MOUSE_COORDINATES
 	ClientToScreen(window, lpPoint);
+#else
+	MouseVirtualToClient(lpPoint);
+	ClientToScreen(window, lpPoint);
+#endif
 }
 
 static RECT GetMonitorRect(HWND window)
@@ -368,9 +382,33 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			lParam = (mousePoint.x & 0xFFFF) | ((mousePoint.y & 0xFFFF) << 16);
 			return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
 		}
-		//Hide move/resize messages from window
-		case WM_MOVING:
 		case WM_MOVE:
+		{
+			#if MOVE_WINDOW_TO_UPPER_LEFT
+			if (IsVirtualized() && !IgnoreResizeEvents)
+			{
+				UpdateSize();
+				lParam = (VirtualWindowRect.left & 0xFFFF) | ((VirtualWindowRect.top & 0xFFFF) << 16);
+				return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+			}
+			#endif
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+		case WM_MOVING:
+		{
+			#if MOVE_WINDOW_TO_UPPER_LEFT
+			if (IsVirtualized() && !IgnoreResizeEvents)
+			{
+				UpdateSize();
+				RECT rect = VirtualWindowRect;
+				lParam = reinterpret_cast<LPARAM>(&rect);
+				return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+			}
+			#endif
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+		//Hide move/resize messages from window
+		//case WM_MOVING:
 		case WM_SIZING:
 		case WM_ENTERSIZEMOVE:
 		case WM_EXITSIZEMOVE:
@@ -383,6 +421,20 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		case WM_WINDOWPOSCHANGING:
 		case WM_WINDOWPOSCHANGED:
 		{
+			#if MOVE_WINDOW_TO_UPPER_LEFT
+			LPWINDOWPOS inputWindowPos = (LPWINDOWPOS)lParam;
+			if (IsVirtualized() && !IgnoreResizeEvents && !(inputWindowPos->flags & SWP_NOMOVE))
+			{
+				UpdateSize();
+				WINDOWPOS windowPos = *inputWindowPos;
+				windowPos.x = VirtualWindowRect.left;
+				windowPos.y = VirtualWindowRect.top;
+				windowPos.cx = VirtualWindowRect.right - VirtualWindowRect.left;
+				windowPos.cy = VirtualWindowRect.bottom - VirtualWindowRect.top;
+				lParam = (LPARAM)&windowPos;
+				return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+			}
+			#endif
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		case WM_NCCALCSIZE:
@@ -893,6 +945,33 @@ void WindowContext::UpdateSizeReal()
 	RealY = RealClientBounds.top;
 }
 
+void WindowContext::UpdateSizeVirtual()
+{
+#if MOVE_WINDOW_TO_UPPER_LEFT
+	if (IsVirtualized())
+	{
+		int newX = RealX + LeftPadding;
+		int newY = RealY + TopPadding;
+
+		int leftBorder = RealClientBounds.left - RealWindowRect.left;
+		int topBorder = RealClientBounds.top - RealWindowRect.top;
+		int rightBorder = RealWindowRect.right - RealClientBounds.right;
+		int bottomBorder = RealWindowRect.bottom - RealClientBounds.bottom;
+
+		VirtualClientBounds = { newX, newY, newX + VirtualWidth, newY + VirtualHeight };
+		int newLeft = newX - leftBorder;
+		int newTop = newY - topBorder;
+		if (newTop < 0) newTop = 0;
+		if (newLeft < 0) newLeft = 0;
+
+		
+		VirtualWindowRect = { newLeft, newTop,
+			newLeft + VirtualWidth + leftBorder + rightBorder, newTop + VirtualHeight + topBorder + bottomBorder };
+
+	}
+#endif
+}
+
 void WindowContext::UpdateSizeScaled()
 {
 	//Before calling this, ensure that Virtual dimensions and Real dimensions are up to date
@@ -937,6 +1016,7 @@ void WindowContext::UpdateSizeVirtualized()
 {
 	UpdateSizeReal();
 	UpdateSizeScaled();
+	UpdateSizeVirtual();
 }
 
 void WindowContext::UpdateSize(int newWidth, int newHeight)

@@ -207,70 +207,53 @@ void TryOverrideWindowClassA(LPCSTR windowClassName)
 //Replacement Functions Code
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint)
 {
-    return ClientToScreen_OLD(hWnd, lpPoint);
-    ////convert Virtual Client coordinates to Virtual Screen coordinates
-    //if (lpPoint == NULL) return false;
-    //WindowContext *windowContext = WindowContext::Get(hWnd);
-    //if (windowContext == NULL) return ClientToScreen(hWnd, lpPoint);
-    //windowContext->MouseVirtualToVirtualScreen(lpPoint);
-    //return true;
+    //convert Virtual Client coordinates to Virtual Screen coordinates
+    if (lpPoint == NULL) return false;
+    WindowContext *windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return ClientToScreen(hWnd, lpPoint);
+    windowContext->MouseVirtualToVirtualScreen(lpPoint);
+    return true;
 }
 BOOL WINAPI ScreenToClient_Replacement(HWND hWnd, LPPOINT lpPoint)
 {
-    return ScreenToClient_OLD(hWnd, lpPoint);
-    ////convert Virtual Screen coordinates to Virtual Client coordinates
-    //if (lpPoint == NULL) return false;
-    //WindowContext* windowContext = WindowContext::Get(hWnd);
-    //if (windowContext == NULL) return ScreenToClient(hWnd, lpPoint);
-    //windowContext->MouseVirtualScreenToVirtual(lpPoint);
-    //return true;
+    //convert Virtual Screen coordinates to Virtual Client coordinates
+    if (lpPoint == NULL) return false;
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return ScreenToClient(hWnd, lpPoint);
+    windowContext->MouseVirtualScreenToVirtual(lpPoint);
+    return true;
 }
 int WINAPI MapWindowPoints_Replacement(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoints, UINT cPoints)
 {
-    return MapWindowPoints_OLD(hWndFrom, hWndTo, lpPoints, cPoints);
-    //if (lpPoints == NULL) return 0;
-    //if (hWndFrom == NULL && hWndTo != NULL)
-    //{
-    //    for (UINT i = 0; i < cPoints; i++)
-    //    {
-    //        ScreenToClient_Replacement(hWndTo, &lpPoints[i]);
-    //    }
-    //    SetLastError(0);
-    //    return 0;
-    //}
-    //else if (hWndFrom != NULL && hWndTo == NULL)
-    //{
-    //    for (UINT i = 0; i < cPoints; i++)
-    //    {
-    //        ClientToScreen_Replacement(hWndFrom, &lpPoints[i]);
-    //    }
-    //    SetLastError(0);
-    //    return 0;
-    //}
-    //else
-    //{
-
-
-
-
-    //    WindowContext* windowContextFrom = WindowContext::Get(hWndFrom);
-    //    WindowContext* windowContextTo = WindowContext::Get(hWndTo);
-
-
-
-
-    //    if (windowContextFrom != NULL && windowContextTo != NULL)
-    //    {
-
-    //    }
-
-
-
-
-
-    //    //TODO
-    //    return MapWindowPoints_OLD(hWndFrom, hWndTo, lpPoints, cPoints);
-    //}
+    if (lpPoints == NULL) return 0;
+    if (hWndFrom == NULL && hWndTo != NULL)
+    {
+        for (UINT i = 0; i < cPoints; i++)
+        {
+            ScreenToClient_Replacement(hWndTo, &lpPoints[i]);
+        }
+        SetLastError(0);
+        return 0;
+    }
+    else if (hWndFrom != NULL && hWndTo == NULL)
+    {
+        for (UINT i = 0; i < cPoints; i++)
+        {
+            ClientToScreen_Replacement(hWndFrom, &lpPoints[i]);
+        }
+        SetLastError(0);
+        return 0;
+    }
+    else
+    {
+        for (UINT i = 0; i < cPoints; i++)
+        {
+            ClientToScreen_Replacement(hWndFrom, &lpPoints[i]);
+            ScreenToClient_Replacement(hWndTo, &lpPoints[i]);
+        }
+        SetLastError(0);
+        return 0;
+    }
 }
 BOOL WINAPI GetCursorPos_Replacement(LPPOINT lpPoint)
 {
@@ -660,6 +643,8 @@ BOOL WINAPI TrackPopupMenu_Replacement(HMENU hMenu, UINT uFlags, int x, int y, i
 {
     WindowContext* windowContext = WindowContext::GetWindowContext();
     if (windowContext == NULL) return TrackPopupMenu_OLD(hMenu, uFlags, x, y, nReserved, hWnd, prcRect);
+    x = (int)(signed short)(x);
+    y = (int)(signed short)(y);
     POINT pt{ x,y };
     windowContext->MouseVirtualScreenToScreen(&pt);
     return TrackPopupMenu_OLD(hMenu, uFlags, pt.x, pt.y, nReserved, hWnd, prcRect);
