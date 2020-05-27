@@ -2,7 +2,8 @@
 
 #define USE_SHADER_MODEL_2 0
 #define NO_CHECKERBOARD 1
-#define NO_DIRTY_RECT 1
+#define NO_DIRTY_RECT 0
+#define DIRTY_RECT_NO_Z_BUFFER 0
 
 template <class T>
 static inline void SafeRelease(T &ptr) { if (ptr != NULL) { ptr->Release(); ptr = NULL; } }
@@ -19,6 +20,7 @@ using std::min;
 using std::max;
 
 #include "Region.h"
+#include "RectUtil.h"
 
 #define ARRSIZE(xxxx) sizeof((xxxx)) / sizeof((xxxx)[0])
 
@@ -259,8 +261,11 @@ private:
 	int backBufferHeight;
 
 	int updateLeft, updateTop, updateWidth, updateHeight;
+	int windowWidth, windowHeight;
 	bool doBeginScene;
 	int upscaleFilter;
+	bool borderDirty;
+	bool upscaledTextureDirty;
 
 	Region updateRegionOriginal;
 	Region updateRegion1X;
@@ -299,6 +304,7 @@ public:
 		textureWidth(0), textureHeight(0), backBufferWidth(0), backBufferHeight(0),
 		updateLeft(0), updateTop(0), updateWidth(0), updateHeight(0),
 		inputLeft(0), inputTop(0), inputWidth(0), inputHeight(0),
+		windowWidth(), windowHeight(), borderDirty(), upscaledTextureDirty(),
 		upscaleFilter(1)
 	{
 		Destroy();
@@ -407,7 +413,7 @@ public:
 	{
 		HRESULT hr = 0;
 		//DELETEME
-#if NO_DIRTY_RECT
+#if NO_DIRTY_RECT | DIRTY_RECT_NO_Z_BUFFER
 		hr |= device->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 		return true;
 #endif
@@ -415,6 +421,7 @@ public:
 
 		if (rects.size() <= 1)
 		{
+			hr |= device->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
 			hr |= device->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 			return SUCCEEDED(hr);
 		}
@@ -444,8 +451,23 @@ public:
 	{
 		if (device == NULL) return false;
 		bool okay = true;
+		bool borderWasDirty = borderDirty;
 		if (depthSurface2x == NULL) okay &= CreateDepthSurface2x();
 		if (depthSurface1x == NULL) okay &= CreateDepthSurface1x();
+
+		RECT entireScreen1x = { inputLeft, inputTop, inputLeft + inputWidth, inputTop + inputHeight };
+		RECT entireScreen2x = { inputLeft * 2, inputTop * 2, (inputLeft + inputWidth) * 2, (inputTop + inputHeight * 2) };
+		RECT entireWindow = { 0, 0, windowWidth, windowHeight };
+
+		if (this->upscaledTextureDirty && this->GetUpscaleFilter() != 0)
+		{
+			this->upscaledTextureDirty = false;
+			this->borderDirty = true;
+			this->updateRegionOriginal.Clear(); this->updateRegionOriginal.AddRectangle(entireScreen1x);
+			this->updateRegion1X.Clear(); this->updateRegion1X.AddRectangle(entireScreen1x);
+			this->updateRegion2X.Clear(); this->updateRegion2X.AddRectangle(entireScreen2x);
+			this->updateRegionScreen.Clear(); this->updateRegionScreen.AddRectangle(entireWindow);
+		}
 
 		RECT boundingBoxOriginal = this->updateRegionOriginal.GetBoundingBox();
 		RECT boundingBox1x = this->updateRegion1X.GetBoundingBox();
@@ -456,6 +478,12 @@ public:
 		vector<RECT> rects1x = this->updateRegion1X.GetRegionRectangles();
 		vector<RECT> rects2x = this->updateRegion2X.GetRegionRectangles();
 		vector<RECT> rectsScreen = this->updateRegionScreen.GetRegionRectangles();
+
+		//temporary for breakpoint
+		if (rectsOriginal.size() > 1 || (rectsOriginal.size() == 1 && rectsOriginal[0] != entireScreen1x))
+		{
+			int dummy = 0;
+		}
 
 		//clear Z buffers to 0.0 (Near), carve out rectangles as 1.0 (far)
 		okay &= ClearZBufferAndCarveRects(rects2x, pass1RenderTargetSurface, depthSurface2x);
@@ -475,12 +503,52 @@ public:
 		int width = boundingBoxOriginal.right - boundingBoxOriginal.left;
 		int height = boundingBoxOriginal.bottom - boundingBoxOriginal.top;
 		HRESULT hr = 0;
-		if (x == inputLeft && y == inputTop && width == inputWidth && height == inputHeight)
+		//if (x == inputLeft && y == inputTop && width == inputWidth && height == inputHeight)
+		//{
+		//	hr |= device->SetRenderTarget(0, backBuffer);
+		//	hr |= device->SetDepthStencilSurface(depthStencilSurface);
+		//	hr |= device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 0), 0, 0);
+		//}
+		if (borderDirty)
 		{
+			borderDirty = false;
 			hr |= device->SetRenderTarget(0, backBuffer);
 			hr |= device->SetDepthStencilSurface(depthStencilSurface);
-			hr |= device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 0), 0, 0);
+			
+			int leftEdge = this->updateLeft;
+			int topEdge = this->updateTop;
+			int rightEdge = this->windowWidth - leftEdge - this->updateWidth;
+			int bottomEdge = this->windowHeight - topEdge - this->updateHeight;
+
+			RECT rect;
+			if (leftEdge > 0)
+			{
+				rect.top = 0; rect.bottom = windowHeight;
+				rect.left = 0; rect.right = leftEdge;
+				hr |= device->ColorFill(backBuffer, &rect, D3DCOLOR_RGBA(0, 0, 0, 0));
+			}
+			if (rightEdge > 0)
+			{
+				rect.top = 0; rect.bottom = windowHeight;
+				rect.left = leftEdge + updateWidth; rect.right = windowWidth;
+				hr |= device->ColorFill(backBuffer, &rect, D3DCOLOR_RGBA(0, 0, 0, 0));
+			}
+			if (topEdge > 0)
+			{
+				rect.left = 0; rect.right = windowWidth;
+				rect.top = 0; rect.bottom = topEdge;
+				hr |= device->ColorFill(backBuffer, &rect, D3DCOLOR_RGBA(0, 0, 0, 0));
+			}
+			if (bottomEdge > 0)
+			{
+				rect.left = 0; rect.right = windowWidth;
+				rect.top = topEdge + updateHeight; rect.bottom = windowHeight;
+				hr |= device->ColorFill(backBuffer, &rect, D3DCOLOR_RGBA(0, 0, 0, 0));
+			}
 		}
+
+
+
 		okay &= UpdateToTexture(x, y, width, height);
 		okay &= UpdateToBackBuffer(x, y, width, height);
 		
@@ -496,6 +564,13 @@ public:
 		boundingBoxScreen = { 0,0,updateLeft * 2 + updateWidth,updateTop * 2 + updateHeight };
 		const RGNDATA* rgnData = NULL;
 #endif
+		//temporary
+		if (borderWasDirty)
+		{
+			boundingBoxScreen = { 0,0,updateLeft * 2 + updateWidth,updateTop * 2 + updateHeight };
+			rgnData = NULL;
+		}
+		//hr |= device->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, NULL);
 		hr |= device->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData);
 		return okay && SUCCEEDED(hr);
 	}
@@ -504,7 +579,11 @@ public:
 	{
 		if (device == NULL) return false;
 		//if we are not in Upscaling mode, do not run this function
-		if (GetUpscaleFilter() == 0) return true;
+		if (GetUpscaleFilter() == 0)
+		{
+			upscaledTextureDirty = true;
+			return true;
+		}
 
 		//coordinates are non-scaled, and not pre-expanded
 		CStateSaver stateSaver(device);	//save device state, restore state upon stateSaver leaving scope
@@ -1255,6 +1334,11 @@ public:
 		this->inputWidth = width;
 		this->inputHeight = height;
 	}
+	void SetWindowSize(int windowWidth, int windowHeight)
+	{
+		this->windowWidth = windowWidth;
+		this->windowHeight = windowHeight;
+	}
 	void SetDoBeginScene(bool doBeginScene)
 	{
 		this->doBeginScene = doBeginScene;
@@ -1280,8 +1364,8 @@ public:
 
 	void SetUpdateRegion(const Region& region)
 	{
-		float scaleX = (float)this->inputWidth / (float)this->updateWidth;
-		float scaleY = (float)this->inputHeight / (float)this->updateHeight;
+		float scaleX = (float)this->updateWidth / (float)this->inputWidth;
+		float scaleY = (float)this->updateHeight / (float)this->inputHeight;
 		float scale = std::min(scaleX, scaleY);
 
 		//int scaledWidth = Round(scale * inputWidth);
@@ -1296,5 +1380,10 @@ public:
 		this->updateRegion1X = region.ZoomAndDialate(1.0f, 2.0f, 0.0f, 0.0f, 0, 0, this->inputWidth, this->inputHeight);
 		this->updateRegion2X = region.ZoomAndDialate(2.0f, 3.0f, 0.0f, 0.0f, 0, 0, this->inputWidth * 2, this->inputHeight * 2);
 		this->updateRegionScreen = region.ZoomAndDialate(scale, scale * 2.0f, (float)this->updateLeft, (float)this->updateTop, this->updateLeft, this->updateTop, this->updateLeft + this->updateWidth, this->updateTop + this->updateHeight);
+	}
+
+	void SetBorderDirty()
+	{
+		this->borderDirty = true;
 	}
 };

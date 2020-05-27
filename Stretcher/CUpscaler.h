@@ -22,8 +22,10 @@ public:
 	bool SetSourceTexture(void *texture); //IDirect3DTexture9
 	void SetDoBeginScene(bool doBeginScene);
 	void SetViewRectangle(int x, int y, int width, int height);
+	void SetWindowSize(int windowWidth, int windowHeight);
 	void SetInputRectangle(int x, int y, int width, int height);
 	bool Update(const Region &region); //region in unscaled coordinates
+	void SetBorderDirty();
 	bool UpdateToTexture(int x, int y, int width, int height);
 	bool UpdateToBackBuffer(int x, int y, int width, int height);
 	bool UpdateToScreen(int x, int y, int width, int height);

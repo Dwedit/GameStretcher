@@ -10,6 +10,7 @@ using std::wstring;
 #define PAINT_USE_CLIP_BOX 1
 
 #define REDRAW_AFTER_GETDC 1
+#define INVALIDATE_ENTIRE_WINDOW 1
 
 #define DO_NOT_RESET_WNDPROC 0
 #define DELAYED_HOOK 0
@@ -565,8 +566,10 @@ bool WindowContext::CompleteDraw()
 	if (this->d3dDC == NULL) return true;
 
 	RECT boundsRect = {};
+	bool isEmpty;
 	UINT boundsRectMode = GetBoundsRect(this->d3dDC, &boundsRect, DCB_RESET);
-	if (boundsRectMode == DCB_RESET)
+	isEmpty = boundsRectMode == DCB_RESET && this->dirtyRegion.IsEmpty();
+	if (isEmpty)
 	{
 		return true;
 	}
@@ -726,42 +729,15 @@ RECT WindowContext::RectClientToVirtualClamp(const RECT &rect) const
 	return result;
 }
 
-void WindowContext::AddDirtyRect(const RECT &rect)
+void WindowContext::AddDirtyRect()
 {
-	if (d3dDC != NULL)
+	RECT boundsRect = {};
+	bool isEmpty;
+	UINT boundsRectMode = GetBoundsRect(this->d3dDC, &boundsRect, DCB_RESET);
+	isEmpty = boundsRectMode == DCB_RESET;
+	if (!isEmpty)
 	{
-		RECT rect2 = rect;
-		LPtoDP(d3dDC, (LPPOINT)&rect2, 2);
-		dirtyRegion.AddRectangle(rect2);
-	}
-	else
-	{
-		dirtyRegion.AddRectangle(rect);
-	}
-}
-void WindowContext::AddDirtyRect(int x, int y, int width, int height)
-{
-	RECT rect{ x, y, x + width, y + height };
-	AddDirtyRect(rect);
-}
-void WindowContext::AddDirtyRectWithPen(int x, int y, int width, int height)
-{
-	HGDIOBJ currentObject = GetCurrentObject(d3dDC, OBJ_PEN);
-	if (currentObject == NULL)
-	{
-		AddDirtyRect(x, y, width, height);
-		return;
-	}
-	else
-	{
-		LOGPEN pen = {};
-		GetObjectA(currentObject, sizeof(pen), &pen);
-		int penWidth = pen.lopnWidth.x;
-		if (pen.lopnStyle == PS_INSIDEFRAME)
-		{
-			penWidth = 0;
-		}
-		AddDirtyRect(x - penWidth, x - penWidth, width + penWidth * 2, height + penWidth * 2);
+		dirtyRegion.AddRectangle(boundsRect);
 	}
 }
 
@@ -1001,6 +977,7 @@ void WindowContext::UpdateSizeScaled()
 
 	upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
 	upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
+	upscaler.SetWindowSize(RealWidth, RealHeight);
 }
 
 //Assigns real client bounds and real window rect to all size variables
@@ -1322,14 +1299,17 @@ int WindowContext::GetUpdateRgn_(HRGN hrgn, BOOL bErase) //rect in virtual coord
 BOOL WindowContext::InvalidateRect_(LPCRECT rect, BOOL bErase) //rect in virtual coordinates
 {
 	const RECT clientRect = GetClientRect_();
+	bool entireWindow = false;
 	if (rect == NULL)
 	{
 		rect = &clientRect;
+		entireWindow = true;
 	}
 	LastInvalidatedRectVirtual = *rect;
 	LastInvalidatedRectReal = RectVirtualToClient(*rect);
 
 	BOOL okay;
+#if INVALIDATE_ENTIRE_WINDOW
 	if (*rect == clientRect)
 	{
 		okay = InvalidateRect(window, NULL, bErase);
@@ -1338,20 +1318,33 @@ BOOL WindowContext::InvalidateRect_(LPCRECT rect, BOOL bErase) //rect in virtual
 	{
 		okay = InvalidateRect(window, &LastInvalidatedRectReal, bErase);
 	}
+#else
+	if (entireWindow)
+	{
+		okay = InvalidateRect(window, NULL, bErase);
+	}
+	else
+	{
+		okay = InvalidateRect(window, &LastInvalidatedRectReal, bErase);
+	}
+#endif
 	return okay;
 }
 BOOL WindowContext::ValidateRect_(LPCRECT rect) //rect in virtual coordinates
 {
+	bool entireWindow = false;
 	const RECT clientRect = GetClientRect_();
 	if (rect == NULL)
 	{
 		rect = &clientRect;
+		entireWindow = true;
 	}
 
 	RECT updateRectClient = *rect;
 	UpdateRectVirtualToClient(&updateRectClient);
 
 	BOOL okay;
+#if INVALIDATE_ENTIRE_WINDOW
 	if (*rect == clientRect)
 	{
 		okay = ValidateRect(window, NULL);
@@ -1367,6 +1360,16 @@ BOOL WindowContext::ValidateRect_(LPCRECT rect) //rect in virtual coordinates
 			okay = ValidateRect(window, NULL);
 		}
 	}
+#else
+	if (entireWindow)
+	{
+		okay = ValidateRect(window, NULL);
+	}
+	else
+	{
+		okay = ValidateRect(window, &updateRectClient);
+	}
+#endif
 	return okay;
 }
 
@@ -1377,6 +1380,18 @@ HDC WindowContext::BeginPaint_(LPPAINTSTRUCT lpPaintStruct)
 	this->paintDC = BeginPaint(window, lpPaintStruct);
 	this->paintDCIsOpen = true;
 	this->paintClipRectReal = lpPaintStruct->rcPaint;
+	int realWidth = this->paintClipRectReal.right - this->paintClipRectReal.left;
+	int realHeight = this->paintClipRectReal.bottom - this->paintClipRectReal.top;
+	if (realWidth > 0 || realHeight > 0)
+	{
+		if (this->paintClipRectReal.left < XOffset || this->paintClipRectReal.right > XOffset + ScaledWidth ||
+			this->paintClipRectReal.top < YOffset || this->paintClipRectReal.bottom > YOffset + ScaledHeight)
+		{
+			this->upscaler.SetBorderDirty();
+		}
+	}
+
+
 	UpdateRectClientToVirtual(&(lpPaintStruct->rcPaint));
 	this->paintClipRectVirtual = lpPaintStruct->rcPaint;
 
@@ -1703,7 +1718,19 @@ BOOL WindowContext::RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT 
 	{
 		LastInvalidatedRectVirtual = *lprcUpdate;
 		LastInvalidatedRectReal = RectVirtualToClient(*lprcUpdate);
+#if INVALIDATE_ENTIRE_WINDOW
+		BOOL result;
+		if (LastInvalidatedRectVirtual == VirtualWindowRect)
+		{
+			result = RedrawWindow(window, NULL, NULL, flags);
+		}
+		else
+		{
+			result = RedrawWindow(window, &LastInvalidatedRectReal, hrgnUpdate, flags);
+		}
+#else
 		BOOL result = RedrawWindow(window, &LastInvalidatedRectReal, hrgnUpdate, flags);
+#endif
 		return result;
 	}
 	else

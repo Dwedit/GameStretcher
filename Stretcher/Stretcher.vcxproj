@@ -189,6 +189,7 @@
     <ClInclude Include="D3D9Context.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
+    <ClInclude Include="RectUtil.h" />
     <ClInclude Include="Region.h" />
     <ClInclude Include="shaderPrograms.h" />
     <ClInclude Include="shaderPrograms2.h" />

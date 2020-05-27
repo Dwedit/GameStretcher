@@ -24,11 +24,7 @@ using std::unique_lock;
 
 class WindowContext;
 
-static inline bool operator==(const RECT& rect1, const RECT& rect2)
-{
-	return (0 == memcmp(&rect1, &rect2, sizeof(RECT)));
-}
-
+#include "RectUtil.h"
 #include <vector>
 using std::vector;
 
@@ -162,9 +158,7 @@ public:
 	HDC GetD3DDC();	//TODO
 	bool Redraw();	//TODO
 
-	void AddDirtyRect(const RECT &rect);
-	void AddDirtyRect(int x, int y, int width, int height);
-	void AddDirtyRectWithPen(int x, int y, int width, int height);
+	void AddDirtyRect();
 
 	void WindowShown();
 	void VirtualizeWindow();

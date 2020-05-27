@@ -4,36 +4,84 @@
 #include "WindowContext.h"
 #include <mutex>
 
-unique_lock<mutex> SubstituteDC(HDC& hdc)
+class MyLock
 {
-	WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-	if (windowContext != NULL)
+	unique_lock<mutex> lock;
+	MyLock(const MyLock&) = delete;
+	void operator=(const MyLock&) = delete;
+public:
+	HDC hdc, inputHdc;
+	WindowContext* windowContext;
+	HDC hdc2, inputHdc2;
+	WindowContext* windowContext2;
+	MyLock() : hdc(), hdc2(), inputHdc(), inputHdc2(), windowContext(), windowContext2()
 	{
-		auto lock = windowContext->CreateLock();
-		hdc = windowContext->GetCurrentDC(hdc);
-		return lock;
+
 	}
-	return unique_lock<mutex>();
-}
-unique_lock<mutex> SubstituteDC(HDC& hdc, HDC &hdc2)
-{
-	auto lock = unique_lock<mutex>();
-	WindowContext* windowContext = WindowContext::GetByHdc(hdc);
-	if (windowContext != NULL)
+	MyLock(HDC& hdc) : hdc(), hdc2(), inputHdc(hdc), inputHdc2(), windowContext(), windowContext2()
 	{
-		lock = windowContext->CreateLock();
-		hdc = windowContext->GetCurrentDC(hdc);
-	}
-	WindowContext* windowContext2 = WindowContext::GetByHdc(hdc2);
-	if (windowContext2 != NULL)
-	{
-		if (!lock.owns_lock())
+		windowContext = WindowContext::GetByHdc(inputHdc);
+		if (windowContext != NULL)
 		{
-			lock = windowContext2->CreateLock();
+			this->lock = windowContext->CreateLock();
+			this->hdc = windowContext->GetCurrentDC(inputHdc);
+			hdc = this->hdc;
 		}
-		hdc2 = windowContext2->GetCurrentDC(hdc2);
 	}
-	return lock;
+	MyLock(HDC& hdc1, HDC& hdc2) : hdc(), hdc2(), inputHdc(hdc1), inputHdc2(hdc2), windowContext(), windowContext2()
+	{
+		windowContext = WindowContext::GetByHdc(inputHdc);
+		if (windowContext != NULL)
+		{
+			this->lock = windowContext->CreateLock();
+			this->hdc = windowContext->GetCurrentDC(inputHdc);
+			hdc1 = this->hdc;
+		}
+		windowContext2 = WindowContext::GetByHdc(inputHdc2);
+		if (windowContext2 != NULL)
+		{
+			if (!this->lock.owns_lock())
+			{
+				this->lock = windowContext2->CreateLock();
+			}
+			this->hdc2 = windowContext2->GetCurrentDC(inputHdc2);
+			hdc2 = this->hdc2;
+		}
+	}
+	~MyLock()
+	{
+		if (windowContext != NULL)
+		{
+			windowContext->AddDirtyRect();
+		}
+		if (windowContext2 != NULL)
+		{
+			windowContext2->AddDirtyRect();
+		}
+	}
+	MyLock(MyLock&& myLock) noexcept : hdc(), hdc2(), inputHdc(), inputHdc2(), windowContext(), windowContext2()
+	{
+		*this = std::forward<MyLock>(myLock);
+	}
+	void operator=(MyLock&& myLock) noexcept
+	{
+		std::swap(hdc, myLock.hdc);
+		std::swap(hdc2, myLock.hdc2);
+		std::swap(inputHdc, myLock.inputHdc);
+		std::swap(inputHdc2, myLock.inputHdc2);
+		std::swap(windowContext, myLock.windowContext);
+		std::swap(windowContext2, myLock.windowContext2);
+		lock = std::forward<unique_lock<mutex>>(myLock.lock);
+	}
+};
+
+MyLock SubstituteDC(HDC& hdc)
+{
+	return MyLock(hdc);
+}
+MyLock SubstituteDC(HDC& hdc, HDC &hdc2)
+{
+	return MyLock(hdc, hdc2);
 }
 
 
@@ -600,19 +648,13 @@ BOOL WINAPI Arc_Replacement(HDC hdc, int x1, int y1, int x2, int y2, int x3, int
 }
 BOOL WINAPI BitBlt_Replacement(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
-	HDC inputHDC = hdc;
-
 	auto lock = SubstituteDC(hdc, hdcSrc);
+	//hack for Space Cadet Pinball - deny blacking out the screen on a released Paint DC
 	if (rop == BLACKNESS)
 	{
-		//hack for Space Cadet Pinball - deny blacking out the screen on a released Paint DC
-		WindowContext* windowContext = WindowContext::GetByHdc(inputHDC);
-		if (windowContext != NULL)
+		if (lock.windowContext != NULL && lock.windowContext->PaintDCIsExpired(lock.inputHdc))
 		{
-			if (windowContext->PaintDCIsExpired(inputHDC))
-			{
-				return true;
-			}
+			return true;
 		}
 	}
 	BOOL value = BitBlt_OLD(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);

@@ -92,5 +92,8 @@
     <ClInclude Include="WinApiWrappers_AllGDI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RectUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
