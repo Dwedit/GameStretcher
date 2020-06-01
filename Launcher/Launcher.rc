@@ -70,6 +70,18 @@ BEGIN
     LTEXT           "Waiting for debugger to be attached to process Pinball.exe (PID 12345)",IDPROMPT,7,7,165,28
 END
 
+IDD_LAUNCHER DIALOGEX 0, 0, 181, 176
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "GDIStretcher"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "&Run",IDOK,7,155,50,14
+    PUSHBUTTON      "E&xit",IDCANCEL,125,155,50,14
+    LISTBOX         IDC_LIST1,7,20,168,130,LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Select a program to run:",IDC_STATIC,7,7,79,8
+    PUSHBUTTON      "&Browse...",IDC_BROWSE,67,155,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -86,6 +98,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 59
     END
+
+    IDD_LAUNCHER, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 174
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 169
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -96,6 +116,11 @@ END
 //
 
 IDD_DEBUGGER AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_LAUNCHER AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

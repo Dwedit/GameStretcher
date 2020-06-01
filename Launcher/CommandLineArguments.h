@@ -1,8 +1,43 @@
 #pragma once
 
 #include <string>
+#include <vector>
 using std::wstring;
-wstring GetProcessCommandLine();
-wstring FindInitialDirectory(const wstring& commandLine);
-wstring FindInitialDirectory();
-wstring FindLauncherDirectory();
+using std::vector;
+
+wstring ArgvQuote(const wstring& Argument);
+
+struct CommandLineData
+{
+    wstring launcherExe;
+    wstring launcherDirectory;
+    wstring explorerDirectory;
+    wstring currentDirectory;
+    wstring targetExe;
+    wstring targetDirectory;
+    vector<wstring> targetParameters;
+    wstring targetFullCommandLine;
+
+    void BuildFullCommandLine();
+};
+
+struct CommandLinePiece
+{
+    wstring str;
+    int startIndex;
+    int endIndex;
+    bool containsQuotes;
+    bool isQuoted;
+};
+
+wstring LocateFile(const wstring& path_in, const CommandLineData& cmd);
+wstring LocateFile2(const wstring& path_in, const CommandLineData& cmd);
+CommandLineData ParseCommandLine();
+wstring AppendSlash(const wstring& path);
+wstring GetDirectory(const wstring& path);
+wstring GetFile(const wstring& path);
+
+//wstring GetProcessCommandLine();
+//wstring FindInitialDirectory(const wstring& commandLine);
+//wstring FindInitialDirectory();
+//wstring FindLauncherDirectory();

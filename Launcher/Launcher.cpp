@@ -1,12 +1,17 @@
 struct IUnknown;
 #define NOMINMAX
 #include <Windows.h>
+#include <Shlwapi.h>
 #include <string>
+#include <vector>
 #include <algorithm>
 using std::wstring;
 using std::pair;
 using std::make_pair;
 using std::max;
+using std::vector;
+
+#pragma comment(lib, "Shlwapi.lib")
 
 #include "CommandLineArguments.h"
 
@@ -32,15 +37,11 @@ pair<DWORD_PTR, SIZE_T> FindMemoryBlock(void* ptr)
     return std::make_pair((DWORD_PTR)memInfo.BaseAddress, (SIZE_T)memInfo.RegionSize);
 }
 
-DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, const wchar_t *const _payloadDllName)
+DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, LPCWSTR payloadDllName, LPCWSTR injectorDllName)
 {
     //Load Injector DLL
-    wstring LauncherDirectory = FindLauncherDirectory();
-    wstring injectorDllName = LauncherDirectory + L"Injector.dll";
-    wstring payloadDllName = LauncherDirectory + _payloadDllName;
-
     HMODULE injectorDll = NULL;
-    injectorDll = LoadLibraryW(injectorDllName.c_str());
+    injectorDll = LoadLibraryW(injectorDllName);
     if (injectorDll == NULL) return GetLastError();
     
     //Find the function
@@ -67,10 +68,10 @@ DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, 
     SIZE_T numberOfBytesWritten = 0;
     okay = WriteProcessMemory(processInformation.hProcess, (LPVOID)memWithinOtherProcess, (LPCVOID)dllBaseAddress, dllSize, &numberOfBytesWritten);
     
-    SIZE_T nameSize = (payloadDllName.length() + 1) * sizeof(wchar_t);
+    SIZE_T nameSize = (wcslen(payloadDllName) + 1) * sizeof(wchar_t);
     
     DWORD_PTR dllNameInOtherProcess = memWithinOtherProcess + dllSize - nameSize;
-    okay = WriteProcessMemory(processInformation.hProcess, (LPVOID)dllNameInOtherProcess, payloadDllName.c_str(), nameSize, &numberOfBytesWritten);
+    okay = WriteProcessMemory(processInformation.hProcess, (LPVOID)dllNameInOtherProcess, payloadDllName, nameSize, &numberOfBytesWritten);
 
     DWORD_PTR callLoadLibraryInOtherProcess = procAddressWithinDll + memWithinOtherProcess;
     DWORD remoteThreadId = 0;
@@ -94,11 +95,6 @@ DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, 
         }
     }
 
-    //if (IsDebuggerPresent() || _debug)
-    //{
-    //    MessageBoxA(NULL, "Attach a debugger to the other application, set a breakpoint there, press OK on this MessageBox, then click RUN in the other debugger.", "Debugging Instructions", 0);
-    //}
-
     HANDLE hThread = CreateRemoteThread(processInformation.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)callLoadLibraryInOtherProcess, (LPVOID)dllNameInOtherProcess, 0, &remoteThreadId);
     
     DWORD result = 0;
@@ -119,25 +115,42 @@ DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, 
     return result;
 }
 
-
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd)
 {
-    wstring commandLine = GetProcessCommandLine();
-    wstring initialDirectory = FindInitialDirectory(commandLine);
-    if (commandLine.empty())
+    CommandLineData cmd = ParseCommandLine();
+    if (cmd.targetFullCommandLine.empty())
     {
-        MessageBoxW(NULL, L"Please drag and drop an EXE file onto this EXE file.", L"Instructions", 0);
+        bool LauncherDialog(CommandLineData &cmd);
+        if (LauncherDialog(cmd))
+        {
+            if (cmd.targetFullCommandLine.empty()) return ERROR_FILE_NOT_FOUND;
+        }
+        else
+        {
+            return 0;
+        }
+        //MessageBoxW(NULL, L"Please drag and drop an EXE file onto this EXE file.", L"Instructions", 0);
+        //return ERROR_FILE_NOT_FOUND;
+    }
+    wstring stretcherDll = LocateFile2(L"Stretcher.dll", cmd);
+    if (stretcherDll.empty())
+    {
+        MessageBoxW(NULL, L"Cannot find Stretcher.dll.", L"Error", 0);
+        return ERROR_FILE_NOT_FOUND;
+    }
+    wstring injectorDll = LocateFile2(L"Injector.dll", cmd);
+    if (injectorDll.empty())
+    {
+        MessageBoxW(NULL, L"Cannot find Injector.dll.", L"Error", 0);
         return ERROR_FILE_NOT_FOUND;
     }
     
     PROCESS_INFORMATION processInformation = {};
-    bool okay = StartSuspendedProcess(commandLine, initialDirectory, nShowCmd, processInformation);
-    DWORD result = InjectDllIntoRemoteProcess(processInformation, L"Stretcher.dll");
+    bool okay = StartSuspendedProcess(cmd.targetFullCommandLine, cmd.targetDirectory, nShowCmd, processInformation);
+    DWORD result = InjectDllIntoRemoteProcess(processInformation, stretcherDll.c_str(), injectorDll.c_str());
     AllowSetForegroundWindow(processInformation.dwProcessId);
     ResumeThread(processInformation.hThread);
     CloseHandle(processInformation.hProcess);
     CloseHandle(processInformation.hThread);
 	return result;
 }
-
-

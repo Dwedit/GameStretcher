@@ -19,7 +19,7 @@ DWORD dialogPid;
 UINT_PTR dialogTimer;
 HANDLE dialogHProcess;
 
-wstring GetFileName(const wstring &path)
+static wstring GetFileName(const wstring &path)
 {
     int i;
     for (i = (int)path.length() - 1; i >= 0; i--)
@@ -44,7 +44,7 @@ bool DebuggerDialog(const PROCESS_INFORMATION& processInformation)
     dialogPid = processInformation.dwProcessId;
     dialogHProcess = processInformation.hProcess;
 
-    if (DialogBox(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDD_DEBUGGER), NULL, (DLGPROC)DlgProc) == IDOK)
+    if (DialogBoxW(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDD_DEBUGGER), NULL, (DLGPROC)DlgProc) == IDOK)
     {
         return true;
     }

@@ -22,6 +22,7 @@
     <ClCompile Include="CommandLineArguments.cpp" />
     <ClCompile Include="DebuggerDialog.cpp" />
     <ClCompile Include="Launcher.cpp" />
+    <ClCompile Include="LauncherDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineArguments.h" />
