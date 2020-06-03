@@ -36,8 +36,3 @@ CommandLineData ParseCommandLine();
 wstring AppendSlash(const wstring& path);
 wstring GetDirectory(const wstring& path);
 wstring GetFile(const wstring& path);
-
-//wstring GetProcessCommandLine();
-//wstring FindInitialDirectory(const wstring& commandLine);
-//wstring FindInitialDirectory();
-//wstring FindLauncherDirectory();
