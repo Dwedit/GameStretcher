@@ -203,8 +203,8 @@ template <class TKey, class TValue, class TMap>
 class CachedMap
 {
 	TMap map;
-	mutable TKey mostRecentKey;
-	mutable TValue* pMostRecentValue;
+	mutable TKey mostRecentKey = TKey();
+	mutable TValue* pMostRecentValue = nullptr;
 public:
 	bool ContainsKey(const TKey& key) const
 	{

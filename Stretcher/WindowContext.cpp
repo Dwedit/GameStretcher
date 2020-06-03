@@ -731,12 +731,19 @@ RECT WindowContext::RectClientToVirtualClamp(const RECT &rect) const
 
 void WindowContext::AddDirtyRect()
 {
+	if (parentWindowContext != NULL)
+	{
+		parentWindowContext->AddDirtyRect();
+		return;
+	}
+
 	RECT boundsRect = {};
 	bool isEmpty;
 	UINT boundsRectMode = GetBoundsRect(this->d3dDC, &boundsRect, DCB_RESET);
 	isEmpty = boundsRectMode == DCB_RESET;
 	if (!isEmpty)
 	{
+		LPtoDP(this->d3dDC, (LPPOINT)&boundsRect, 2);
 		dirtyRegion.AddRectangle(boundsRect);
 	}
 }
@@ -977,7 +984,6 @@ void WindowContext::UpdateSizeScaled()
 
 	upscaler.SetInputRectangle(0, 0, VirtualWidth, VirtualHeight);
 	upscaler.SetViewRectangle(XOffset, YOffset, ScaledWidth, ScaledHeight);
-	upscaler.SetWindowSize(RealWidth, RealHeight);
 }
 
 //Assigns real client bounds and real window rect to all size variables

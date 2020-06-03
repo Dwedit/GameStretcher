@@ -25,10 +25,6 @@ void CUpscaler::SetViewRectangle(int x, int y, int width, int height)
 {
 	impl->SetViewRectangle(x, y, width, height);
 }
-void CUpscaler::SetWindowSize(int windowWidth, int windowHeight)
-{
-	impl->SetWindowSize(windowWidth, windowHeight);
-}
 void CUpscaler::SetInputRectangle(int x, int y, int width, int height)
 {
 	impl->SetInputRectangle(x, y, width, height);

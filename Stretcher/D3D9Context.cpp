@@ -27,6 +27,12 @@ static inline void SafeRelease(T*& ptr)
 	}
 }
 
+bool IsWine()
+{
+	HMODULE ntdllModule = GetModuleHandleA("ntdll.dll");
+	return NULL != GetProcAddress(ntdllModule, "wine_get_version");
+}
+
 //#define SafeRelease(xxxx) if ((xxxx) != NULL) { (xxxx)->Release(); (xxxx) = NULL; }
 //#pragma comment( lib, "d3d9.lib" )
 #pragma warning (disable: 26812)

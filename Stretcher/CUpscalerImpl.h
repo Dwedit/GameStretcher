@@ -4,6 +4,7 @@
 #define NO_CHECKERBOARD 1
 #define NO_DIRTY_RECT 0
 #define DIRTY_RECT_NO_Z_BUFFER 0
+#define USE_STATE_SAVER 0
 
 template <class T>
 static inline void SafeRelease(T &ptr) { if (ptr != NULL) { ptr->Release(); ptr = NULL; } }
@@ -44,6 +45,7 @@ static const D3DMATRIX identityMatrix =
 	0, 0, 0, 1 }
 };
 
+#if !USE_STATE_SAVER
 //dummy version
 class CStateSaver
 {
@@ -53,8 +55,8 @@ public:
 
 	}
 };
+#else
 
-/*
 class CStateSaver
 {
 	IDirect3DStateBlock9 *stateBlock;
@@ -64,7 +66,6 @@ class CStateSaver
 public:
 	CStateSaver(IDirect3DDevice9* device)
 	{
-		return;
 		this->device = device;
 		SafeAddRef(device);
 		stateBlock = NULL;
@@ -76,7 +77,6 @@ public:
 	}
 	~CStateSaver()
 	{
-		return;
 		HRESULT hr;
 		hr = device->SetRenderTarget(0, renderTarget);
 		hr = device->SetDepthStencilSurface(depthStencilSurface);
@@ -90,7 +90,7 @@ public:
 		SafeRelease(device);
 	}
 };
-*/
+#endif
 
 struct Vertex
 {
@@ -226,6 +226,7 @@ private:
 
 private:
 	IDirect3DDevice9 *device;
+	IDirect3DSwapChain9 *swapChain;
 	IDirect3DTexture9 *sourceTexture;
 	IDirect3DSurface9 *sourceTextureSurface;
 
@@ -261,16 +262,21 @@ private:
 	int backBufferHeight;
 
 	int updateLeft, updateTop, updateWidth, updateHeight;
-	int windowWidth, windowHeight;
+	HWND hwnd;
+	D3DSWAPEFFECT swapEffect;
+	int bufferCount;
+	//int windowWidth, windowHeight;
 	bool doBeginScene;
 	int upscaleFilter;
 	bool borderDirty;
 	bool upscaledTextureDirty;
+	bool isWine;
 
 	Region updateRegionOriginal;
 	Region updateRegion1X;
 	Region updateRegion2X;
 	Region updateRegionScreen;
+	vector<Region> oldUpdateRegions;
 
 public:
 	CUpscalerImpl() :
@@ -304,8 +310,9 @@ public:
 		textureWidth(0), textureHeight(0), backBufferWidth(0), backBufferHeight(0),
 		updateLeft(0), updateTop(0), updateWidth(0), updateHeight(0),
 		inputLeft(0), inputTop(0), inputWidth(0), inputHeight(0),
-		windowWidth(), windowHeight(), borderDirty(), upscaledTextureDirty(),
-		upscaleFilter(1)
+		borderDirty(), upscaledTextureDirty(), isWine(),
+		upscaleFilter(1),
+		swapEffect(D3DSWAPEFFECT_COPY), bufferCount(0), hwnd(0)
 	{
 		Destroy();
 	}
@@ -412,12 +419,10 @@ public:
 	bool ClearZBufferAndCarveRects(const vector<RECT>& rects)
 	{
 		HRESULT hr = 0;
-		//DELETEME
 #if NO_DIRTY_RECT | DIRTY_RECT_NO_Z_BUFFER
 		hr |= device->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 		return true;
 #endif
-		/////
 
 		if (rects.size() <= 1)
 		{
@@ -451,22 +456,29 @@ public:
 	{
 		if (device == NULL) return false;
 		bool okay = true;
-		bool borderWasDirty = borderDirty;
+		
 		if (depthSurface2x == NULL) okay &= CreateDepthSurface2x();
 		if (depthSurface1x == NULL) okay &= CreateDepthSurface1x();
 
-		RECT entireScreen1x = { inputLeft, inputTop, inputLeft + inputWidth, inputTop + inputHeight };
-		RECT entireScreen2x = { inputLeft * 2, inputTop * 2, (inputLeft + inputWidth) * 2, (inputTop + inputHeight * 2) };
-		RECT entireWindow = { 0, 0, windowWidth, windowHeight };
+		RECT clientRect;
+		GetClientRect(hwnd, &clientRect);
 
-		if (this->upscaledTextureDirty && this->GetUpscaleFilter() != 0)
+		if (isWine)
 		{
-			this->upscaledTextureDirty = false;
-			this->borderDirty = true;
-			this->updateRegionOriginal.Clear(); this->updateRegionOriginal.AddRectangle(entireScreen1x);
-			this->updateRegion1X.Clear(); this->updateRegion1X.AddRectangle(entireScreen1x);
-			this->updateRegion2X.Clear(); this->updateRegion2X.AddRectangle(entireScreen2x);
-			this->updateRegionScreen.Clear(); this->updateRegionScreen.AddRectangle(entireWindow);
+			this->updateRegionScreen.AddRectangle(clientRect);
+		}
+
+		if (this->bufferCount > 1)
+		{
+			this->oldUpdateRegions.push_back(this->updateRegionScreen);
+			if (this->oldUpdateRegions.size() > this->bufferCount)
+			{
+				this->oldUpdateRegions.erase(this->oldUpdateRegions.begin() + 0, this->oldUpdateRegions.begin() + 1);
+			}
+			for (int i = 0; i < this->oldUpdateRegions.size() - 1; i++)
+			{
+				this->updateRegionScreen.UnionWith(this->oldUpdateRegions[i]);
+			}
 		}
 
 		RECT boundingBoxOriginal = this->updateRegionOriginal.GetBoundingBox();
@@ -474,16 +486,17 @@ public:
 		RECT boundingBox2x = this->updateRegion2X.GetBoundingBox();
 		RECT boundingBoxScreen = this->updateRegionScreen.GetBoundingBox();
 
+		bool borderDirty = false;
+		if (boundingBoxScreen.left < updateLeft || boundingBoxScreen.right > updateLeft + updateWidth ||
+			boundingBoxScreen.top < updateTop || boundingBoxScreen.bottom > updateTop + updateHeight)
+		{
+			borderDirty = true;
+		}
+
 		vector<RECT> rectsOriginal = this->updateRegionOriginal.GetRegionRectangles();
 		vector<RECT> rects1x = this->updateRegion1X.GetRegionRectangles();
 		vector<RECT> rects2x = this->updateRegion2X.GetRegionRectangles();
 		vector<RECT> rectsScreen = this->updateRegionScreen.GetRegionRectangles();
-
-		//temporary for breakpoint
-		if (rectsOriginal.size() > 1 || (rectsOriginal.size() == 1 && rectsOriginal[0] != entireScreen1x))
-		{
-			int dummy = 0;
-		}
 
 		//clear Z buffers to 0.0 (Near), carve out rectangles as 1.0 (far)
 		okay &= ClearZBufferAndCarveRects(rects2x, pass1RenderTargetSurface, depthSurface2x);
@@ -503,22 +516,19 @@ public:
 		int width = boundingBoxOriginal.right - boundingBoxOriginal.left;
 		int height = boundingBoxOriginal.bottom - boundingBoxOriginal.top;
 		HRESULT hr = 0;
-		//if (x == inputLeft && y == inputTop && width == inputWidth && height == inputHeight)
-		//{
-		//	hr |= device->SetRenderTarget(0, backBuffer);
-		//	hr |= device->SetDepthStencilSurface(depthStencilSurface);
-		//	hr |= device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 0), 0, 0);
-		//}
+
 		if (borderDirty)
 		{
-			borderDirty = false;
+			int windowWidth = clientRect.right - clientRect.left;
+			int windowHeight = clientRect.bottom - clientRect.top;
+
 			hr |= device->SetRenderTarget(0, backBuffer);
 			hr |= device->SetDepthStencilSurface(depthStencilSurface);
 			
 			int leftEdge = this->updateLeft;
 			int topEdge = this->updateTop;
-			int rightEdge = this->windowWidth - leftEdge - this->updateWidth;
-			int bottomEdge = this->windowHeight - topEdge - this->updateHeight;
+			int rightEdge = windowWidth - leftEdge - this->updateWidth;
+			int bottomEdge = windowHeight - topEdge - this->updateHeight;
 
 			RECT rect;
 			if (leftEdge > 0)
@@ -546,9 +556,6 @@ public:
 				hr |= device->ColorFill(backBuffer, &rect, D3DCOLOR_RGBA(0, 0, 0, 0));
 			}
 		}
-
-
-
 		okay &= UpdateToTexture(x, y, width, height);
 		okay &= UpdateToBackBuffer(x, y, width, height);
 		
@@ -565,12 +572,10 @@ public:
 		const RGNDATA* rgnData = NULL;
 #endif
 		//temporary
-		if (borderWasDirty)
+		if (rectsScreen.size() <= 1)
 		{
-			boundingBoxScreen = { 0,0,updateLeft * 2 + updateWidth,updateTop * 2 + updateHeight };
 			rgnData = NULL;
 		}
-		//hr |= device->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, NULL);
 		hr |= device->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData);
 		return okay && SUCCEEDED(hr);
 	}
@@ -848,7 +853,7 @@ public:
 
 		bool useSourceTexture = GetUpscaleFilter() == 0;
 
-		HRESULT hr = 0, hr2 = 0;
+		HRESULT hr = 0;
 
 		//coordinates are non-scaled, and not pre-expanded
 		//CStateSaver stateSaver(device);	//save device state, restore state upon stateSaver leaving scope
@@ -887,6 +892,7 @@ public:
 	void Destroy()
 	{
 		SafeRelease(device);
+		SafeRelease(swapChain);
 		SafeRelease(sourceTexture);
 		SafeRelease(sourceTextureSurface);
 		SafeRelease(pass0RenderTargetTexture);
@@ -917,10 +923,13 @@ public:
 		textureHeight = 0;
 		backBufferWidth = 0;
 		backBufferHeight = 0;
-		//updateLeft = 0;
-		//updateTop = 0;
-		//updateWidth = 0;
-		//updateHeight = 0;
+		swapEffect = D3DSWAPEFFECT_COPY;
+		bufferCount = 0;
+		this->oldUpdateRegions.clear();
+		updateLeft = 0;
+		updateTop = 0;
+		updateWidth = 0;
+		updateHeight = 0;
 	}
 private:
 	bool SetDevice(IDirect3DDevice9 *device)
@@ -949,6 +958,31 @@ private:
 		if (depthStencilSurface != NULL) SafeRelease(depthStencilSurface);
 		hr = device->GetDepthStencilSurface(&depthStencilSurface);
 
+		D3DDEVICE_CREATION_PARAMETERS creationParameters = {};
+		hr = device->GetCreationParameters(&creationParameters);
+		if (SUCCEEDED(hr))
+		{
+			this->hwnd = creationParameters.hFocusWindow;
+		}
+		SafeRelease(this->swapChain);
+		hr = device->GetSwapChain(0, &swapChain);
+		if (swapChain != NULL)
+		{
+			D3DPRESENT_PARAMETERS presentParameters = {};
+			hr = swapChain->GetPresentParameters(&presentParameters);
+			if (SUCCEEDED(hr))
+			{
+				this->swapEffect = presentParameters.SwapEffect;
+				this->bufferCount = presentParameters.BackBufferCount;
+				extern bool IsWine();
+				if (IsWine())
+				{
+					this->isWine = true;
+					//this->bufferCount = 4;
+				}
+			}
+		}
+		
 		//D3DCAPS9 caps = {};
 		//hr = device->GetDeviceCaps(&caps);
 		//IDirect3D9 *d3d9 = NULL;
@@ -1041,55 +1075,8 @@ public:
 #if !USE_SHADER_MODEL_2
 		return LoadShaders3();
 #else
-		//extern std::vector<byte> LoadFile(const char *fileName);
-
 		if (device == NULL) return false;
 		HRESULT hr = 0;
-		/*
-		std::vector<byte> checkerboard_fragment, old_stock_fragment, super_xbr_pass0_fragment, super_xbr_pass1_EVEN_fragment, super_xbr_pass1_ODD_fragment,
-			old_stock_vertex, checkerboard_vertex, super_xbr_pass0_vertex, super_xbr_pass1_EVEN_vertex;
-
-		bool useShaderModel2 = true;
-		if (useShaderModel2)
-		{
-			checkerboard_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/checkerboard_fragment2.cso");
-			old_stock_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/old-stock_fragment2.cso");
-			super_xbr_pass0_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass0_fragment2.cso");
-			super_xbr_pass1_EVEN_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass1_EVEN_fragment2.cso");
-			super_xbr_pass1_ODD_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass1_ODD_fragment2.cso");
-
-			old_stock_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/old-stock_vertex2.cso");
-			//checkerboard_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/old-stock_vertex2.cso");
-			super_xbr_pass0_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass0_vertex2.cso");
-			//super_xbr_pass1_EVEN_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass1_EVEN_vertex2.cso");
-		}
-		else
-		{
-			checkerboard_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/checkerboard_fragment.cso");
-			old_stock_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/old-stock_fragment.cso");
-			super_xbr_pass0_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass0_fragment.cso");
-			super_xbr_pass1_EVEN_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass1_EVEN_fragment.cso");
-			super_xbr_pass1_ODD_fragment = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass1_ODD_fragment.cso");
-
-			old_stock_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/old-stock_vertex.cso");
-			//checkerboard_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/old-stock_vertex.cso");
-			super_xbr_pass0_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass0_vertex.cso");
-			//super_xbr_pass1_EVEN_vertex = LoadFile("C:/projects/D3D9Test_9-23-2019/super-xbr-pass1_EVEN_vertex.cso");
-		}
-		
-		hr |= device->CreatePixelShader((const DWORD*)&checkerboard_fragment[0], &this->checkerboardPixelShader);
-		hr |= device->CreatePixelShader((const DWORD*)&old_stock_fragment[0], &this->stockPixelShader);
-		hr |= device->CreatePixelShader((const DWORD*)&super_xbr_pass0_fragment[0], &this->superXbrPass0PixelShader);
-		hr |= device->CreatePixelShader((const DWORD*)&super_xbr_pass1_EVEN_fragment[0], &this->superXbrPass1EvenPixelShader);
-		hr |= device->CreatePixelShader((const DWORD*)&super_xbr_pass1_ODD_fragment[0], &this->superXbrPass1OddPixelShader);
-
-		hr |= device->CreateVertexShader((const DWORD*)&old_stock_vertex[0], &this->stockVertexShader);
-		hr |= device->CreateVertexShader((const DWORD*)&super_xbr_pass0_vertex[0], &this->superXbrPass0VertexShader);
-		//hr |= device->CreateVertexShader((const DWORD*)&super_xbr_pass1_EVEN_vertex[0], &this->superXbrPass1EvenVertexShader);
-		this->superXbrPass1EvenVertexShader = this->stockVertexShader;
-		SafeAddRef(this->superXbrPass1EvenVertexShader);
-		*/
-
 		D3DCAPS9 caps;
 		hr |= device->GetDeviceCaps(&caps);
 		if (FAILED(hr)) return false;
@@ -1237,42 +1224,6 @@ private:
 		if (!RenderCheckerboard()) return false;
 		depthSurfaceReady = true;
 		return true;
-		
-		//if (depthSurfaceReady) return true;
-		//if (device == NULL) return false;
-		//if (checkerboardPixelShader == NULL) if (!LoadShaders()) return false;
-		//if (vertexDeclaration == NULL) if (!CreateVertexDeclaration()) return false;
-		//if (vertexBuffer == NULL) if (!CreateVertexBuffer()) return false;
-
-		//bool okay = true;
-		//HRESULT hr = 0;
-		//if (depthSurface2x == NULL)
-		//{
-		//	hr = device->CreateDepthStencilSurface(textureWidth * 2, textureHeight * 2, D3DFMT_D16, D3DMULTISAMPLE_NONE, 0, false, &depthSurface2x, NULL);
-		//	if (FAILED(hr)) return false;
-		//}
-
-		//CStateSaver stateSaver(device);
-
-		//if (doBeginScene) hr |= device->BeginScene();
-		//hr |= device->SetFVF(Vertex::FVF);
-		//hr |= device->SetVertexDeclaration(vertexDeclaration);
-		//hr |= device->SetStreamSource(0, vertexBuffer, 0, sizeof(Vertex));
-		//hr |= device->SetDepthStencilSurface(depthSurface2x);
-		//hr |= device->SetRenderTarget(0, pass1RenderTargetSurface);
-		//hr |= device->Clear(0, NULL, D3DCLEAR_ZBUFFER, 0, 1.0, 0);
-		//hr |= device->SetVertexShader(stockVertexShader);
-		//hr |= device->SetPixelShader(checkerboardPixelShader);
-		//hr |= device->SetRenderState(D3DRS_ZENABLE, true);
-		//hr |= device->SetRenderState(D3DRS_ZWRITEENABLE, true);
-		//hr |= device->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
-		//okay &= SetViewMatrix(textureWidth * 2, textureHeight * 2);
-		//okay &= SetShaderParameters(textureWidth * 2, textureHeight * 2);
-		//hr |= device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 4);
-		//if (doBeginScene) hr |= device->EndScene();
-
-		//depthSurfaceReady = SUCCEEDED(hr) & okay;
-		//return depthSurfaceReady;
 	}
 #endif
 	bool SetTextureSize(int width, int height)
@@ -1334,11 +1285,6 @@ public:
 		this->inputWidth = width;
 		this->inputHeight = height;
 	}
-	void SetWindowSize(int windowWidth, int windowHeight)
-	{
-		this->windowWidth = windowWidth;
-		this->windowHeight = windowHeight;
-	}
 	void SetDoBeginScene(bool doBeginScene)
 	{
 		this->doBeginScene = doBeginScene;
@@ -1376,10 +1322,30 @@ public:
 		//BottomPadding = RealHeight - ScaledHeight - TopPadding;
 		//XOffset = LeftPadding;
 		//YOffset = TopPadding;
+
 		this->updateRegionOriginal = region;
 		this->updateRegion1X = region.ZoomAndDialate(1.0f, 2.0f, 0.0f, 0.0f, 0, 0, this->inputWidth, this->inputHeight);
 		this->updateRegion2X = region.ZoomAndDialate(2.0f, 3.0f, 0.0f, 0.0f, 0, 0, this->inputWidth * 2, this->inputHeight * 2);
 		this->updateRegionScreen = region.ZoomAndDialate(scale, scale * 2.0f, (float)this->updateLeft, (float)this->updateTop, this->updateLeft, this->updateTop, this->updateLeft + this->updateWidth, this->updateTop + this->updateHeight);
+
+		if (this->upscaledTextureDirty && this->GetUpscaleFilter() != 0)
+		{
+			this->upscaledTextureDirty = false;
+			//this->borderDirty = true;
+			this->updateRegion1X.AddRectangle(inputLeft, inputTop, inputWidth, inputHeight);
+			this->updateRegion2X.AddRectangle(inputLeft * 2, inputTop * 2, inputWidth * 2, inputHeight * 2);
+			this->updateRegionScreen.AddRectangle(updateLeft, updateTop, updateWidth, updateHeight);
+		}
+
+		if (this->borderDirty)
+		{
+			this->borderDirty = false;
+			RECT entireWindow;
+			GetClientRect(hwnd, &entireWindow);
+			this->updateRegionScreen.AddRectangle(entireWindow);
+			this->oldUpdateRegions.clear();
+		}
+
 	}
 
 	void SetBorderDirty()

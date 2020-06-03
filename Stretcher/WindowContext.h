@@ -104,7 +104,9 @@ public:
 		LastInvalidatedRectReal(), LastInvalidatedRectVirtual(), VirtualWindowRect(), VirtualWindowStyle(),
 		IsShown(), IsFullScreen(), EnteringFullScreen(), LeavingFullScreen(),
 		ResizeHandler(), MovingWindow(), realDC(), paintDCIsOpen(),
-		parentWindowContext()
+		parentWindowContext(),RealClientBounds(), RealClientRect(), RealWindowRect(),
+		ScaledClientRect(), VirtualClientBounds(), VirtualClientRect(),
+		lastDC(), paintClipRectReal(), paintClipRectVirtual()
 	{
 	}
 	~WindowContext()
