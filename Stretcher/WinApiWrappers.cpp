@@ -514,7 +514,7 @@ tryAgain:
     WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL)
     {
-        if (index == GWL_WNDPROC && WindowContext::WindowBeingCreated)
+        if (index == GWLP_WNDPROC && WindowContext::WindowBeingCreated)
         {
             WNDPROC oldWndProc = (WNDPROC)(isWindowUnicode ? 
                 GetWindowLongPtrW(hwnd, index) :

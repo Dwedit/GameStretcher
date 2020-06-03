@@ -56,7 +56,7 @@ void WindowContext::Init(HWND hwnd)
 		this->parentWindowContext->childWindows.push_back(this);
 	}
 
-	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWL_WNDPROC);
+	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWLP_WNDPROC);
 	if (currentWndProc != DefaultWndProc && currentWndProc != SimpleWndProc)
 	{
 		oldWindowProc = currentWndProc;
@@ -72,7 +72,7 @@ void WindowContext::Init(HWND hwnd)
 		}
 #endif
 	}
-	_SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG_PTR)SimpleWndProc);
+	_SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)SimpleWndProc);
 	
 	//Initialize Virtual Client Bounds (For a brand new window, this is zeroes)
 	UpdateSize();
@@ -103,7 +103,7 @@ void WindowContext::Release()
 
 	if (IsWindow(window) && oldWindowProc != NULL)
 	{
-		_SetWindowLongPtr(window, GWL_WNDPROC, (LONG_PTR)oldWindowProc);
+		_SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)oldWindowProc);
 	}
 	d3d9Context.Destroy();
 	window = NULL;
@@ -841,7 +841,7 @@ LRESULT CALLBACK WindowContext::DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 	//Did not want to hook window, restore the normal WNDPROC so it doesn't go through this code again.
 	//Is current WND proc already different than This procedure?  (can somehow happen)  Just run that.
 	bool isWindowUnicode = IsWindowUnicode(hwnd);
-	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWL_WNDPROC);
+	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWLP_WNDPROC);
 	if (currentWndProc != DefaultWndProc && currentWndProc != SimpleWndProc)
 	{
 		return _CallWindowProc(currentWndProc, hwnd, uMsg, wParam, lParam);
@@ -851,7 +851,7 @@ LRESULT CALLBACK WindowContext::DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 	if (oldWndProc != NULL)
 	{
 #if !DO_NOT_RESET_WNDPROC
-		_SetWindowLongPtr(hwnd, GWL_WNDPROC, (LONG_PTR)oldWndProc);
+		_SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)oldWndProc);
 #endif
 		return _CallWindowProc(oldWndProc, hwnd, uMsg, wParam, lParam);
 	}
@@ -1224,7 +1224,7 @@ LONG_PTR WindowContext::SetWindowLong_(int index, LONG_PTR newLong)
 			return oldWindowLong;
 		}
 		break;
-	case GWL_WNDPROC:
+	case GWLP_WNDPROC:
 		if (true)
 		{
 			WNDPROC returnValue = oldWindowProc;
@@ -1250,7 +1250,7 @@ LONG_PTR WindowContext::GetWindowLong_(int index) const
 			return windowLong;
 		}
 		break;
-	case GWL_WNDPROC:
+	case GWLP_WNDPROC:
 		if (true)
 		{
 			return (LONG_PTR)this->oldWindowProc;

@@ -113,10 +113,10 @@ static inline PVOID WINAPI ImageDirectoryEntryToDataEx(PVOID Base, USHORT Direct
 
 string ToLower(const char* inputStr)
 {
-	int len = strlen(inputStr);
+	size_t len = strlen(inputStr);
 	string result;
 	result.reserve(len);
-	for (int i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 	{
 		result.push_back(tolower(inputStr[i]));
 	}
