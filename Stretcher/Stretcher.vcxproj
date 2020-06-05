@@ -191,6 +191,7 @@
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="RectUtil.h" />
     <ClInclude Include="Region.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="shaderPrograms.h" />
     <ClInclude Include="shaderPrograms2.h" />
     <ClInclude Include="StringUtil.h" />
@@ -199,6 +200,9 @@
     <ClInclude Include="WinApiWrappers_AllGDI.h" />
     <ClInclude Include="WindowClassContext.h" />
     <ClInclude Include="WindowContext.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Stretcher.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
