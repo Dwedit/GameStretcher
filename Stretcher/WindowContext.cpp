@@ -1085,7 +1085,8 @@ void WindowContext::FinishBorderChangeHandler()
 
 void WindowContext::FinishBorderChange()
 {
-	int numberOfAttempts = 5;
+	const int MAX_ATTEMPTS = 5;
+	int numberOfAttempts = MAX_ATTEMPTS;
 	int oldRealWidth = this->RealClientBounds.right - this->RealClientBounds.left;
 	int oldRealHeight = this->RealClientBounds.bottom - this->RealClientBounds.top;
 
@@ -1123,23 +1124,25 @@ tryAgain:
 
 	DWORD flags = SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOZORDER;
 	DWORD windowStyle = _GetWindowLong(window, GWL_STYLE);
-	
-	if (windowStyle & WS_CAPTION)
+	HWND windowInsertAfter = NULL;
+	bool willHaveBorder = windowStyle & WS_CAPTION;
+	if (willHaveBorder)
 	{
 		flags = SWP_FRAMECHANGED;// | SWP_NOACTIVATE | SWP_NOZORDER;
+		//windowInsertAfter = HWND_NOTOPMOST;
 	}
 	else
 	{
 		flags = SWP_FRAMECHANGED;
+		//windowInsertAfter = HWND_TOPMOST;
 	}
 	
-	_SetWindowPos(NULL, RealX - leftBorder, RealY - topBorder, RealWidth + extraWidth, RealHeight + extraHeight, flags);
+	_SetWindowPos(windowInsertAfter, RealX - leftBorder, RealY - topBorder, RealWidth + extraWidth, RealHeight + extraHeight, flags);
 	::GetWindowRect(window, &windowRect);
 	::GetClientRect(window, &clientRect);
-
 	IgnoreResizeEvents = ignoreResizeEvents;
 
-	if (clientRect.right - clientRect.left != RealWidth)
+	if (clientRect.right - clientRect.left != RealWidth || clientRect.bottom - clientRect.top != RealHeight)
 	{
 		if (numberOfAttempts > 0)
 		{
@@ -1147,6 +1150,13 @@ tryAgain:
 			goto tryAgain;
 		}
 	}
+	if (!willHaveBorder && numberOfAttempts == MAX_ATTEMPTS)
+	{
+		//force a Try Again to ensure that window has the correct height
+		numberOfAttempts--;
+		goto tryAgain;
+	}
+
 	if (oldRealWidth != RealWidth || oldRealHeight != RealHeight)
 	{
 		UpdateSize();
