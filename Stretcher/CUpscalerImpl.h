@@ -926,10 +926,6 @@ public:
 		swapEffect = D3DSWAPEFFECT_COPY;
 		bufferCount = 0;
 		this->oldUpdateRegions.clear();
-		updateLeft = 0;
-		updateTop = 0;
-		updateWidth = 0;
-		updateHeight = 0;
 	}
 private:
 	bool SetDevice(IDirect3DDevice9 *device)
