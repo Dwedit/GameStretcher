@@ -13,11 +13,13 @@ Use F11 to enter or exit Fullscreen mode. Do not try to use any fullscreen funct
 
 # Screenshots
 Space Cadet Pinball: Original and Upscaled
+
 ![Screenshot of Space Cadet Pinball, portion of screen](/readme-images/space_cadet_pinball_original_portion.png?raw=true "Screenshot of Space Cadet Pinball, portion of screen")
 
 ![Screenshot of Space Cadet Pinball, portion of screen (upscaled)](/readme-images/space_cadet_pinball_upscaled_portion.jpg?raw=true "Screenshot of Space Cadet Pinball, portion of screen (upscaled)")
 
 Minesweeper: Original and Upscaled
+
 ![Screenshot of Minesweeper, portion of screen](/readme-images/minesweeper_screen_portion.png?raw=true "Screenshot of Minesweeper, portion of screen")
 
 ![Screenshot of Minesweeper, portion of screen (upscaled)](/readme-images/minesweeper_screen_portion_upscaled.png?raw=true "Screenshot of Minesweeper, portion of screen (upscaled)")
