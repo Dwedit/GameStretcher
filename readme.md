@@ -7,9 +7,20 @@ Requires Windows XP or newer, and a Direct3D 9 capable video card.  Compatible w
 
 # Instructions
 Run Launcher.exe, and any other EXEs in the same directory will appear in a list, or click Browse to find the EXE yourself.
+
 You can also create a shortcut to Launcher in the game directory.
+
 Supports command line arguments, like "Launcher <program.exe> [args]" from command line or from a shortcut.
+
 Use F11 to enter or exit Fullscreen mode. Do not try to use any fullscreen functionality that's built-in to the game itself, it won't work properly.
+
+# Version History
+1.0.1:
+* Fixed white screen before window is resized for the first time
+* Fixed fullscreen mode showing the taskbar
+
+1.0.0:
+* Initial Release
 
 # Screenshots
 Space Cadet Pinball: Original and Upscaled
