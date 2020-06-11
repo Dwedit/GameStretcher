@@ -37,7 +37,7 @@ DWORD WINAPI timeGetTime_Replacement()
 	if (!timeInitialized)
 	{
 		timeZero = timeGetTime_OLD();
-		timeInitialized;
+		timeInitialized = true;
 	}
 	return timeGetTime_OLD() - timeZero;
 }
