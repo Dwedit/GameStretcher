@@ -132,10 +132,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         //MessageBoxW(NULL, L"Please drag and drop an EXE file onto this EXE file.", L"Instructions", 0);
         //return ERROR_FILE_NOT_FOUND;
     }
-    wstring stretcherDll = LocateFile2(L"Stretcher.dll", cmd);
-    if (stretcherDll.empty())
+    wstring timePatcherDll = LocateFile2(L"TimePatcher.dll", cmd);
+    if (timePatcherDll.empty())
     {
-        MessageBoxW(NULL, L"Cannot find Stretcher.dll.", L"Error", 0);
+        MessageBoxW(NULL, L"Cannot find TimePatcher.dll.", L"Error", 0);
         return ERROR_FILE_NOT_FOUND;
     }
     wstring injectorDll = LocateFile2(L"Injector.dll", cmd);
@@ -147,7 +147,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     
     PROCESS_INFORMATION processInformation = {};
     bool okay = StartSuspendedProcess(cmd.targetFullCommandLine, cmd.targetDirectory, nShowCmd, processInformation);
-    DWORD result = InjectDllIntoRemoteProcess(processInformation, stretcherDll.c_str(), injectorDll.c_str());
+    DWORD result = InjectDllIntoRemoteProcess(processInformation, timePatcherDll.c_str(), injectorDll.c_str());
     AllowSetForegroundWindow(processInformation.dwProcessId);
     ResumeThread(processInformation.hThread);
     CloseHandle(processInformation.hProcess);

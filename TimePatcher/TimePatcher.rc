@@ -78,12 +78,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Dwedit"
-            VALUE "FileDescription", "GDIStretcher - Run 2D Games with a Stretchable window (Stretcher DLL)"
+            VALUE "FileDescription", "TimePatcher"
             VALUE "FileVersion", "1.0.1.2"
-            VALUE "InternalName", "Stretcher.dll"
+            VALUE "InternalName", "TimePatcher.dll"
             VALUE "LegalCopyright", "Copyright (C) 2020"
-            VALUE "OriginalFilename", "Stretcher.dll"
-            VALUE "ProductName", "GDIStretcher (Stretcher DLL)"
+            VALUE "OriginalFilename", "TimePatcher.dll"
+            VALUE "ProductName", "TimePatcher"
             VALUE "ProductVersion", "1.0.1.2"
         END
     END

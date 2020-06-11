@@ -23,6 +23,7 @@
     <ProjectGuid>{D9AB85C6-56BA-4EC2-B6FF-7DACC98DCF18}</ProjectGuid>
     <RootNamespace>Stretcher</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>TimePatcher</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -168,41 +169,25 @@
     </ManifestResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CUpscaler.cpp" />
-    <ClCompile Include="D3D9Context.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MemoryUnlocker.cpp" />
-    <ClCompile Include="Region.cpp" />
     <ClCompile Include="StringUtil.cpp" />
-    <ClCompile Include="WinApiWrappers.cpp" />
-    <ClCompile Include="WinApiWrappers_AllGDI.cpp">
-      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MinSpace</Optimization>
-      <FavorSizeOrSpeed Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Size</FavorSizeOrSpeed>
-    </ClCompile>
-    <ClCompile Include="WindowClassContext.cpp" />
-    <ClCompile Include="WindowContext.cpp" />
+    <ClCompile Include="TimeWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CUpscaler.h" />
-    <ClInclude Include="CUpscalerImpl.h" />
-    <ClInclude Include="D3D9Context.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
-    <ClInclude Include="RectUtil.h" />
-    <ClInclude Include="Region.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="shaderPrograms.h" />
-    <ClInclude Include="shaderPrograms2.h" />
     <ClInclude Include="StringUtil.h" />
+    <ClInclude Include="TimeWrapper.h" />
     <ClInclude Include="TinyMap.h" />
-    <ClInclude Include="WinApiWrappers.h" />
     <ClInclude Include="WinApiWrappers_AllGDI.h" />
     <ClInclude Include="WindowClassContext.h" />
     <ClInclude Include="WindowContext.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Stretcher.rc" />
+    <ResourceCompile Include="TimePatcher.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
