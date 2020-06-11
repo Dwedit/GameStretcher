@@ -172,19 +172,13 @@
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MemoryUnlocker.cpp" />
-    <ClCompile Include="StringUtil.cpp" />
     <ClCompile Include="TimeWrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="StringUtil.h" />
     <ClInclude Include="TimeWrapper.h" />
-    <ClInclude Include="TinyMap.h" />
-    <ClInclude Include="WinApiWrappers_AllGDI.h" />
-    <ClInclude Include="WindowClassContext.h" />
-    <ClInclude Include="WindowContext.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="TimePatcher.rc" />
