@@ -2,8 +2,10 @@ struct IUnknown;
 #define NOMINMAX
 #include <Windows.h>
 
-#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#include <vector>
+using std::vector;
 
+#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "WinApiWrappers.h"
 
 HINSTANCE hInstance;
@@ -46,11 +48,18 @@ void EnableVisualStyles()
 
 }
 
-
+extern vector<HMODULE> GetApplicationDLLs();
 
 void DoHacks()
 {
-    ReplaceImports();
+    ReplaceImports(GetModuleHandle(NULL));
+
+    //enumerate modules
+    vector<HMODULE> modules = GetApplicationDLLs();
+    for (int i = 0; i < modules.size(); i++)
+    {
+        ReplaceImports(modules[i]);
+    }
 }
 
 BOOL WINAPI DllMain(

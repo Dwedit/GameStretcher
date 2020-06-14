@@ -74,9 +74,9 @@ public:
 	//WindowClassContext& Find(LPCWSTR className);
 	//const WindowClassContext& Find(LPCSTR className) const;
 	//const WindowClassContext& Find(LPCWSTR className) const;
-	WindowClassContext* Find(HWND hwnd);
-	WindowClassContext* Find(LPCSTR className);
-	WindowClassContext* Find(LPCWSTR className);
+	//WindowClassContext* Find(HWND hwnd);
+	//WindowClassContext* Find(LPCSTR className);
+	//WindowClassContext* Find(LPCWSTR className);
 	//const WindowClassContext* Find(LPCSTR className) const;
 	//const WindowClassContext* Find(LPCWSTR className) const;
 };

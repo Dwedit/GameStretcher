@@ -242,18 +242,18 @@ void WindowClassSet::SwapToFront(int index)
 //	if (index == -1) return _Dummy;
 //	return vec[index];
 //}
-WindowClassContext* WindowClassSet::Find(LPCSTR className)
-{
-	int index = FindIndex(className);
-	if (index == -1) return nullptr;
-	return &vec[index];
-}
-WindowClassContext* WindowClassSet::Find(LPCWSTR className)
-{
-	int index = FindIndex(className);
-	if (index == -1) return nullptr;
-	return &vec[index];
-}
+//WindowClassContext* WindowClassSet::Find(LPCSTR className)
+//{
+//	int index = FindIndex(className);
+//	if (index == -1) return nullptr;
+//	return &vec[index];
+//}
+//WindowClassContext* WindowClassSet::Find(LPCWSTR className)
+//{
+//	int index = FindIndex(className);
+//	if (index == -1) return nullptr;
+//	return &vec[index];
+//}
 //const WindowClassContext* WindowClassSet::Find(LPCSTR className) const
 //{
 //	int index = FindIndex(className);

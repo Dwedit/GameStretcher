@@ -81,8 +81,9 @@ DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, 
 #else
     const bool _debug = false;
 #endif
+    bool debuggerPresent = IsDebuggerPresent();
 
-    if (IsDebuggerPresent() || _debug)
+    if (debuggerPresent || _debug)
     {
         bool DebuggerDialog(const PROCESS_INFORMATION & processInformation);
         if (DebuggerDialog(processInformation))

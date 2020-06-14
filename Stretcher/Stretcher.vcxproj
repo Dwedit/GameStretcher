@@ -170,10 +170,12 @@
   <ItemGroup>
     <ClCompile Include="CUpscaler.cpp" />
     <ClCompile Include="D3D9Context.cpp" />
+    <ClCompile Include="EnumerateModules.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MemoryUnlocker.cpp" />
     <ClCompile Include="Region.cpp" />
+    <ClCompile Include="RegistryWrappers.cpp" />
     <ClCompile Include="StringUtil.cpp" />
     <ClCompile Include="WinApiWrappers.cpp" />
     <ClCompile Include="WinApiWrappers_AllGDI.cpp">
@@ -191,6 +193,7 @@
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="RectUtil.h" />
     <ClInclude Include="Region.h" />
+    <ClInclude Include="RegistryWrappers.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="shaderPrograms.h" />
     <ClInclude Include="shaderPrograms2.h" />

@@ -14,12 +14,14 @@ extern void EnableVisualStyles();
 #include "ImportReplacer.h"
 
 //Replace the Functions
-void ReplaceImports()
+void ReplaceImports(HMODULE module)
 {
+    if (module == NULL) module = GetModuleHandleA(NULL);
     //object released when it goes out of scope
-    ImportReplacer replacer(GetModuleHandle(NULL));
+    ImportReplacer replacer(module);
     replacer.GetImports("user32.dll");
     replacer.GetImports("gdi32.dll");
+    replacer.GetImports("advapi32.dll");
 #define ReplaceImport(dllName, functionName, replacementFunction, pOldFunction) \
     replacer.ReplaceImport((dllName),(functionName),(replacementFunction),(pOldFunction))
     
@@ -69,6 +71,7 @@ void ReplaceImports()
     ReplaceImport("User32.dll", "InvalidateRect", (FARPROC)InvalidateRect_Replacement, (FARPROC*)&InvalidateRect_OLD);
     ReplaceImport("User32.dll", "ReleaseDC", (FARPROC)ReleaseDC_Replacement, (FARPROC*)&ReleaseDC_OLD);
     ReplaceImport("User32.dll", "ValidateRect", (FARPROC)ValidateRect_Replacement, (FARPROC*)&ValidateRect_OLD);
+    ReplaceImport("Gdi32.dll", "GdiFlush", (FARPROC)GdiFlush_Replacement, (FARPROC*)&GdiFlush_OLD);
     ReplaceImport("User32.dll", "SetWindowsHookA", (FARPROC)SetWindowsHookA_Replacement, (FARPROC*)&SetWindowsHookA_OLD);
     ReplaceImport("User32.dll", "SetWindowsHookW", (FARPROC)SetWindowsHookW_Replacement, (FARPROC*)&SetWindowsHookW_OLD);
     ReplaceImport("User32.dll", "UnhookWindowsHook", (FARPROC)UnhookWindowsHook_Replacement, (FARPROC*)&UnhookWindowsHook_OLD);
@@ -88,7 +91,9 @@ void ReplaceImports()
     ReplaceImport("User32.dll", "RedrawWindow", (FARPROC)RedrawWindow_Replacement, (FARPROC*)&RedrawWindow_OLD);
 
     void ReplaceImports_AllGDI(ImportReplacer & replacer);
+    void ReplaceImports_Registry(ImportReplacer & replacer);
     ReplaceImports_AllGDI(replacer);
+    ReplaceImports_Registry(replacer);
 }
 
 //Import Backups (Definitions)
@@ -134,6 +139,7 @@ GetDC_FUNC GetDC_OLD = NULL;
 InvalidateRect_FUNC InvalidateRect_OLD = NULL;
 ReleaseDC_FUNC ReleaseDC_OLD = NULL;
 ValidateRect_FUNC ValidateRect_OLD = NULL;
+GdiFlush_FUNC GdiFlush_OLD = NULL;
 SetWindowsHookA_FUNC SetWindowsHookA_OLD = NULL;
 SetWindowsHookW_FUNC SetWindowsHookW_OLD = NULL;
 UnhookWindowsHook_FUNC UnhookWindowsHook_OLD = NULL;
@@ -337,14 +343,17 @@ ATOM WINAPI RegisterClassA_Replacement(CONST WNDCLASSA* lpWndClass)
     WNDPROC wndProc = wndClass.lpfnWndProc;
     wndClass.lpfnWndProc = WindowContext::DefaultWndProc;
     ATOM atom = RegisterClassA_OLD(&wndClass);
-    windowClassSet.AddClass(className, atom, wndProc);
+    if (atom != 0)
+    {
+        windowClassSet.AddClass(className, atom, wndProc);
+    }
     return atom;
 #else
     ATOM atom = RegisterClassA_OLD(lpWndClass);
     return atom;
 #endif
 }
-ATOM WINAPI RegisterClassW_Replacement(CONST WNDCLASSW* lpWndClass)
+ATOM WINAPI RegisterClassW_Replacement(CONST WNDCLASSW * lpWndClass)
 {
 #if USE_CLASS_HOOK
     WNDCLASSW wndClass = *lpWndClass;
@@ -352,7 +361,10 @@ ATOM WINAPI RegisterClassW_Replacement(CONST WNDCLASSW* lpWndClass)
     WNDPROC wndProc = wndClass.lpfnWndProc;
     wndClass.lpfnWndProc = WindowContext::DefaultWndProc;
     ATOM atom = RegisterClassW_OLD(&wndClass);
-    windowClassSet.AddClass(className, atom, wndProc);
+    if (atom != 0)
+    {
+        windowClassSet.AddClass(className, atom, wndProc);
+    }
     return atom;
 #else
     ATOM atom = RegisterClassW_OLD(lpWndClass);
@@ -411,7 +423,10 @@ restart:
 #endif
         return ShowWindow_OLD(hWnd, nCmdShow);
     }
-    windowContext->WindowShown();
+    if (nCmdShow != SW_HIDE)
+    {
+        windowContext->WindowShown();
+    }
     return ShowWindow_OLD(hWnd, nCmdShow);
 }
 
@@ -577,6 +592,7 @@ BOOL WINAPI EndPaint_Replacement(HWND hwnd, const PAINTSTRUCT* paintStruct)
 }
 HDC WINAPI GetDC_Replacement(HWND hwnd)
 {
+    if (hwnd == NULL) return GetDC_OLD(hwnd);
     WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return GetDC_OLD(hwnd);
     return windowContext->GetDC_();
@@ -598,6 +614,12 @@ BOOL WINAPI ValidateRect_Replacement(HWND hwnd, LPCRECT rect)
     WindowContext* windowContext = WindowContext::Get(hwnd);
     if (windowContext == NULL) return ValidateRect(hwnd, rect);
     return windowContext->ValidateRect_(rect);
+}
+BOOL WINAPI GdiFlush_Replacement()
+{
+    WindowContext* windowContext = WindowContext::GetWindowContext();
+    if (windowContext == NULL) return GdiFlush_OLD();
+    return windowContext->GdiFlush_();
 }
 HHOOK WINAPI SetWindowsHookA_Replacement(int nFilterType, HOOKPROC pfnFilterProc)
 {

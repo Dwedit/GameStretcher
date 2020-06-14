@@ -117,6 +117,7 @@ vector<byte> Region::GetRegionData() const
 	vector<byte> result;
 	if (IsEmpty()) return result;
 	DWORD bytesNeeded = ::GetRegionData(hRegion, 0, NULL);
+	if (bytesNeeded == 0) return result;
 	result.resize(bytesNeeded);
 	::GetRegionData(hRegion, result.size(), (LPRGNDATA)&result[0]);
 	return result;

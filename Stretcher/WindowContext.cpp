@@ -20,6 +20,9 @@ using std::wstring;
 CachedVectorMap<HWND, std::unique_ptr<WindowContext>> windowMap;
 CachedVectorMap<HDC, WindowContext*> hdcMap;
 
+extern WindowContext* lastWindowContext;
+extern WindowContext* lastWindowContext2;
+
 #define _DefWindowProc(hwnd, uMsg, wParam, lParam)\
  (isWindowUnicode ? DefWindowProcW((hwnd), (uMsg), (wParam), (lParam))\
  : DefWindowProcA((hwnd), (uMsg), (wParam), (lParam)))
@@ -108,6 +111,14 @@ void WindowContext::Release()
 	d3d9Context.Destroy();
 	window = NULL;
 	oldWindowProc = NULL;
+	if (lastWindowContext == this)
+	{
+		lastWindowContext = NULL;
+	}
+	if (lastWindowContext2 == this)
+	{
+		lastWindowContext2 = NULL;
+	}
 }
 
 WindowContext* WindowContext::Get(HWND hwnd)	//static
@@ -132,15 +143,23 @@ bool WindowContext::HdcRemoveWindow(WindowContext* windowContext)	//static
 }
 
 WindowContext* lastWindowContext = NULL;
+WindowContext* lastWindowContext2 = NULL;
+
 WindowContext* WindowContext::GetWindowContext(HWND hwnd)	//static
 {
 	auto result = windowMap.GetReference(hwnd);
 	if (result == NULL) return NULL;
-	lastWindowContext = (*result).get();
-	return lastWindowContext;
+	WindowContext *wc = (*result).get();
+	lastWindowContext2 = wc;
+	if (wc->IsShown)
+	{
+		lastWindowContext = wc;
+	}
+	return wc;
 }
 WindowContext* WindowContext::GetWindowContext()	//static
 {
+	if (lastWindowContext == NULL) return lastWindowContext2;
 	return lastWindowContext;
 }
 WindowContext* WindowContext::CreateNewWindowContext(HWND hwnd)	//static
@@ -332,6 +351,30 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		int dummy = 0;
 		break;
 	}
+	case WM_SIZE:
+	{
+		//handle Resize to redraw the window, and rescale the window
+		int width = (int)(short)LOWORD(lParam); //client area width
+		int height = (int)(short)HIWORD(lParam); //client area height
+
+		if (!IgnoreResizeEvents)
+		{
+			UpdateSize(width, height);
+		}
+		if (ResizeHandler != NULL)
+		{
+			(this->*ResizeHandler)();
+		}
+		if (IsVirtualized())
+		{
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+		else
+		{
+			return _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
+		}
+	}
+
 	} //end switch
 
 	if (IsVirtualized())
@@ -450,22 +493,6 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 				return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 			}
 		}
-		case WM_SIZE:
-		{
-			//TODO: handle Resize to redraw the window, and rescale the window
-			int width = (int)(short)LOWORD(lParam); //client area width
-			int height = (int)(short)HIWORD(lParam); //client area height
-			
-			if (!IgnoreResizeEvents)
-			{
-				UpdateSize(width, height);
-			}
-			if (ResizeHandler != NULL)
-			{
-				(this->*ResizeHandler)();
-			}
-			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
-		}
 		case WM_KEYDOWN:
 		{
 			if (wParam == VK_F11)
@@ -540,9 +567,6 @@ HDC WindowContext::GetDCEx_(HRGN hrgnClip, DWORD flags)
 
 	//TODO
 	return GetDC_();
-/*
-
-*/
 }
 
 int WindowContext::ReleaseDC_()
@@ -552,6 +576,12 @@ int WindowContext::ReleaseDC_()
 }
 
 int WindowContext::ReleaseDC_(HDC hdcToRelease)
+{
+	CompleteDraw();
+	return true;
+}
+
+BOOL WindowContext::GdiFlush_()
 {
 	CompleteDraw();
 	return true;
@@ -631,24 +661,6 @@ bool WindowContext::Redraw()
 	okay &= upscaler.Update(this->dirtyRegion);
 	this->dirtyRegion.Clear();
 	return okay;
-
-
-	//TODO: partial updates
-
-	HRESULT hr;
-	hr = d3d9Context.device->BeginScene();
-	RECT sourceRect = { 0, 0, VirtualWidth, VirtualHeight};
-	RECT destRect = { XOffset, YOffset, XOffset + ScaledWidth, YOffset + ScaledHeight };
-
-	hr = d3d9Context.device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 0, 0);
-	hr = d3d9Context.device->StretchRect(d3d9Context.textureSurface, &sourceRect, d3d9Context.backBuffer, &destRect, D3DTEXF_LINEAR);
-	RECT clientRect;
-	::GetClientRect(window, &clientRect);
-	
-
-	hr = d3d9Context.device->EndScene();
-	hr = d3d9Context.device->Present(&clientRect, &clientRect, NULL, NULL);
-	return true;
 }
 
 RECT WindowContext::RectVirtualToClient(const RECT &rect) const
@@ -902,7 +914,6 @@ void WindowContext::UpdateSize()
 		}
 		else
 		{
-			UpdateSizeNonVirtualized();
 			VirtualizeWindow();
 		}
 	}
@@ -1017,6 +1028,12 @@ void WindowContext::UpdateSize(int newWidth, int newHeight)
 void WindowContext::MoveResizeChildWindow()
 {
 	if (this->parentWindowContext == NULL) return;
+	if (!this->IsVirtualized() && parentWindowContext->IsVirtualized())
+	{
+		//calls Virtualize, which will call this function again
+		UpdateSize();
+		return;
+	}
 	RECT newRect = this->parentWindowContext->RectVirtualToClient(VirtualClientBounds);
 	_MoveWindow(newRect.left, newRect.top, newRect.right - newRect.left, newRect.bottom - newRect.top, true);
 }
@@ -1160,8 +1177,8 @@ tryAgain:
 	if (oldRealWidth != RealWidth || oldRealHeight != RealHeight)
 	{
 		UpdateSize();
-		InvalidateRect(window, NULL, true);
 	}
+	RedrawWindow(window, NULL, NULL, RDW_INVALIDATE);  //redraw to fix early white screen for slow-loading games
 	SetForegroundWindow(window);
 }
 
