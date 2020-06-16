@@ -170,6 +170,7 @@
   <ItemGroup>
     <ClCompile Include="CUpscaler.cpp" />
     <ClCompile Include="D3D9Context.cpp" />
+    <ClCompile Include="D3D9Override.cpp" />
     <ClCompile Include="EnumerateModules.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -189,6 +190,8 @@
     <ClInclude Include="CUpscaler.h" />
     <ClInclude Include="CUpscalerImpl.h" />
     <ClInclude Include="D3D9Context.h" />
+    <ClInclude Include="D3D9Override.h" />
+    <ClInclude Include="D3D9VTable.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="RectUtil.h" />

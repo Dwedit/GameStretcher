@@ -9,6 +9,9 @@ struct IUnknown;
 
 class D3D9Context
 {
+	friend class D3D9Context2;
+	friend class D3D9DeviceContext;
+	friend class D3D9SwapChainContext;
 public:
 	HWND mainWindow;
 	IDirect3D9* d3d9;

@@ -54,6 +54,9 @@
     <ClCompile Include="RegistryWrappers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D3D9Override.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinApiWrappers.h">
@@ -105,6 +108,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RegistryWrappers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9VTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Override.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

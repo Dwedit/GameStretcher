@@ -17,18 +17,33 @@ template <class TKey, class TValue>
 class HashMap
 {
 	unordered_map<TKey, TValue> map;
+private:
+	auto FindValue(const TValue& value)
+	{
+		for (auto iterator = map.begin(); iterator != map.end(); iterator++)
+		{
+			if (iterator->second == value) return iterator;
+		}
+		return map.end();
+	}
+	auto FindValue(const TValue& value) const
+	{
+		for (auto iterator = map.cbegin(); iterator != map.cend(); iterator++)
+		{
+			if (iterator->second == value) return iterator;
+		}
+		return map.cend();
+	}
 public:
+	using KeyType = TKey;
+	using ValueType = TValue;
 	bool ContainsKey(const TKey& key) const
 	{
 		return map.find(key) != map.end();
 	}
 	bool ContainsValue(const TValue& value) const
 	{
-		for (auto iterator = map.begin(); iterator != map.end(); iterator++)
-		{
-			if (iterator->second == value) return true;
-		}
-		return false;
+		return FindValue(value) != map.cend();
 	}
 	TValue& Set(const TKey& key, TValue&& value) noexcept
 	{
@@ -94,6 +109,12 @@ public:
 		if (found == map.end()) return TValue();
 		return found->second;
 	}
+	TKey GetKey(const TValue& value)
+	{
+		auto found = FindValue(value);
+		if (found == map.end()) return TKey();
+		return found->first;
+	}
 };
 
 template <class TKey, class TValue>
@@ -118,6 +139,8 @@ private:
 		return -1;
 	}
 public:
+	using KeyType = TKey;
+	using ValueType = TValue;
 	bool ContainsKey(const TKey& key) const
 	{
 		return Find(key) != -1;
@@ -197,6 +220,13 @@ public:
 		if (index == -1) return NULL;
 		return &vec[index].second;
 	}
+
+	TKey GetKey(const TValue& value) const
+	{
+		int index = FindValue(value);
+		if (index == -1) return TKey();
+		return vec[index].first;
+	}
 };
 
 template <class TKey, class TValue, class TMap>
@@ -206,6 +236,8 @@ class CachedMap
 	mutable TKey mostRecentKey = TKey();
 	mutable TValue* pMostRecentValue = nullptr;
 public:
+	using KeyType = TKey;
+	using ValueType = TValue;
 	bool ContainsKey(const TKey& key) const
 	{
 		if (pMostRecentValue != NULL && mostRecentKey == key) return true;
@@ -217,7 +249,12 @@ public:
 	bool ContainsValue(const TValue& value) const
 	{
 		if (pMostRecentValue != NULL && *pMostRecentValue == value) return true;
-		return map.ContainsValue(value);
+		TKey key = map.GetKey(value);
+		if (ContainsKey(key))
+		{
+			return *pMostRecentValue == value;
+		}
+		return false;
 	}
 
 	TValue& Set(const TKey& key, TValue&& value) noexcept
@@ -272,9 +309,18 @@ public:
 		if (pMostRecentValue != NULL) return pMostRecentValue;
 		return NULL;
 	}
+
+	TKey GetKey(const TValue& value) const
+	{
+		if (ContainsValue(value))
+		{
+			return mostRecentKey;
+		}
+		return TKey();
+	}
 };
 
 template <class TKey, class TValue>
-class CachedVectorMap : public CachedMap<TKey, TValue, VectorMap<TKey, TValue>> {};
+class CachedVectorMap : public CachedMap<TKey, TValue, VectorMap<TKey, TValue>> { };
 template <class TKey, class TValue>
-class CachedHashMap : public CachedMap<TKey, TValue, HashMap<TKey, TValue>> {};
+class CachedHashMap : public CachedMap<TKey, TValue, HashMap<TKey, TValue>> { };
