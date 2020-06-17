@@ -24,9 +24,6 @@
     <ClCompile Include="WindowContext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D9Context.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ImportReplacer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -57,6 +54,24 @@
     <ClCompile Include="D3D9Override.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D3D9Override_ObjectStore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D9Override_VTableStore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D9Override_D3D9Context.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D9Override_D3D9DeviceContext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D9Override_D3D9SwapChainContext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D9Context_Old.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinApiWrappers.h">
@@ -66,9 +81,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TinyMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="D3D9Context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ImportReplacer.h">
@@ -114,6 +126,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D3D9Override.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Context_Old.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -15,7 +15,7 @@ struct IUnknown;
 #include <initguid.h>
 #include <d3d9.h>
 
-#include "D3D9Context.h"
+#include "D3D9Context_Old.h"
 
 /*
 Current Design:
@@ -101,7 +101,7 @@ bool IsWine()
 //#pragma comment( lib, "d3d9.lib" )
 #pragma warning (disable: 26812)
 
-void D3D9Context::GetPresentParameters(HWND mainWindow, D3DPRESENT_PARAMETERS& presentParameters, D3DSWAPEFFECT swapEffect)
+void D3D9Context_Old::GetPresentParameters(HWND mainWindow, D3DPRESENT_PARAMETERS& presentParameters, D3DSWAPEFFECT swapEffect)
 {
 	HMONITOR currentMonitor = NULL;
 	currentMonitor = MonitorFromWindow(mainWindow, MONITOR_DEFAULTTONEAREST);
@@ -147,7 +147,7 @@ void D3D9Context::GetPresentParameters(HWND mainWindow, D3DPRESENT_PARAMETERS& p
 
 }
 
-bool D3D9Context::CreateD3D9(HWND mainWindow, D3DSWAPEFFECT swapEffect)
+bool D3D9Context_Old::CreateD3D9(HWND mainWindow, D3DSWAPEFFECT swapEffect)
 {
 	HRESULT hr = 0;
 
@@ -217,7 +217,7 @@ bool D3D9Context::CreateD3D9(HWND mainWindow, D3DSWAPEFFECT swapEffect)
 	return (device != NULL);
 }
 
-void D3D9Context::Destroy()
+void D3D9Context_Old::Destroy()
 {
 	SafeRelease(texture);
 	SafeRelease(textureSurface);

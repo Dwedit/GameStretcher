@@ -169,8 +169,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CUpscaler.cpp" />
-    <ClCompile Include="D3D9Context.cpp" />
+    <ClCompile Include="D3D9Context_Old.cpp" />
     <ClCompile Include="D3D9Override.cpp" />
+    <ClCompile Include="D3D9Override_D3D9Context.cpp" />
+    <ClCompile Include="D3D9Override_D3D9DeviceContext.cpp" />
+    <ClCompile Include="D3D9Override_D3D9SwapChainContext.cpp" />
+    <ClCompile Include="D3D9Override_ObjectStore.cpp" />
+    <ClCompile Include="D3D9Override_VTableStore.cpp" />
     <ClCompile Include="EnumerateModules.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -189,7 +194,7 @@
   <ItemGroup>
     <ClInclude Include="CUpscaler.h" />
     <ClInclude Include="CUpscalerImpl.h" />
-    <ClInclude Include="D3D9Context.h" />
+    <ClInclude Include="D3D9Context_Old.h" />
     <ClInclude Include="D3D9Override.h" />
     <ClInclude Include="D3D9VTable.h" />
     <ClInclude Include="ImportReplacer.h" />

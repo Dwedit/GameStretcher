@@ -22,6 +22,27 @@ extern IDirect3D9ExVtbl* GetNewVTable(IDirect3D9* d3d9);
 extern IDirect3DDevice9ExVtbl* GetNewVTable(IDirect3DDevice9* device);
 extern IDirect3DSwapChain9ExVtbl* GetNewVTable(IDirect3DSwapChain9* swapChain);
 
+extern bool GetIsEx(IDirect3D9* d3d9);
+extern bool GetIsEx(IDirect3DDevice9* device);
+extern bool GetIsEx(IDirect3DSwapChain9* swapChain);
+
+template <class TComObject>
+inline void SafeRelease(TComObject*& obj)
+{
+	if (obj != NULL)
+	{
+		obj->Release();
+		obj = NULL;
+	}
+}
+template <class TComObject>
+inline UINT GetRefCount(TComObject* obj)
+{
+	if (obj == NULL) return 0;
+	obj->AddRef();
+	return obj->Release();
+}
+
 class D3D9Context2
 {
 	IDirect3D9* d3d9 = NULL;
@@ -136,31 +157,3 @@ public:
 	static HRESULT __stdcall GetBackBuffer(IDirect3DSwapChain9Ex* This, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
 	static HRESULT __stdcall GetPresentParameters(IDirect3DSwapChain9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters);
 };
-
-/*
-
-
-
-//extern CachedVectorMap<IDirect3D9*, D3D
-
-class D3D9Context2
-{
-public:
-	IDirect3D9* d3d9;
-	IDirect3D9Ex* d3d9Ex;
-
-	IDirect3DDevice9* device;
-	IDirect3DDevice9Ex* deviceEx;
-	IDirect3DSurface9* backBuffer;
-	IDirect3DSurface9* depthStencilSurface;
-	IDirect3DTexture9* texture;
-	IDirect3DSurface9* textureSurface;
-	D3DSWAPEFFECT swapEffect;
-	static void GetPresentParameters(HWND mainWindow, D3DPRESENT_PARAMETERS& presentParameters, D3DSWAPEFFECT swapEffect);
-	bool CreateD3D9(HWND mainWindow, D3DSWAPEFFECT swapEffect = D3DSWAPEFFECT_COPY);
-	D3D9Context2() : d3d9(NULL), d3d9Ex(NULL), device(NULL), deviceEx(NULL), backBuffer(NULL), depthStencilSurface(NULL), mainWindow(NULL), texture(NULL), textureSurface(NULL), swapEffect(D3DSWAPEFFECT_COPY) {}
-	void Destroy();
-	~D3D9Context2() { Destroy(); }
-};
-
-*/

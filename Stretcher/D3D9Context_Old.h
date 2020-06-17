@@ -7,7 +7,7 @@ struct IUnknown;
 
 #pragma warning (disable: 26812)
 
-class D3D9Context
+class D3D9Context_Old
 {
 	friend class D3D9Context2;
 	friend class D3D9DeviceContext;
@@ -25,7 +25,7 @@ public:
 	D3DSWAPEFFECT swapEffect;
 	static void GetPresentParameters(HWND mainWindow, D3DPRESENT_PARAMETERS& presentParameters, D3DSWAPEFFECT swapEffect);
 	bool CreateD3D9(HWND mainWindow, D3DSWAPEFFECT swapEffect = D3DSWAPEFFECT_COPY);
-	D3D9Context() : d3d9(NULL), d3d9Ex(NULL), device(NULL), deviceEx(NULL), backBuffer(NULL), depthStencilSurface(NULL), mainWindow(NULL), texture(NULL), textureSurface(NULL), swapEffect(D3DSWAPEFFECT_COPY) {}
+	D3D9Context_Old() : d3d9(NULL), d3d9Ex(NULL), device(NULL), deviceEx(NULL), backBuffer(NULL), depthStencilSurface(NULL), mainWindow(NULL), texture(NULL), textureSurface(NULL), swapEffect(D3DSWAPEFFECT_COPY) {}
 	void Destroy();
-	~D3D9Context() { Destroy(); }
+	~D3D9Context_Old() { Destroy(); }
 };

@@ -6,7 +6,7 @@
 struct IUnknown;
 #define NOMINMAX
 #include <Windows.h>
-#include "D3D9Context.h"
+#include "D3D9Context_Old.h"
 #include "Region.h"
 
 #include "TinyMap.h"
@@ -32,7 +32,7 @@ class WindowContext
 {
 	HWND window;
 	WNDPROC oldWindowProc;
-	D3D9Context d3d9Context;
+	D3D9Context_Old d3d9Context;
 	ATOM windowClassAtom;
 	bool isWindowUnicode;
 	bool VirtualizeWindowSize;
