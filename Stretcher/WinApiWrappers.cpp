@@ -8,7 +8,7 @@ struct IUnknown;
 #include "WinApiWrappers.h"
 #include "WindowContext.h"
 #include "WindowClassContext.h"
-#include "D3D9Manager.h"
+#include "D3D9Override.h"
 
 extern void EnableVisualStyles();
 
@@ -740,15 +740,13 @@ FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName)
 
 IDirect3D9* WINAPI Direct3DCreate9_Replacement(UINT SDKVersion)
 {
-    if (d3d9Manager == NULL)
-    {
-        d3d9Manager = new D3D9Manager();
-    }
-    d3d9Manager->CreateD3D9(false);
-    return d3d9Manager->GetD3D9();
-
-
-
+    //if (d3d9Manager == NULL)
+    //{
+    //    d3d9Manager = new D3D9Manager();
+    //}
+    //d3d9Manager->CreateD3D9(false);
+    //return d3d9Manager->GetD3D9();
+    return CreateAndOverrideDirect3D9();
     //return Direct3DCreate9_OLD(SDKVersion);
 }
 HRESULT WINAPI Direct3DCreate9Ex_Replacement(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex)
@@ -757,13 +755,12 @@ HRESULT WINAPI Direct3DCreate9Ex_Replacement(UINT SDKVersion, IDirect3D9Ex** lpI
     {
         return E_POINTER;
     }
-    if (d3d9Manager == NULL)
-    {
-        d3d9Manager = new D3D9Manager();
-    }
-    d3d9Manager->CreateD3D9(true);
-    
-    *lpIDirect3D9Ex = (IDirect3D9Ex*)d3d9Manager->GetD3D9();
+    //if (d3d9Manager == NULL)
+    //{
+    //    d3d9Manager = new D3D9Manager();
+    //}
+    //d3d9Manager->CreateD3D9(true);
+    *lpIDirect3D9Ex = CreateAndOverrideDirect3D9Ex();
     if (*lpIDirect3D9Ex == NULL) return E_FAIL;
     return 0;
     //return Direct3DCreate9Ex_OLD(SDKVersion, lpIDirect3D9Ex);

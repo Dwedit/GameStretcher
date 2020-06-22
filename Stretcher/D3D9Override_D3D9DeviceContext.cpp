@@ -33,7 +33,7 @@ void D3D9DeviceContext::Init(IDirect3DDevice9* device)
 	SetVTable();
 	HRESULT hr = 0;
 	hr = device->GetSwapChain(0, &realSwapChain);
-	hr = device->GetDepthStencilSurface(&initialDepthStencilSurface);
+	//hr = device->GetDepthStencilSurface(&initialDepthStencilSurface);
 	this->childSwapChainContext = GetD3D9SwapChainContext(realSwapChain);
 }
 D3D9DeviceContext::~D3D9DeviceContext()
@@ -42,10 +42,15 @@ D3D9DeviceContext::~D3D9DeviceContext()
 }
 void D3D9DeviceContext::Destroy()
 {
-	SafeRelease(this->initialDepthStencilSurface);
+	//SafeRelease(this->initialDepthStencilSurface);
 	SafeRelease(this->realSwapChain);
 	SafeRelease(this->device);
 	this->childSwapChainContext->Destroy();
+}
+
+HRESULT D3D9DeviceContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters)
+{
+	return this->childSwapChainContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
 }
 
 ULONG D3D9DeviceContext::Release_()

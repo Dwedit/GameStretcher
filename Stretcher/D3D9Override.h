@@ -1,5 +1,6 @@
 #pragma once
 #include "D3D9VTable.h"
+#include "CUpscaler.h"
 
 class D3D9Context2;
 class D3D9DeviceContext;
@@ -28,6 +29,9 @@ extern IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapCha
 extern bool GetIsEx(IDirect3D9* d3d9);
 extern bool GetIsEx(IDirect3DDevice9* device);
 extern bool GetIsEx(IDirect3DSwapChain9* swapChain);
+
+IDirect3D9* CreateAndOverrideDirect3D9();
+IDirect3D9Ex* CreateAndOverrideDirect3D9Ex();
 
 template <class TComObject>
 inline void SafeRelease(TComObject*& obj)
@@ -78,7 +82,7 @@ class D3D9DeviceContext
 	D3D9SwapChainContext* childSwapChainContext = NULL;
 	IDirect3DSwapChain9* realSwapChain = NULL;
 	//IDirect3DSurface9* initialRenderTarget = NULL;
-	IDirect3DSurface9* initialDepthStencilSurface = NULL;
+	//IDirect3DSurface9* initialDepthStencilSurface = NULL;
 
 
 	bool IsEx = false;
@@ -90,6 +94,8 @@ public:
 	void Init(IDirect3DDevice9* device);
 	~D3D9DeviceContext();
 	void Destroy();
+
+	HRESULT CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters);
 
 	ULONG Release_();
 	HRESULT GetCreationParameters_(D3DDEVICE_CREATION_PARAMETERS* pParameters);
@@ -136,13 +142,26 @@ class D3D9SwapChainContext
 	friend D3D9DeviceContext;
 	IDirect3DSwapChain9Ex* realSwapChain = NULL;
 	IDirect3DSurface9* realBackBuffer = NULL;
+	IDirect3DSurface9* realDepthStencilSurface = NULL;
+
+	IDirect3DTexture9* virtualBackBufferTexture = NULL;
+	IDirect3DSurface9* virtualBackBuffer = NULL;
+	IDirect3DSurface9* virtualBackBufferMultisampled = NULL;
+	IDirect3DSurface9* virtualDepthStencilSurface = NULL;
+	CUpscaler upscaler;
+	D3DSWAPEFFECT swapEffect = D3DSWAPEFFECT_COPY;
 
 	IDirect3DSwapChain9ExVtbl* originalVTable = NULL;
 	IDirect3DSwapChain9ExVtbl* myVTable = NULL;
+	IDirect3DDevice9* device = NULL;
 
 	D3D9DeviceContext* parent = NULL;
 	bool IsEx = false;
 	bool insidePresent = false;
+	bool forceReal = false;
+	int width, height;
+	D3DPRESENT_PARAMETERS presentParameters = {};
+
 public:
 	D3D9SwapChainContext(IDirect3DSwapChain9* swapChain);
 	D3D9SwapChainContext();
@@ -150,6 +169,7 @@ public:
 	void Init(IDirect3DSwapChain9* swapChain);
 	~D3D9SwapChainContext();
 	void Destroy();
+	HRESULT CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters);
 
 	HRESULT Present_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
 	HRESULT GetFrontBufferData_(IDirect3DSurface9* pDestSurface);

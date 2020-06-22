@@ -239,4 +239,6 @@ public:
 	{
 		return this->window;
 	}
+
+	const RECT& GetScaledBounds() const;
 };

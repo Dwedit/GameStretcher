@@ -4,7 +4,7 @@
 #define NO_CHECKERBOARD 1
 #define NO_DIRTY_RECT 0
 #define DIRTY_RECT_NO_Z_BUFFER 0
-#define USE_STATE_SAVER 0
+#define USE_STATE_SAVER 1
 
 template <class T>
 static inline void SafeRelease(T &ptr) { if (ptr != NULL) { ptr->Release(); ptr = NULL; } }
@@ -262,7 +262,10 @@ private:
 	int backBufferWidth;
 	int backBufferHeight;
 
+	bool autoSetUpdateRectangle;
 	int updateLeft, updateTop, updateWidth, updateHeight;
+	int windowWidth, windowHeight;
+	int lastWindowWidth, lastWindowHeight;
 	HWND hwnd;
 	D3DSWAPEFFECT swapEffect;
 	int bufferCount;
@@ -312,8 +315,9 @@ public:
 		textureWidth(0), textureHeight(0), backBufferWidth(0), backBufferHeight(0),
 		updateLeft(0), updateTop(0), updateWidth(0), updateHeight(0),
 		inputLeft(0), inputTop(0), inputWidth(0), inputHeight(0),
+		windowWidth(0), windowHeight(0), lastWindowWidth(0), lastWindowHeight(0),
 		borderDirty(), upscaledTextureDirty(), isWine(),
-		upscaleFilter(1),
+		upscaleFilter(1), autoSetUpdateRectangle(true),
 		swapEffect(D3DSWAPEFFECT_COPY), bufferCount(0), hwnd(0)
 	{
 		Destroy();
@@ -458,6 +462,7 @@ public:
 	{
 		if (device == NULL) return false;
 		bool okay = true;
+		CStateSaver stateSaver(device);
 		
 		if (depthSurface2x == NULL) okay &= CreateDepthSurface2x();
 		if (depthSurface1x == NULL) okay &= CreateDepthSurface1x();
@@ -521,8 +526,8 @@ public:
 
 		if (borderDirty)
 		{
-			int windowWidth = clientRect.right - clientRect.left;
-			int windowHeight = clientRect.bottom - clientRect.top;
+			//int windowWidth = clientRect.right - clientRect.left;
+			//int windowHeight = clientRect.bottom - clientRect.top;
 
 			hr |= device->SetRenderTarget(0, backBuffer);
 			hr |= device->SetDepthStencilSurface(depthStencilSurface);
@@ -600,7 +605,7 @@ public:
 		}
 
 		//coordinates are non-scaled, and not pre-expanded
-		CStateSaver stateSaver(device);	//save device state, restore state upon stateSaver leaving scope
+		//CStateSaver stateSaver(device);	//save device state, restore state upon stateSaver leaving scope
 
 		int leftSmall = max(x - 2, 0);
 		int rightSmall = min(x + width + 2, inputWidth);
@@ -742,7 +747,7 @@ public:
 		HRESULT hr = 0, hr2 = 0;
 
 		//coordinates are non-scaled, and not pre-expanded
-		CStateSaver stateSaver(device);	//save device state, restore state upon stateSaver leaving scope
+		//CStateSaver stateSaver(device);	//save device state, restore state upon stateSaver leaving scope
 
 		bool okay = true;
 		okay &= CreateVertexDeclaration();
@@ -1166,7 +1171,7 @@ private:
 		if (vertexDeclaration == NULL) if (!CreateVertexDeclaration()) return false;
 		if (vertexBuffer == NULL) if (!CreateVertexBuffer()) return false;
 
-		CStateSaver stateSaver(device);
+		//CStateSaver stateSaver(device);
 
 		HRESULT hr = 0;
 		if (depthSurface2x == NULL)
@@ -1187,7 +1192,7 @@ private:
 		if (vertexDeclaration == NULL) if (!CreateVertexDeclaration()) return false;
 		if (vertexBuffer == NULL) if (!CreateVertexBuffer()) return false;
 
-		CStateSaver stateSaver(device);
+		//CStateSaver stateSaver(device);
 
 		HRESULT hr = 0;
 		if (depthSurface1x == NULL)
@@ -1213,7 +1218,7 @@ private:
 		bool okay = true;
 		HRESULT hr = 0;
 
-		CStateSaver stateSaver(device);
+		//CStateSaver stateSaver(device);
 
 		if (doBeginScene) hr |= device->BeginScene();
 		hr |= device->SetFVF(Vertex::FVF);
@@ -1288,6 +1293,7 @@ private:
 public:
 	void SetViewRectangle(int x, int y, int width, int height)
 	{
+		this->autoSetUpdateRectangle = false;
 		this->updateLeft = x;
 		this->updateTop = y;
 		this->updateWidth = width;
@@ -1332,9 +1338,36 @@ public:
 
 	void SetUpdateRegion(const Region& region)
 	{
-		float scaleX = (float)this->updateWidth / (float)this->inputWidth;
-		float scaleY = (float)this->updateHeight / (float)this->inputHeight;
-		float scale = std::min(scaleX, scaleY);
+		RECT clientRect;
+		GetClientRect(hwnd, &clientRect);
+		windowWidth = clientRect.right - clientRect.left;
+		windowHeight = clientRect.bottom - clientRect.top;
+
+		if (autoSetUpdateRectangle)
+		{
+			if (lastWindowWidth != windowWidth || lastWindowHeight != windowHeight)
+			{
+				this->backBufferDirty = true;
+				this->borderDirty = true;
+				lastWindowWidth = windowWidth;
+				lastWindowHeight = windowHeight;
+
+				float scaleX = (float)windowWidth / (float)inputWidth;
+				float scaleY = (float)windowHeight / (float)inputHeight;
+				float scale = std::min(scaleX, scaleY);
+				updateWidth = Round(scale * inputWidth);
+				updateHeight = Round(scale * inputHeight);
+				updateLeft = (windowWidth - updateWidth) / 2;
+				updateTop = (windowHeight - updateHeight) / 2;
+			}
+		}
+
+		float scale;
+		{
+			float scaleX = (float)this->updateWidth / (float)this->inputWidth;
+			float scaleY = (float)this->updateHeight / (float)this->inputHeight;
+			scale = std::min(scaleX, scaleY);
+		}
 
 		//int scaledWidth = Round(scale * inputWidth);
 		//int scaledHeight = Round(scale * inputHeight);

@@ -16,6 +16,7 @@ using std::wstring;
 #define DELAYED_HOOK 0
 
 #include "WindowClassContext.h"
+#include "Win32Ex.h"
 
 CachedVectorMap<HWND, std::unique_ptr<WindowContext>> windowMap;
 CachedVectorMap<HDC, WindowContext*> hdcMap;
@@ -308,23 +309,6 @@ void WindowContext::MouseVirtualToVirtualScreen(LPPOINT lpPoint) const
 #endif
 }
 
-static RECT GetMonitorRect(HWND window)
-{
-	HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
-	MONITORINFO monitorInfo = {};
-	monitorInfo.cbSize = sizeof(monitorInfo);
-	GetMonitorInfoA(monitor, &monitorInfo);
-	return monitorInfo.rcMonitor;
-}
-static RECT GetMonitorWorkAreaRect(HWND window)
-{
-	HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
-	MONITORINFO monitorInfo = {};
-	monitorInfo.cbSize = sizeof(monitorInfo);
-	GetMonitorInfoA(monitor, &monitorInfo);
-	return monitorInfo.rcMonitor;
-}
-
 LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
@@ -365,6 +349,18 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		{
 			(this->*ResizeHandler)();
 		}
+		//if (!IgnoreResizeEvents && ResizeHandler == NULL && IsVirtualized())
+		//{
+		//	DWORD windowStyle = _GetWindowLong(hwnd, GWL_STYLE);
+		//	if (!this->IsFullScreen & !(windowStyle & WS_THICKFRAME))
+		//	{
+		//		int dummy = 0;
+		//		MakeWindowResizable();
+		//		return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		//	}
+		//}
+
+
 		if (IsVirtualized())
 		{
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -451,6 +447,16 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			#endif
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
+		//new: hide window style changes from app
+		case WM_STYLECHANGED:
+		{
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+		case WM_STYLECHANGING:
+		{
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+
 		//Hide move/resize messages from window
 		//case WM_MOVING:
 		case WM_SIZING:
@@ -1048,13 +1054,14 @@ void WindowContext::MoveResizeChildWindows()
 
 bool WindowContext::MakeWindowResizable()
 {
-	DWORD windowStyle = GetWindowLong(window, GWL_STYLE);
+	DWORD windowStyle = _GetWindowLong(window, GWL_STYLE);
 	bool hasResizeBorder = windowStyle & WS_THICKFRAME;
 	if (!hasResizeBorder)
 	{
 		IgnoreResizeEvents = true;
 		windowStyle |= WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_CAPTION;
-		SetWindowLong(window, GWL_STYLE, windowStyle);
+		_SetWindowLong(window, GWL_STYLE, windowStyle);
+		windowStyle = _GetWindowLong(window, GWL_STYLE);
 		if (windowStyle & WS_VISIBLE)
 		{
 			FinishBorderChange();
@@ -1071,13 +1078,14 @@ bool WindowContext::MakeWindowResizable()
 
 bool WindowContext::MakeWindowBorderless()
 {
-	DWORD windowStyle = GetWindowLong(window, GWL_STYLE);
+	DWORD windowStyle = _GetWindowLong(window, GWL_STYLE);
 	bool hasCaption = windowStyle & WS_CAPTION;
 	if (hasCaption)
 	{
 		IgnoreResizeEvents = true;
 		windowStyle &= ~(WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_CAPTION);
-		SetWindowLong(window, GWL_STYLE, windowStyle);
+		_SetWindowLong(window, GWL_STYLE, windowStyle);
+		windowStyle = _GetWindowLong(window, GWL_STYLE);
 		if (windowStyle & WS_VISIBLE)
 		{
 			FinishBorderChange();
@@ -1157,6 +1165,7 @@ tryAgain:
 	_SetWindowPos(windowInsertAfter, RealX - leftBorder, RealY - topBorder, RealWidth + extraWidth, RealHeight + extraHeight, flags);
 	::GetWindowRect(window, &windowRect);
 	::GetClientRect(window, &clientRect);
+	windowStyle = _GetWindowLong(window, GWL_STYLE);
 	IgnoreResizeEvents = ignoreResizeEvents;
 
 	if (clientRect.right - clientRect.left != RealWidth || clientRect.bottom - clientRect.top != RealHeight)
@@ -1178,6 +1187,15 @@ tryAgain:
 	{
 		UpdateSize();
 	}
+	if (willHaveBorder && !(windowStyle & WS_THICKFRAME))
+	{
+		windowStyle |= WS_THICKFRAME;
+		_SetWindowLong(window, GWL_STYLE, windowStyle);
+		numberOfAttempts--;
+		goto tryAgain;
+	}
+
+
 	RedrawWindow(window, NULL, NULL, RDW_INVALIDATE);  //redraw to fix early white screen for slow-loading games
 	SetForegroundWindow(window);
 }
@@ -1244,11 +1262,14 @@ LONG_PTR WindowContext::SetWindowLong_(int index, LONG_PTR newLong)
 	case GWL_STYLE:
 		if (IsVirtualized())
 		{
-			DWORD oldWindowLong = GetWindowLong_(index);
-			newLong &= WS_DISABLED | WS_MINIMIZE | WS_VISIBLE;
-			newLong |= oldWindowLong;
-			_SetWindowLongPtr(window, index, newLong);
-			return oldWindowLong;
+			DWORD oldWindowLongVirtual = GetWindowLong_(index);
+			DWORD oldWindowLongReal = _GetWindowLong(window, index);
+			
+			DWORD windowLong = oldWindowLongReal & ~(WS_DISABLED | WS_MINIMIZE | WS_VISIBLE);
+			windowLong |= (newLong & (WS_DISABLED | WS_MINIMIZE | WS_VISIBLE));
+			
+			_SetWindowLongPtr(window, index, windowLong);
+			return oldWindowLongVirtual;
 		}
 		break;
 	case GWLP_WNDPROC:
@@ -1778,4 +1799,9 @@ BOOL WindowContext::RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT 
 bool WindowContext::PaintDCIsExpired(HDC hdc) const
 {
 	return hdc != NULL && hdc == paintDC && !paintDCIsOpen;
+}
+
+const RECT& WindowContext::GetScaledBounds() const
+{
+	return this->ScaledClientRect;
 }

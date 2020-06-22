@@ -170,7 +170,6 @@
   <ItemGroup>
     <ClCompile Include="CUpscaler.cpp" />
     <ClCompile Include="D3D9Context_Old.cpp" />
-    <ClCompile Include="D3D9Manager.cpp" />
     <ClCompile Include="D3D9Override.cpp" />
     <ClCompile Include="D3D9Override_D3D9Context.cpp" />
     <ClCompile Include="D3D9Override_D3D9DeviceContext.cpp" />
@@ -192,6 +191,7 @@
     </ClCompile>
     <ClCompile Include="WindowClassContext.cpp" />
     <ClCompile Include="WindowContext.cpp" />
+    <ClCompile Include="Win32Ex.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CUpscaler.h" />
@@ -199,7 +199,6 @@
     <ClInclude Include="D3D9Context_Old.h" />
     <ClInclude Include="D3D9Override.h" />
     <ClInclude Include="D3D9VTable.h" />
-    <ClInclude Include="D3D9Manager.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="RectUtil.h" />
@@ -210,6 +209,7 @@
     <ClInclude Include="shaderPrograms2.h" />
     <ClInclude Include="StringUtil.h" />
     <ClInclude Include="TinyMap.h" />
+    <ClInclude Include="Win32Ex.h" />
     <ClInclude Include="WinApiWrappers.h" />
     <ClInclude Include="WinApiWrappers_AllGDI.h" />
     <ClInclude Include="WindowClassContext.h" />

@@ -75,7 +75,7 @@
     <ClCompile Include="Initguid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D9Manager.cpp">
+    <ClCompile Include="Win32Ex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -137,7 +137,7 @@
     <ClInclude Include="D3D9Context_Old.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D9Manager.h">
+    <ClInclude Include="Win32Ex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
