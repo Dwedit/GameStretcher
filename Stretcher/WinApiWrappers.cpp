@@ -8,23 +8,20 @@ struct IUnknown;
 #include "WinApiWrappers.h"
 #include "WindowContext.h"
 #include "WindowClassContext.h"
+#include "D3D9Manager.h"
 
 extern void EnableVisualStyles();
 
 #include "ImportReplacer.h"
 
+ImportMap importMap;
+
 //Replace the Functions
-void ReplaceImports(HMODULE module)
+void BuildImportMap()
 {
-    if (module == NULL) module = GetModuleHandleA(NULL);
-    //object released when it goes out of scope
-    ImportReplacer replacer(module);
-    replacer.GetImports("user32.dll");
-    replacer.GetImports("gdi32.dll");
-    replacer.GetImports("advapi32.dll");
 #define ReplaceImport(dllName, functionName, replacementFunction, pOldFunction) \
-    replacer.ReplaceImport((dllName),(functionName),(replacementFunction),(pOldFunction))
-    
+    importMap.AddImport((dllName),(functionName),(replacementFunction),(pOldFunction))
+
     ReplaceImport("User32.dll", "ClientToScreen", (FARPROC)ClientToScreen_Replacement, (FARPROC*)&ClientToScreen_OLD);
     ReplaceImport("User32.dll", "ScreenToClient", (FARPROC)ScreenToClient_Replacement, (FARPROC*)&ScreenToClient_OLD);
     ReplaceImport("User32.dll", "MapWindowPoints", (FARPROC)MapWindowPoints_Replacement, (FARPROC*)&MapWindowPoints_OLD);
@@ -34,12 +31,12 @@ void ReplaceImports(HMODULE module)
 #endif
     ReplaceImport("User32.dll", "ShowWindow", (FARPROC)ShowWindow_Replacement, (FARPROC*)&ShowWindow_OLD);
     ReplaceImport("User32.dll", "GetClientRect", (FARPROC)GetClientRect_Replacement, (FARPROC*)&GetClientRect_OLD);
-	ReplaceImport("User32.dll", "GetWindowPlacement", (FARPROC)GetWindowPlacement_Replacement, (FARPROC*)&GetWindowPlacement_OLD);
-	ReplaceImport("User32.dll", "GetWindowRect", (FARPROC)GetWindowRect_Replacement, (FARPROC*)&GetWindowRect_OLD);
-	ReplaceImport("User32.dll", "MoveWindow", (FARPROC)MoveWindow_Replacement, (FARPROC*)&MoveWindow_OLD);
+    ReplaceImport("User32.dll", "GetWindowPlacement", (FARPROC)GetWindowPlacement_Replacement, (FARPROC*)&GetWindowPlacement_OLD);
+    ReplaceImport("User32.dll", "GetWindowRect", (FARPROC)GetWindowRect_Replacement, (FARPROC*)&GetWindowRect_OLD);
+    ReplaceImport("User32.dll", "MoveWindow", (FARPROC)MoveWindow_Replacement, (FARPROC*)&MoveWindow_OLD);
 #if USE_CLASS_HOOK
     ReplaceImport("User32.dll", "RegisterClassA", (FARPROC)RegisterClassA_Replacement, (FARPROC*)&RegisterClassA_OLD);
-	ReplaceImport("User32.dll", "RegisterClassW", (FARPROC)RegisterClassW_Replacement, (FARPROC*)&RegisterClassW_OLD);
+    ReplaceImport("User32.dll", "RegisterClassW", (FARPROC)RegisterClassW_Replacement, (FARPROC*)&RegisterClassW_OLD);
     ReplaceImport("User32.dll", "RegisterClassExA", (FARPROC)RegisterClassExA_Replacement, (FARPROC*)&RegisterClassExA_OLD);
     ReplaceImport("User32.dll", "RegisterClassExW", (FARPROC)RegisterClassExW_Replacement, (FARPROC*)&RegisterClassExW_OLD);
     ReplaceImport("User32.dll", "UnregisterClassA", (FARPROC)UnregisterClassA_Replacement, (FARPROC*)&UnregisterClassA_OLD);
@@ -58,11 +55,11 @@ void ReplaceImports(HMODULE module)
     ReplaceImport("User32.dll", "GetWindowLongPtrA", (FARPROC)GetWindowLongPtrA_Replacement, (FARPROC*)&GetWindowLongPtrA_OLD);
     ReplaceImport("User32.dll", "GetWindowLongPtrW", (FARPROC)GetWindowLongPtrW_Replacement, (FARPROC*)&GetWindowLongPtrW_OLD);
     ReplaceImport("User32.dll", "SetWindowLongA", (FARPROC)SetWindowLongA_Replacement, (FARPROC*)&SetWindowLongA_OLD);
-	ReplaceImport("User32.dll", "SetWindowLongW", (FARPROC)SetWindowLongW_Replacement, (FARPROC*)&SetWindowLongW_OLD);
-	ReplaceImport("User32.dll", "SetWindowLongPtrA", (FARPROC)SetWindowLongPtrA_Replacement, (FARPROC*)&SetWindowLongPtrA_OLD);
-	ReplaceImport("User32.dll", "SetWindowLongPtrW", (FARPROC)SetWindowLongPtrW_Replacement, (FARPROC*)&SetWindowLongPtrW_OLD);
-	ReplaceImport("User32.dll", "SetWindowPlacement", (FARPROC)SetWindowPlacement_Replacement, (FARPROC*)&SetWindowPlacement_OLD);
-	ReplaceImport("User32.dll", "SetWindowPos", (FARPROC)SetWindowPos_Replacement, (FARPROC*)&SetWindowPos_OLD);
+    ReplaceImport("User32.dll", "SetWindowLongW", (FARPROC)SetWindowLongW_Replacement, (FARPROC*)&SetWindowLongW_OLD);
+    ReplaceImport("User32.dll", "SetWindowLongPtrA", (FARPROC)SetWindowLongPtrA_Replacement, (FARPROC*)&SetWindowLongPtrA_OLD);
+    ReplaceImport("User32.dll", "SetWindowLongPtrW", (FARPROC)SetWindowLongPtrW_Replacement, (FARPROC*)&SetWindowLongPtrW_OLD);
+    ReplaceImport("User32.dll", "SetWindowPlacement", (FARPROC)SetWindowPlacement_Replacement, (FARPROC*)&SetWindowPlacement_OLD);
+    ReplaceImport("User32.dll", "SetWindowPos", (FARPROC)SetWindowPos_Replacement, (FARPROC*)&SetWindowPos_OLD);
     ReplaceImport("User32.dll", "GetCursorPos", (FARPROC)GetCursorPos_Replacement, (FARPROC*)&GetCursorPos_OLD);
     ReplaceImport("User32.dll", "SetCursorPos", (FARPROC)SetCursorPos_Replacement, (FARPROC*)&SetCursorPos_OLD);
     ReplaceImport("User32.dll", "BeginPaint", (FARPROC)BeginPaint_Replacement, (FARPROC*)&BeginPaint_OLD);
@@ -90,10 +87,22 @@ void ReplaceImports(HMODULE module)
     ReplaceImport("User32.dll", "InvalidateRgn", (FARPROC)InvalidateRgn_Replacement, (FARPROC*)&InvalidateRgn_OLD);
     ReplaceImport("User32.dll", "RedrawWindow", (FARPROC)RedrawWindow_Replacement, (FARPROC*)&RedrawWindow_OLD);
 
-    void ReplaceImports_AllGDI(ImportReplacer & replacer);
-    void ReplaceImports_Registry(ImportReplacer & replacer);
-    ReplaceImports_AllGDI(replacer);
-    ReplaceImports_Registry(replacer);
+    ReplaceImport("Kernel32.dll", "GetProcAddress", (FARPROC)GetProcAddress_Replacement, (FARPROC*)&GetProcAddress_OLD);
+    ReplaceImport("d3d9.dll", "Direct3DCreate9", (FARPROC)Direct3DCreate9_Replacement, (FARPROC*)&Direct3DCreate9_OLD);
+    ReplaceImport("d3d9.dll", "Direct3DCreate9Ex", (FARPROC)Direct3DCreate9Ex_Replacement, (FARPROC*)&Direct3DCreate9Ex_OLD);
+
+    void BuildImportMap_AllGDI();
+    void BuildImportMap_Registry();
+    BuildImportMap_AllGDI();
+    BuildImportMap_Registry();
+
+#undef ReplaceImport
+}
+
+void ReplaceImports(HMODULE module)
+{
+    if (module == NULL) module = GetModuleHandleA(NULL);
+    importMap.ReplaceImports(module);
 }
 
 //Import Backups (Definitions)
@@ -157,6 +166,9 @@ GetUpdateRect_FUNC GetUpdateRect_OLD = NULL;
 GetUpdateRgn_FUNC GetUpdateRgn_OLD = NULL;
 InvalidateRgn_FUNC InvalidateRgn_OLD = NULL;
 RedrawWindow_FUNC RedrawWindow_OLD = NULL;
+GetProcAddress_FUNC GetProcAddress_OLD = NULL;
+Direct3DCreate9_FUNC Direct3DCreate9_OLD = NULL;
+Direct3DCreate9Ex_FUNC Direct3DCreate9Ex_OLD = NULL;
 
 /*
 
@@ -714,4 +726,45 @@ BOOL WINAPI RedrawWindow_Replacement(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrg
     WindowContext* windowContext = WindowContext::Get(hWnd);
     if (windowContext == NULL) return RedrawWindow_OLD(hWnd, lprcUpdate, hrgnUpdate, flags);
     return windowContext->RedrawWindow_(lprcUpdate, hrgnUpdate, flags);
+}
+
+FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName)
+{
+    FARPROC overrideAddress = importMap.GetProcAddress(hModule, lpProcName);
+    if (overrideAddress != NULL)
+    {
+        return overrideAddress;
+    }
+    return GetProcAddress_OLD(hModule, lpProcName);
+}
+
+IDirect3D9* WINAPI Direct3DCreate9_Replacement(UINT SDKVersion)
+{
+    if (d3d9Manager == NULL)
+    {
+        d3d9Manager = new D3D9Manager();
+    }
+    d3d9Manager->CreateD3D9(false);
+    return d3d9Manager->GetD3D9();
+
+
+
+    //return Direct3DCreate9_OLD(SDKVersion);
+}
+HRESULT WINAPI Direct3DCreate9Ex_Replacement(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex)
+{
+    if (lpIDirect3D9Ex == NULL)
+    {
+        return E_POINTER;
+    }
+    if (d3d9Manager == NULL)
+    {
+        d3d9Manager = new D3D9Manager();
+    }
+    d3d9Manager->CreateD3D9(true);
+    
+    *lpIDirect3D9Ex = (IDirect3D9Ex*)d3d9Manager->GetD3D9();
+    if (*lpIDirect3D9Ex == NULL) return E_FAIL;
+    return 0;
+    //return Direct3DCreate9Ex_OLD(SDKVersion, lpIDirect3D9Ex);
 }

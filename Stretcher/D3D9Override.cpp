@@ -2,6 +2,3 @@
 #include "TinyMap.h"
 #include <memory>
 
-#include "D3D9Context_Old.h"
-
-

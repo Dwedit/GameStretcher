@@ -1,4 +1,5 @@
 #include "D3D9Override.h"
+#include "MemoryUnlocker.h"
 
 D3D9Context2::D3D9Context2(IDirect3D9* d3d9)
 {
@@ -14,10 +15,13 @@ void D3D9Context2::Init(IDirect3D9* d3d9)
 	this->d3d9 = d3d9;
 	this->d3d9->AddRef();
 	this->originalVTable = GetOriginalVTable(d3d9);
-	this->myVTable = GetNewVTable(d3d9);
 	this->IsEx = GetIsEx(d3d9);
-	this->myVTable->CreateDevice = CreateDevice;
-	this->myVTable->CreateDeviceEx = CreateDeviceEx;
+	this->myVTable = ((IDirect3D9Ex_*)d3d9)->lpVtbl;
+	{
+		MemoryUnlocker unlocker(this->myVTable);
+		this->myVTable->CreateDevice = CreateDevice;
+		this->myVTable->CreateDeviceEx = CreateDeviceEx;
+	}
 }
 D3D9Context2::~D3D9Context2()
 {
@@ -41,7 +45,8 @@ HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hF
 
 
 	HRESULT hr = CreateDeviceReal(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
-	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(*ppReturnedDeviceInterface);
+	IDirect3DDevice9* device = *ppReturnedDeviceInterface;
+	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device);
 	deviceContext->parent = this;
 	return hr;
 }
@@ -49,7 +54,8 @@ HRESULT D3D9Context2::CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND 
 {
 	//TODO: override parameters
 	HRESULT hr = CreateDeviceExReal(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
-	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(*ppReturnedDeviceInterface);
+	IDirect3DDevice9Ex* device = *ppReturnedDeviceInterface;
+	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device);
 	deviceContext->parent = this;
 	return hr;
 }

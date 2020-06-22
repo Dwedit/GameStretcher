@@ -18,9 +18,12 @@ extern void RemoveD3D9SwapChainContext(IDirect3DSwapChain9* key);
 extern IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9);
 extern IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device);
 extern IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain);
-extern IDirect3D9ExVtbl* GetNewVTable(IDirect3D9* d3d9);
-extern IDirect3DDevice9ExVtbl* GetNewVTable(IDirect3DDevice9* device);
-extern IDirect3DSwapChain9ExVtbl* GetNewVTable(IDirect3DSwapChain9* swapChain);
+//extern IDirect3D9ExVtbl* GetNewVTable(IDirect3D9* d3d9);
+//extern IDirect3DDevice9ExVtbl* GetNewVTable(IDirect3DDevice9* device);
+//extern IDirect3DSwapChain9ExVtbl* GetNewVTable(IDirect3DSwapChain9* swapChain);
+//extern void AssignVTable(IDirect3D9* d3d9, IDirect3D9ExVtbl* vTable);
+//extern void AssignVTable(IDirect3DDevice9* d3d9, IDirect3DDevice9ExVtbl* vTable);
+//extern void AssignVTable(IDirect3DSwapChain9* d3d9, IDirect3DSwapChain9ExVtbl* vTable);
 
 extern bool GetIsEx(IDirect3D9* d3d9);
 extern bool GetIsEx(IDirect3DDevice9* device);
@@ -83,6 +86,7 @@ class D3D9DeviceContext
 public:
 	D3D9DeviceContext(IDirect3DDevice9* device);
 	D3D9DeviceContext();
+	void SetVTable();
 	void Init(IDirect3DDevice9* device);
 	~D3D9DeviceContext();
 	void Destroy();
@@ -96,6 +100,7 @@ public:
 	HRESULT Present_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion);
 	HRESULT GetBackBuffer_(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
 	HRESULT GetFrontBufferData_(UINT iSwapChain, IDirect3DSurface9* pDestSurface);
+	HRESULT BeginStateBlock_();
 	HRESULT PresentEx_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
 	HRESULT ResetEx_(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 
@@ -108,6 +113,7 @@ public:
 	HRESULT PresentReal(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion);
 	HRESULT GetBackBufferReal(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
 	HRESULT GetFrontBufferDataReal(UINT iSwapChain, IDirect3DSurface9* pDestSurface);
+	HRESULT BeginStateBlockReal();
 	HRESULT PresentExReal(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
 	HRESULT ResetExReal(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 
@@ -120,6 +126,7 @@ public:
 	static HRESULT __stdcall Present(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion);
 	static HRESULT __stdcall GetBackBuffer(IDirect3DDevice9Ex* This, UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
 	static HRESULT __stdcall GetFrontBufferData(IDirect3DDevice9Ex* This, UINT iSwapChain, IDirect3DSurface9* pDestSurface);
+	static HRESULT __stdcall BeginStateBlock(IDirect3DDevice9Ex* This);
 	static HRESULT __stdcall PresentEx(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
 	static HRESULT __stdcall ResetEx(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 };
@@ -135,9 +142,11 @@ class D3D9SwapChainContext
 
 	D3D9DeviceContext* parent = NULL;
 	bool IsEx = false;
+	bool insidePresent = false;
 public:
 	D3D9SwapChainContext(IDirect3DSwapChain9* swapChain);
 	D3D9SwapChainContext();
+	void SetVTable();
 	void Init(IDirect3DSwapChain9* swapChain);
 	~D3D9SwapChainContext();
 	void Destroy();

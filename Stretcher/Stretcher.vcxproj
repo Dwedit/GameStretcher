@@ -170,6 +170,7 @@
   <ItemGroup>
     <ClCompile Include="CUpscaler.cpp" />
     <ClCompile Include="D3D9Context_Old.cpp" />
+    <ClCompile Include="D3D9Manager.cpp" />
     <ClCompile Include="D3D9Override.cpp" />
     <ClCompile Include="D3D9Override_D3D9Context.cpp" />
     <ClCompile Include="D3D9Override_D3D9DeviceContext.cpp" />
@@ -178,6 +179,7 @@
     <ClCompile Include="D3D9Override_VTableStore.cpp" />
     <ClCompile Include="EnumerateModules.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
+    <ClCompile Include="Initguid.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MemoryUnlocker.cpp" />
     <ClCompile Include="Region.cpp" />
@@ -197,6 +199,7 @@
     <ClInclude Include="D3D9Context_Old.h" />
     <ClInclude Include="D3D9Override.h" />
     <ClInclude Include="D3D9VTable.h" />
+    <ClInclude Include="D3D9Manager.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="RectUtil.h" />

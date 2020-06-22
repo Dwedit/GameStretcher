@@ -227,6 +227,7 @@ private:
 private:
 	IDirect3DDevice9 *device;
 	IDirect3DSwapChain9 *swapChain;
+	IDirect3DSwapChain9* overrideSwapChain;
 	IDirect3DTexture9 *sourceTexture;
 	IDirect3DSurface9 *sourceTextureSurface;
 
@@ -270,6 +271,7 @@ private:
 	int upscaleFilter;
 	bool borderDirty;
 	bool upscaledTextureDirty;
+	bool backBufferDirty;
 	bool isWine;
 
 	Region updateRegionOriginal;
@@ -576,7 +578,14 @@ public:
 		{
 			rgnData = NULL;
 		}
-		hr |= device->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData);
+		if (this->overrideSwapChain != NULL)
+		{
+			hr |= overrideSwapChain->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData, 0);
+		}
+		else
+		{
+			hr |= swapChain->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData, 0);
+		}
 		return okay && SUCCEEDED(hr);
 	}
 
@@ -885,7 +894,14 @@ public:
 		}
 
 		RECT updateRect = { leftScaled, topScaled, rightScaled, bottomScaled };
-		hr = device->Present(&updateRect, &updateRect, NULL, NULL);
+		if (this->overrideSwapChain != NULL)
+		{
+			hr = overrideSwapChain->Present(&updateRect, &updateRect, NULL, NULL, 0);
+		}
+		else
+		{
+			hr = swapChain->Present(&updateRect, &updateRect, NULL, NULL, 0);
+		}
 		return hr;
 	}
 public:
@@ -893,6 +909,7 @@ public:
 	{
 		SafeRelease(device);
 		SafeRelease(swapChain);
+		SafeRelease(overrideSwapChain);
 		SafeRelease(sourceTexture);
 		SafeRelease(sourceTextureSurface);
 		SafeRelease(pass0RenderTargetTexture);
@@ -945,6 +962,7 @@ private:
 		if (backBuffer != NULL) SafeRelease(backBuffer);
 		//IDirect3DSurface9 *backBuffer = NULL;
 		hr |= device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+		this->backBufferDirty = true;
 		D3DSURFACE_DESC desc = {};
 		if (backBuffer != NULL) hr = backBuffer->GetDesc(&desc);
 		//SafeRelease(backBuffer);
@@ -1009,6 +1027,7 @@ public:
 	bool SetSourceTexture(IDirect3DTexture9 *sourceTexture)
 	{
 		if (sourceTexture == this->sourceTexture) return true;
+		this->upscaledTextureDirty = true;
 		HRESULT hr = 0;
 		bool okay = true;
 		okay &= SetDevice(sourceTexture);
@@ -1304,6 +1323,13 @@ public:
 		return ((int)(f + 32768.5)) - 32768;
 	}
 
+	void SetUpdateRegion()
+	{
+		Region fullRegion;
+		fullRegion.AddRectangle(inputLeft, inputTop, inputWidth, inputHeight);
+		SetUpdateRegion(fullRegion);
+	}
+
 	void SetUpdateRegion(const Region& region)
 	{
 		float scaleX = (float)this->updateWidth / (float)this->inputWidth;
@@ -1336,16 +1362,54 @@ public:
 		if (this->borderDirty)
 		{
 			this->borderDirty = false;
+			this->backBufferDirty = false;
 			RECT entireWindow;
 			GetClientRect(hwnd, &entireWindow);
 			this->updateRegionScreen.AddRectangle(entireWindow);
 			this->oldUpdateRegions.clear();
 		}
-
+		else if (this->backBufferDirty)
+		{
+			this->backBufferDirty = false;
+			this->updateRegionScreen.AddRectangle(updateLeft, updateTop, updateWidth, updateHeight);
+			this->oldUpdateRegions.clear();
+		}
 	}
 
 	void SetBorderDirty()
 	{
 		this->borderDirty = true;
+	}
+
+	bool SetSwapChain(IDirect3DSwapChain9* swapChain)
+	{
+		if (overrideSwapChain == swapChain)
+		{
+			return true;
+		}
+		if (swapChain == this->swapChain)
+		{
+			return true;
+		}
+
+		SafeRelease(backBuffer);
+		SafeRelease(overrideSwapChain);
+		HRESULT hr = 0;
+		if (swapChain == NULL)
+		{
+			if (this->device != NULL)
+			{
+				hr = this->device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+			}
+			this->backBufferDirty = true;
+		}
+		else
+		{
+			this->overrideSwapChain = swapChain;
+			this->overrideSwapChain->AddRef();
+			hr = this->overrideSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+			this->backBufferDirty = true;
+		}
+		return this->backBuffer != NULL && SUCCEEDED(hr);
 	}
 };

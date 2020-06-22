@@ -1,4 +1,5 @@
 #include "ImportReplacer.h"
+#include <Psapi.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //			Equivalent to the windows api function ImageDirectoryEntryToDataEx
@@ -131,7 +132,7 @@ void ImportReplacer::GetImports(LPCSTR dllNameToMatch)
 
 	const char* base = reinterpret_cast<const char*>(this->Base);
 	PIMAGE_IMPORT_DESCRIPTOR ImportDescriptor = static_cast<PIMAGE_IMPORT_DESCRIPTOR>(ImportDirectory);
-	while (ImportDescriptor->OriginalFirstThunk != 0)
+	while (ImportDescriptor->Name != 0)
 	{
 		LPCSTR dllName = base + ImportDescriptor->Name;
 		unordered_map<string, FARPROC*> map2;
@@ -140,18 +141,37 @@ void ImportReplacer::GetImports(LPCSTR dllNameToMatch)
 		if (dllNameToMatchLower == dllNameLower)
 		{
 			this->map[dllNameLower] = map2;
-
 			const LONG_PTR* namePtrs = reinterpret_cast<const LONG_PTR*>(base + ImportDescriptor->OriginalFirstThunk);
 			const LONG_PTR* codeAddrs = reinterpret_cast<const LONG_PTR*>(base + ImportDescriptor->FirstThunk);
-			int funcIndex = 0;
-			while (namePtrs[funcIndex] != 0)
+			if (ImportDescriptor->OriginalFirstThunk != 0)
 			{
-				const short* ordinalPtr = reinterpret_cast<const short*>(base + namePtrs[funcIndex]);
-				WORD ordinal = *ordinalPtr;
-				ordinalPtr++;
-				LPCSTR funcName = reinterpret_cast<const char*>(ordinalPtr);
-				map2[funcName] = const_cast<FARPROC*>(reinterpret_cast<const FARPROC*>(&codeAddrs[funcIndex]));
-				funcIndex++;
+				//normal case
+				int funcIndex = 0;
+				while (namePtrs[funcIndex] != 0)
+				{
+					const short* ordinalPtr = reinterpret_cast<const short*>(base + namePtrs[funcIndex]);
+					WORD ordinal = *ordinalPtr;
+					ordinalPtr++;
+					LPCSTR funcName = reinterpret_cast<const char*>(ordinalPtr);
+					map2[funcName] = const_cast<FARPROC*>(reinterpret_cast<const FARPROC*>(&codeAddrs[funcIndex]));
+					funcIndex++;
+				}
+			}
+			else
+			{
+				//Not sure about this, but it seems to work for one EXE
+				int funcIndex = 0;
+				const char* p = dllName + strlen(dllName) + 1;
+				while (true)
+				{
+					WORD word = *(const WORD*)p;
+					if (word != 0) break;
+					p += sizeof(WORD);
+					const char* funcName = p;
+					p += strlen(funcName) + 1;
+					map2[funcName] = const_cast<FARPROC*>(reinterpret_cast<const FARPROC*>(&codeAddrs[funcIndex]));
+					funcIndex++;
+				}
 			}
 			swap(this->map[dllNameLower], map2);
 			break;
@@ -193,7 +213,10 @@ bool ImportReplacer::ReplaceImport(LPCSTR dllName, LPCSTR functionName, FARPROC 
 
 	if (pOldFunction)
 	{
-		*pOldFunction = *importAddress;
+		if (*pOldFunction == NULL)
+		{
+			*pOldFunction = *importAddress;
+		}
 	}
 	if (!memoryUnlocker.UnlockExists())
 	{
@@ -201,4 +224,103 @@ bool ImportReplacer::ReplaceImport(LPCSTR dllName, LPCSTR functionName, FARPROC 
 	}
 	*importAddress = replacementFunction;
 	return true;
+}
+
+bool ModuleBaseNameMap::AddToCache(HMODULE module)
+{
+	char buffer[MAX_PATH];
+	DWORD result = GetModuleBaseNameA(GetCurrentProcess(), module, buffer, MAX_PATH);
+	if (result == 0) return false;
+	map.emplace(module, ToLower(buffer));
+	return true;
+}
+
+const string& ModuleBaseNameMap::GetModuleBaseNameLowercase(HMODULE module)
+{
+	if (module == NULL) return dummy;
+again:
+	auto found = map.find(module);
+	if (found != map.end())
+	{
+		return found->second;
+	}
+	else
+	{
+		if (AddToCache(module))
+		{
+			goto again;
+		}
+		return dummy;
+	}
+	
+}
+
+void ImportMap::AddImport(LPCSTR dllName, LPCSTR functionName, FARPROC replacementFunction, FARPROC* pOldFunction)
+{
+	string moduleNameStr = ToLower(dllName);
+back:
+	auto found = map.find(moduleNameStr);
+	if (found == map.end())
+	{
+		typedef decltype(found->second) map2Type;
+		map.emplace(moduleNameStr, map2Type());
+		goto back;
+	}
+	auto& map2 = found->second;
+	string procNameStr = functionName;
+	map2.emplace(procNameStr, std::make_pair(replacementFunction, pOldFunction));
+}
+
+FARPROC ImportMap::GetProcAddress(LPCSTR moduleName, LPCSTR procName) const
+{
+	string moduleNameStr = ToLower(moduleName);
+	return GetProcAddress(moduleNameStr, procName);
+}
+FARPROC ImportMap::GetProcAddress(const string& moduleNameStr, LPCSTR procName) const
+{
+	auto found = map.find(moduleNameStr);
+	if (found != map.end())
+	{
+		string procNameStr = procName;
+		auto map2 = found->second;
+		auto found2 = map2.find(procNameStr);
+		if (found2 != map2.end())
+		{
+			FARPROC* pOldFunc = found2->second.second;
+			if (pOldFunc != NULL && *pOldFunc == NULL)
+			{
+				*pOldFunc = ::GetProcAddress(GetModuleHandleA(moduleNameStr.c_str()), procName);
+			}
+			return found2->second.first;
+		}
+	}
+	return NULL;
+}
+FARPROC ImportMap::GetProcAddress(HMODULE module, LPCSTR procName) const
+{
+	if (module == NULL) return NULL;
+	const string &baseNameLowercase = baseNameMap.GetModuleBaseNameLowercase(module);
+	return GetProcAddress(baseNameLowercase, procName);
+}
+void ImportMap::ReplaceImports(HMODULE Base) const
+{
+	if (Base == NULL) Base = GetModuleHandleA(NULL);
+	ImportReplacer replacer(Base);
+	for (auto iterator1 = map.cbegin(); iterator1 != map.cend(); iterator1++)
+	{
+		const string& moduleName = iterator1->first;
+		replacer.GetImports(moduleName.c_str());
+	}
+	for (auto iterator1 = map.cbegin(); iterator1 != map.cend(); iterator1++)
+	{
+		const string& moduleName = iterator1->first;
+		const auto& map2 = iterator1->second;
+		for (auto iterator2 = map2.cbegin(); iterator2 != map2.cend(); iterator2++)
+		{
+			const string& procName = iterator2->first;
+			FARPROC procAddress = iterator2->second.first;
+			FARPROC* oldAddress = iterator2->second.second;
+			replacer.ReplaceImport(moduleName.c_str(), procName.c_str(), procAddress, oldAddress);
+		}
+	}
 }

@@ -20,10 +20,12 @@ public:
 	~CUpscaler();
 	void Destroy();
 	bool SetSourceTexture(void *texture); //IDirect3DTexture9
+	bool SetSwapChain(void* swapChain); //IDirect3DSwapChain9
 	void SetDoBeginScene(bool doBeginScene);
 	void SetViewRectangle(int x, int y, int width, int height);
 	void SetInputRectangle(int x, int y, int width, int height);
 	bool Update(const Region &region); //region in unscaled coordinates
+	bool Update();
 	void SetBorderDirty();
 	bool UpdateToTexture(int x, int y, int width, int height);
 	bool UpdateToBackBuffer(int x, int y, int width, int height);

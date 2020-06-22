@@ -28,3 +28,24 @@ public:
 	bool ReplaceImport(LPCSTR dllName, LPCSTR functionName, FARPROC replacementFunction, FARPROC* pOldFunction);
 	void GetImports(LPCSTR dllNameToMatch);
 };
+
+class ModuleBaseNameMap
+{
+	unordered_map<HMODULE, string> map;
+	string dummy;
+	bool AddToCache(HMODULE module);
+public:
+	const string &GetModuleBaseNameLowercase(HMODULE module);
+};
+
+class ImportMap
+{
+	unordered_map<string, unordered_map<string, pair<FARPROC, FARPROC*>>> map;
+	mutable ModuleBaseNameMap baseNameMap;
+public:
+	void AddImport(LPCSTR dllName, LPCSTR functionName, FARPROC replacementFunction, FARPROC* pOldFunction);
+	FARPROC GetProcAddress(LPCSTR moduleName, LPCSTR procName) const;
+	FARPROC GetProcAddress(const string &moduleName, LPCSTR procName) const;
+	FARPROC GetProcAddress(HMODULE module, LPCSTR procName) const;
+	void ReplaceImports(HMODULE Base = NULL) const;
+};

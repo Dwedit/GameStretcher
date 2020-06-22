@@ -84,12 +84,12 @@ MyLock SubstituteDC(HDC& hdc, HDC &hdc2)
 	return MyLock(hdc, hdc2);
 }
 
-
 //Replace the Functions
-void ReplaceImports_AllGDI(ImportReplacer &replacer)
+void BuildImportMap_AllGDI()
 {
+	extern ImportMap importMap;
 #define ReplaceImport(dllName, functionName, replacementFunction, pOldFunction) \
-    replacer.ReplaceImport((dllName),(functionName),(replacementFunction),(pOldFunction))
+    importMap.AddImport((dllName),(functionName),(replacementFunction),(pOldFunction))
 
 	ReplaceImport("Gdi32.dll", "Arc", (FARPROC)Arc_Replacement, (FARPROC*)&Arc_OLD);
 	ReplaceImport("Gdi32.dll", "BitBlt", (FARPROC)BitBlt_Replacement, (FARPROC*)&BitBlt_OLD);

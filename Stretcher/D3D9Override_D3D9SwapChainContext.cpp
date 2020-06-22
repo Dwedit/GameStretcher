@@ -1,5 +1,5 @@
 #include "D3D9Override.h"
-
+#include "MemoryUnlocker.h"
 D3D9SwapChainContext::D3D9SwapChainContext(IDirect3DSwapChain9* swapChain)
 {
 	Init(swapChain);
@@ -12,12 +12,22 @@ D3D9SwapChainContext::~D3D9SwapChainContext()
 {
 	Destroy();
 }
+void D3D9SwapChainContext::SetVTable()
+{
+	MemoryUnlocker unlocker(this->myVTable);
+	this->myVTable->Present = Present;
+	this->myVTable->GetFrontBufferData = GetFrontBufferData;
+	this->myVTable->GetBackBuffer = GetBackBuffer;
+	this->myVTable->GetPresentParameters = GetPresentParameters;
+}
 void D3D9SwapChainContext::Init(IDirect3DSwapChain9* swapChain)
 {
 	this->realSwapChain = (IDirect3DSwapChain9Ex*)swapChain;
 	this->originalVTable = GetOriginalVTable(swapChain);
-	this->myVTable = GetNewVTable(swapChain);
 	this->IsEx = GetIsEx(swapChain);
+	this->myVTable = ((IDirect3DSwapChain9Ex_*)realSwapChain)->lpVtbl;
+	SetVTable();
+	//AssignVTable(realSwapChain, this->myVTable);
 	HRESULT hr;
 	hr = swapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &this->realBackBuffer);
 }
@@ -30,8 +40,18 @@ void D3D9SwapChainContext::Destroy()
 
 HRESULT D3D9SwapChainContext::Present_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
 {
+	if (insidePresent)
+	{
+		return PresentReal(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+	}
+	
+	insidePresent = true;
+	
 	//TODO
-	return PresentReal(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+	HRESULT hr = PresentReal(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+	
+	insidePresent = false;
+	return hr;
 }
 HRESULT D3D9SwapChainContext::GetFrontBufferData_(IDirect3DSurface9* pDestSurface)
 {

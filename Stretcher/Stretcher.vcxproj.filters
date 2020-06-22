@@ -72,6 +72,12 @@
     <ClCompile Include="D3D9Context_Old.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Initguid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D9Manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinApiWrappers.h">
@@ -129,6 +135,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D3D9Context_Old.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

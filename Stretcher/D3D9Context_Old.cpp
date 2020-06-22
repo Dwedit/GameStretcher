@@ -12,74 +12,11 @@ extern "C"
 #define NOMINMAX
 struct IUnknown;
 #include <Windows.h>
-#include <initguid.h>
+//#include <initguid.h>
 #include <d3d9.h>
 
 #include "D3D9Context_Old.h"
 
-/*
-Current Design:
-	Window Context owns a D3D9 Context Object  (Change this to each window owning a backbuffer texture instad)
-	* D3D9 Created  (Always EX if available)
-	* D3D9 Device Created  (Always EX if available)
-		Default swap chain:
-			Swapeffect: Copy
-			Backbuffer size equal to screen resolution
-			Pixel Format XRGB with no SRGB correction
-			Not Lockable
-			Single Back Buffer
-			Windowed Mode
-			D16 Depth Buffer
-			No Multisampling
-			Attached to Monitor that the window spawned on
-		Hardware Vertex Processing  (change this to Mixed to allow apps to request software vertex processing)
-	* Texture created
-		Dynamic texture (Change this to a render-target texture)
-		Not lockable  (Need to make it lockable)
-	* Texture sampled and upscaled to 2x scale
-	* 2x Texture drawn to Back Buffer and Presented to Screen
-
-Upcoming Design:
-	Global D3D9 Context Object
-	* Create D3D9 Ex Object
-	* Create D3D9 Ex Device Object
-		Real swap chain:
-			SwapEffect: Copy
-			Backbuffer equal to Screen Resolution
-			Pixel Format XRGB with no SRGB correction
-			Not Lockable
-			Single Back Buffer
-			Windowed Mode
-			D16 Depth Buffer  (change if the upscaler ever needs anything better)
-			No Multisampling
-			Attached to Window's initial monitor
-		Mixed Vertex Processing
-			Use Hardware Vertex Processing by default
-			If app requests Software or Mixed vertex processing, preserve Software mode selection between calls to the upscaled
-	* Game doesn't use D3D9:
-		Create texture for backbuffer
-			XRGB
-			Render Target Texture
-			Lockable
-			Match intitial window size  (but resize if window size changes, if D3D isn't used, and more than 2 resizes have happened, proceed to match screen resolution)
-	* Game uses D3D9:
-		Create texture for backbuffer
-			Render Target Texture
-			Match requested multisampling
-			Match requested size
-			Match requested pixel format
-			If it's RGB/XRGB, has no multisampling, and matches client size, share with the GDI texture and make it lockable
-	* Use a "Virtual Swap Chain"
-		Virtual swap chain will be owner of GDI backbuffer texture, and D3D backbuffer texture
-		When virtual swap chain presents, instead:
-			Upscale back buffer texture to real back buffer
-			present real back buffer
-
-Reference Counting Design:
-	D3D9 Device
-		Initial Reference Count
-		TODO
-*/
 
 template <class T>
 static inline void SafeRelease(T*& ptr)

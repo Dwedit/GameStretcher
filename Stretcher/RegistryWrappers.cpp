@@ -2,10 +2,11 @@
 #include "ImportReplacer.h"
 
 //Replace the Functions
-void ReplaceImports_Registry(ImportReplacer& replacer)
+void BuildImportMap_Registry()
 {
+	extern ImportMap importMap;
 #define ReplaceImport(dllName, functionName, replacementFunction, pOldFunction) \
-    replacer.ReplaceImport((dllName),(functionName),(replacementFunction),(pOldFunction))
+    importMap.AddImport((dllName),(functionName),(replacementFunction),(pOldFunction))
 
 	ReplaceImport("Advapi32.dll", "RegCloseKey", (FARPROC)RegCloseKey_Replacement, (FARPROC*)&RegCloseKey_OLD);
 	ReplaceImport("Advapi32.dll", "RegOverridePredefKey", (FARPROC)RegOverridePredefKey_Replacement, (FARPROC*)&RegOverridePredefKey_OLD);

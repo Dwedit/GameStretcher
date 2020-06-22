@@ -17,6 +17,10 @@ bool CUpscaler::SetSourceTexture(void *texture) //IDirect3DTexture9
 {
 	return impl->SetSourceTexture((IDirect3DTexture9*)texture);
 }
+bool CUpscaler::SetSwapChain(void* swapChain) //IDirect3DSwapChain9
+{
+	return impl->SetSwapChain((IDirect3DSwapChain9*)swapChain);
+}
 void CUpscaler::SetDoBeginScene(bool doBeginScene)
 {
 	impl->SetDoBeginScene(doBeginScene);
@@ -29,9 +33,15 @@ void CUpscaler::SetInputRectangle(int x, int y, int width, int height)
 {
 	impl->SetInputRectangle(x, y, width, height);
 }
-bool CUpscaler::Update(const Region &region)
+bool CUpscaler::Update(const Region& region)
 {
 	impl->SetUpdateRegion(region);
+	return impl->Update();
+}
+bool CUpscaler::Update()
+{
+	impl->SetBorderDirty();
+	impl->SetUpdateRegion();
 	return impl->Update();
 }
 void CUpscaler::SetBorderDirty()

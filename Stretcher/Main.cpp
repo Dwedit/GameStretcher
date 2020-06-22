@@ -48,11 +48,69 @@ void EnableVisualStyles()
 
 }
 
+void SetDPIAware()
+{
+    HMODULE user32 = LoadLibraryA("user32.dll");
+    FARPROC pSetProcessDpiAwarenessContext = GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+    FARPROC pSetProcessDpiAwareness = NULL;
+    FARPROC pSetProcessDPIAware = GetProcAddress(user32, "SetProcessDPIAware");
+    if (pSetProcessDpiAwarenessContext != NULL)
+    {
+        typedef BOOL(WINAPI* SetProcessDpiAwarenessContext_FUNC)(DWORD value);
+        SetProcessDpiAwarenessContext_FUNC SetProcessDpiAwarenessContext_ = (SetProcessDpiAwarenessContext_FUNC)pSetProcessDpiAwarenessContext;
+        SetProcessDpiAwarenessContext_(-4); //DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+    }
+    else
+    {
+        HMODULE shcore = LoadLibraryA("Shcore.dll");
+        pSetProcessDpiAwareness = GetProcAddress(shcore, "SetProcessDpiAwareness");
+        if (pSetProcessDpiAwareness != NULL)
+        {
+            typedef HRESULT(WINAPI* SetProcessDpiAwareness_FUNC)(DWORD value);
+            SetProcessDpiAwareness_FUNC SetProcessDpiAwareness_ = (SetProcessDpiAwareness_FUNC)pSetProcessDpiAwareness;
+            SetProcessDpiAwareness_(2); //PROCESS_PER_MONITOR_DPI_AWARE
+        }
+        else if (pSetProcessDPIAware)
+        {
+            typedef BOOL(WINAPI* SetProcessDPIAware_FUNC)();
+            SetProcessDPIAware_FUNC SetProcessDPIAware_ = (SetProcessDPIAware_FUNC)pSetProcessDPIAware;
+            SetProcessDPIAware_();
+        }
+    }
+}
+
+void HideDebugger()
+{
+    typedef struct _PEB {
+        BYTE Reserved1[2];
+        BYTE BeingDebugged;
+        //remaining data removed
+    } PEB, * PPEB;
+
+    typedef struct _TEB {
+        PVOID Reserved1[12];
+        PPEB ProcessEnvironmentBlock;
+        ULONG LastErrorValue;
+        //remaining data removed
+    } TEB, * PTEB;
+
+    BOOL beingDebugged = IsDebuggerPresent();
+    if (beingDebugged)
+    {
+        _TEB* teb = (_TEB*)NtCurrentTeb();
+        teb->ProcessEnvironmentBlock->BeingDebugged = 0;
+    }
+}
+
 extern vector<HMODULE> GetApplicationDLLs();
 
 void DoHacks()
 {
-    ReplaceImports(GetModuleHandle(NULL));
+    HideDebugger();
+    SetDPIAware();
+
+    BuildImportMap();
+    ReplaceImports();
 
     //enumerate modules
     vector<HMODULE> modules = GetApplicationDLLs();

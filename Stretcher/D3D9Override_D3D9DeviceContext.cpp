@@ -1,4 +1,5 @@
 #include "D3D9Override.h"
+#include "MemoryUnlocker.h"
 
 D3D9DeviceContext::D3D9DeviceContext(IDirect3DDevice9* device)
 {
@@ -8,13 +9,9 @@ D3D9DeviceContext::D3D9DeviceContext()
 {
 
 }
-void D3D9DeviceContext::Init(IDirect3DDevice9* device)
+void D3D9DeviceContext::SetVTable()
 {
-	this->device = (IDirect3DDevice9Ex*)device;
-	this->device->AddRef();
-	this->originalVTable = GetOriginalVTable(device);
-	this->myVTable = GetNewVTable(device);
-	this->IsEx = GetIsEx(device);
+	MemoryUnlocker unlocker(this->myVTable);
 	this->myVTable->Release = Release;
 	this->myVTable->GetCreationParameters = GetCreationParameters;
 	this->myVTable->CreateAdditionalSwapChain = CreateAdditionalSwapChain;
@@ -22,9 +19,18 @@ void D3D9DeviceContext::Init(IDirect3DDevice9* device)
 	this->myVTable->Present = Present;
 	this->myVTable->GetBackBuffer = GetBackBuffer;
 	this->myVTable->GetFrontBufferData = GetFrontBufferData;
+	this->myVTable->BeginStateBlock = BeginStateBlock;
 	this->myVTable->PresentEx = PresentEx;
 	this->myVTable->ResetEx = ResetEx;
-
+}
+void D3D9DeviceContext::Init(IDirect3DDevice9* device)
+{
+	this->device = (IDirect3DDevice9Ex*)device;
+	this->device->AddRef();
+	this->originalVTable = GetOriginalVTable(device);
+	this->IsEx = GetIsEx(device);
+	this->myVTable = ((IDirect3DDevice9Ex_*)device)->lpVtbl;
+	SetVTable();
 	HRESULT hr = 0;
 	hr = device->GetSwapChain(0, &realSwapChain);
 	hr = device->GetDepthStencilSurface(&initialDepthStencilSurface);
@@ -107,6 +113,13 @@ HRESULT D3D9DeviceContext::GetFrontBufferData_(UINT iSwapChain, IDirect3DSurface
 	}
 	return hr;
 }
+HRESULT D3D9DeviceContext::BeginStateBlock_()
+{
+	HRESULT hr = this->BeginStateBlockReal();
+	//BeginStateBlock overwrites the VTable, this will restore it
+	SetVTable();
+	return hr;
+}
 HRESULT D3D9DeviceContext::PresentEx_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
 {
 	return this->childSwapChainContext->Present_(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
@@ -162,6 +175,11 @@ HRESULT D3D9DeviceContext::GetBackBufferReal(UINT iSwapChain, UINT iBackBuffer, 
 HRESULT D3D9DeviceContext::GetFrontBufferDataReal(UINT iSwapChain, IDirect3DSurface9* pDestSurface)
 {
 	HRESULT hr = originalVTable->GetFrontBufferData(device, iSwapChain, pDestSurface);
+	return hr;
+}
+HRESULT D3D9DeviceContext::BeginStateBlockReal()
+{
+	HRESULT hr = originalVTable->BeginStateBlock(device);
 	return hr;
 }
 HRESULT D3D9DeviceContext::PresentExReal(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
@@ -294,6 +312,19 @@ HRESULT __stdcall D3D9DeviceContext::GetFrontBufferData(IDirect3DDevice9Ex* This
 	else
 	{
 		return context->GetFrontBufferData_(iSwapChain, pDestSurface);
+	}
+}
+HRESULT __stdcall D3D9DeviceContext::BeginStateBlock(IDirect3DDevice9Ex* This)
+{
+	auto context = GetD3D9DeviceContext(This);
+	if (context == NULL)
+	{
+		auto vtable = GetOriginalVTable(This);
+		return vtable->BeginStateBlock(This);
+	}
+	else
+	{
+		return context->BeginStateBlock_();
 	}
 }
 HRESULT __stdcall D3D9DeviceContext::PresentEx(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)

@@ -234,4 +234,9 @@ public:
 
 	BOOL RedrawWindow_(CONST RECT* lprcUpdate, HRGN hrgnUpdate, UINT flags);
 	bool PaintDCIsExpired(HDC hdc) const;
+
+	HWND GetHwnd() const
+	{
+		return this->window;
+	}
 };
