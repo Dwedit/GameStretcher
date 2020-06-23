@@ -165,3 +165,28 @@ void D3D9Context_Old::Destroy()
 	SafeRelease(d3d9);
 	SafeRelease(d3d9Ex);
 }
+
+void D3D9Context_Old::CauseLostDevice()
+{
+	D3DPRESENT_PARAMETERS presentParameters = {};
+	presentParameters.BackBufferWidth = 1;
+	presentParameters.BackBufferHeight = 1;
+	presentParameters.BackBufferFormat = D3DFMT_A8R8G8B8;
+	presentParameters.BackBufferCount = 1;
+	presentParameters.MultiSampleType = D3DMULTISAMPLE_NONE;
+	presentParameters.MultiSampleQuality = 0;
+	presentParameters.SwapEffect = D3DSWAPEFFECT_COPY;
+	presentParameters.hDeviceWindow = this->mainWindow;
+	presentParameters.Windowed = true;
+	presentParameters.EnableAutoDepthStencil = true;
+	presentParameters.AutoDepthStencilFormat = D3DFMT_D16;
+	presentParameters.Flags = 0;
+	presentParameters.FullScreen_RefreshRateInHz = 0;
+	presentParameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+	HRESULT hr;
+	if (this->device != NULL)
+	{
+		hr = this->device->Reset(&presentParameters);
+		hr = this->device->TestCooperativeLevel();
+	}
+}

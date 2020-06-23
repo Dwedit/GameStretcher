@@ -537,9 +537,8 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 					deviceContext->CauseLostDevice();
 				}
 				this->d3d9Context.CauseLostDevice();
-#endif
-
 				return 0;
+#endif
 			}
 			break;
 		}
