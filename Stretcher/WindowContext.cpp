@@ -17,6 +17,7 @@ using std::wstring;
 
 #include "WindowClassContext.h"
 #include "Win32Ex.h"
+#include "D3D9Override.h"
 
 CachedVectorMap<HWND, std::unique_ptr<WindowContext>> windowMap;
 CachedVectorMap<HDC, WindowContext*> hdcMap;
@@ -525,6 +526,19 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 					RealHeight = this->VirtualHeight;
 					MakeWindowResizable();
 				}
+				return 0;
+			}
+			if (wParam == VK_F12)
+			{
+#if _DEBUG
+				auto deviceContext = GetD3D9DeviceContext();
+				if (deviceContext != NULL)
+				{
+					deviceContext->CauseLostDevice();
+				}
+				this->d3d9Context.CauseLostDevice();
+#endif
+
 				return 0;
 			}
 			break;

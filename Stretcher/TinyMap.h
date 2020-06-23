@@ -238,6 +238,13 @@ class CachedMap
 public:
 	using KeyType = TKey;
 	using ValueType = TValue;
+
+	~CachedMap()
+	{
+		mostRecentKey = TKey();
+		pMostRecentValue = nullptr;
+	}
+
 	bool ContainsKey(const TKey& key) const
 	{
 		if (pMostRecentValue != NULL && mostRecentKey == key) return true;

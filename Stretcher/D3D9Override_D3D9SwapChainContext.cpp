@@ -24,14 +24,17 @@ void D3D9SwapChainContext::SetVTable()
 }
 void D3D9SwapChainContext::Init(IDirect3DSwapChain9* swapChain)
 {
+	Destroy();
 	this->realSwapChain = (IDirect3DSwapChain9Ex*)swapChain;
-	this->originalVTable = GetOriginalVTable(swapChain);
+	this->realSwapChain->AddRef();
+	this->originalVTable = GetOriginalVTable(swapChain, true);
 	this->IsEx = GetIsEx(swapChain);
 	this->myVTable = ((IDirect3DSwapChain9Ex_*)realSwapChain)->lpVtbl;
 	SetVTable();
 	HRESULT hr = 0;
 	forceReal = true;
 	hr = this->realSwapChain->GetDevice(&this->device);	
+	this->parent = GetD3D9DeviceContext(this->device);
 	hr = swapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &this->realBackBuffer);
 	hr = device->GetDepthStencilSurface(&this->realDepthStencilSurface);
 	forceReal = false;
@@ -39,6 +42,16 @@ void D3D9SwapChainContext::Init(IDirect3DSwapChain9* swapChain)
 
 void D3D9SwapChainContext::Destroy()
 {
+	if (isDestroying) return;
+	isDestroying = true;
+	{
+		D3D9DeviceContext* parent = GetD3D9DeviceContext(device);
+		if (parent != NULL)
+		{
+			parent->Destroy();
+		}
+	}
+
 	SafeRelease(realSwapChain);
 	SafeRelease(realBackBuffer);
 	SafeRelease(realDepthStencilSurface);
@@ -46,12 +59,22 @@ void D3D9SwapChainContext::Destroy()
 	SafeRelease(virtualBackBuffer);
 	SafeRelease(virtualBackBufferMultisampled);
 	SafeRelease(virtualDepthStencilSurface);
-	SafeRelease(device);
 	upscaler.Destroy();
+	SafeRelease(device);
+
+	this->parent = NULL;
+	IsEx = false;
+	insidePresent = false;
+	forceReal = false;
+	width = 0;
+	height = 0;
+	presentParameters = {};
+	isDestroying = false;
 }
 
 HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
+	//parent function tracks ref count of device
 	if (pPresentationParameters == NULL) return E_POINTER;
 	this->presentParameters = *pPresentationParameters;
 
@@ -118,7 +141,6 @@ HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags
 	{
 		device->SetSoftwareVertexProcessing(false);
 	}
-
 	return hr;
 }
 
@@ -139,6 +161,8 @@ HRESULT D3D9SwapChainContext::Present_(const RECT* pSourceRect, const RECT* pDes
 	
 	Region updateRegion;
 
+	this->parent->BeginTrackingRefCount();
+
 	if (pSourceRect != NULL && pDestRect != NULL && *pSourceRect == *pDestRect)
 	{
 		updateRegion.AddRectangle(*pSourceRect);
@@ -152,6 +176,9 @@ HRESULT D3D9SwapChainContext::Present_(const RECT* pSourceRect, const RECT* pDes
 	//TODO
 	//HRESULT hr = PresentReal(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 	insidePresent = false;
+
+	this->parent->EndTrackingRefCount();
+
 	return hr;
 }
 HRESULT D3D9SwapChainContext::GetFrontBufferData_(IDirect3DSurface9* pDestSurface)
@@ -220,9 +247,9 @@ HRESULT D3D9SwapChainContext::GetPresentParametersReal(D3DPRESENT_PARAMETERS* pP
 HRESULT __stdcall D3D9SwapChainContext::Present(IDirect3DSwapChain9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
 {
 	auto context = GetD3D9SwapChainContext(This);
-	if (context == NULL)
+	if (context == NULL || context->realSwapChain == NULL)
 	{
-		auto vtable = GetOriginalVTable(This);
+		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
 		return vtable->Present(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 	}
 	else
@@ -233,9 +260,9 @@ HRESULT __stdcall D3D9SwapChainContext::Present(IDirect3DSwapChain9Ex* This, con
 HRESULT __stdcall D3D9SwapChainContext::GetFrontBufferData(IDirect3DSwapChain9Ex* This, IDirect3DSurface9* pDestSurface)
 {
 	auto context = GetD3D9SwapChainContext(This);
-	if (context == NULL)
+	if (context == NULL || context->realSwapChain == NULL)
 	{
-		auto vtable = GetOriginalVTable(This);
+		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
 		return vtable->GetFrontBufferData(This, pDestSurface);
 	}
 	else
@@ -247,9 +274,9 @@ HRESULT __stdcall D3D9SwapChainContext::GetFrontBufferData(IDirect3DSwapChain9Ex
 HRESULT __stdcall D3D9SwapChainContext::GetBackBuffer(IDirect3DSwapChain9Ex* This, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer)
 {
 	auto context = GetD3D9SwapChainContext(This);
-	if (context == NULL)
+	if (context == NULL || context->realSwapChain == NULL)
 	{
-		auto vtable = GetOriginalVTable(This);
+		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
 		return vtable->GetBackBuffer(This, iBackBuffer, Type, ppBackBuffer);
 	}
 	else
@@ -260,9 +287,9 @@ HRESULT __stdcall D3D9SwapChainContext::GetBackBuffer(IDirect3DSwapChain9Ex* Thi
 HRESULT __stdcall D3D9SwapChainContext::GetPresentParameters(IDirect3DSwapChain9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
 	auto context = GetD3D9SwapChainContext(This);
-	if (context == NULL)
+	if (context == NULL || context->realSwapChain == NULL)
 	{
-		auto vtable = GetOriginalVTable(This);
+		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
 		return vtable->GetPresentParameters(This, pPresentationParameters);
 	}
 	else

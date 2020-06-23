@@ -8,7 +8,7 @@ CachedVectorMap<IDirect3D9ExVtbl*, IDirect3D9ExVtbl*> d3d9VTableMap;
 CachedVectorMap<IDirect3DDevice9ExVtbl*, IDirect3DDevice9ExVtbl*> d3d9DeviceVTableMap;
 CachedVectorMap<IDirect3DSwapChain9ExVtbl*, IDirect3DSwapChain9ExVtbl*> d3d9SwapChainVTableMap;
 
-IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9)
+IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9, bool allocate)
 {
 	//Allocates a backup copy of the VTable, and returns the same backup as before
 	auto& map = d3d9VTableMap;
@@ -18,6 +18,7 @@ IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9)
 	auto ref = map.GetReference(inputVTable);
 	if (ref == NULL)
 	{
+		if (!allocate) return inputVTable;
 		typedef remove_pointer<decltype(inputVTable)>::type TValue;
 		auto newVTable = new TValue(*inputVTable);
 		map.Set(inputVTable, newVTable);
@@ -25,7 +26,7 @@ IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9)
 	}
 	return *ref;
 }
-IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device)
+IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device, bool allocate)
 {
 	//Allocates a backup copy of the VTable, and returns the same backup as before
 	auto& map = d3d9DeviceVTableMap;
@@ -35,6 +36,7 @@ IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device)
 	auto ref = map.GetReference(inputVTable);
 	if (ref == NULL)
 	{
+		if (!allocate) return inputVTable;
 		typedef remove_pointer<decltype(inputVTable)>::type TValue;
 		auto newVTable = new TValue(*inputVTable);
 		map.Set(inputVTable, newVTable);
@@ -42,7 +44,7 @@ IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device)
 	}
 	return *ref;
 }
-IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain)
+IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain, bool allocate)
 {
 	//Allocates a backup copy of the VTable, and returns the same backup as before
 	auto& map = d3d9SwapChainVTableMap;
@@ -52,6 +54,7 @@ IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain)
 	auto ref = map.GetReference(inputVTable);
 	if (ref == NULL)
 	{
+		if (!allocate) return inputVTable;
 		typedef remove_pointer<decltype(inputVTable)>::type TValue;
 		auto newVTable = new TValue(*inputVTable);
 		map.Set(inputVTable, newVTable);

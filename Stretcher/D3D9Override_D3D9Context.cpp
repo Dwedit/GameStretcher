@@ -13,9 +13,10 @@ D3D9Context2::D3D9Context2()
 
 void D3D9Context2::Init(IDirect3D9* d3d9)
 {
+	Destroy();
 	this->d3d9 = d3d9;
 	this->d3d9->AddRef();
-	this->originalVTable = GetOriginalVTable(d3d9);
+	this->originalVTable = GetOriginalVTable(d3d9, true);
 	this->IsEx = GetIsEx(d3d9);
 	this->myVTable = ((IDirect3D9Ex_*)d3d9)->lpVtbl;
 	{
@@ -42,7 +43,6 @@ HRESULT D3D9Context2::CreateDeviceExReal(UINT Adapter, D3DDEVTYPE DeviceType, HW
 }
 HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 {
-	//TODO: override parameters
 	HWND hwnd = hFocusWindow;
 	if (hwnd == NULL && pPresentationParameters) { hwnd = pPresentationParameters->hDeviceWindow; }
 	bool vsync = true;
@@ -76,26 +76,59 @@ HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hF
 
 	HRESULT hr = CreateDeviceReal(Adapter2, DeviceType2, hwnd, BehaviorFlags2, &presentParameters, ppReturnedDeviceInterface);
 	IDirect3DDevice9* device = *ppReturnedDeviceInterface;
-	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device);
+	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device, true);
 	deviceContext->parent = this;
+	deviceContext->Init(device);
 	deviceContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
 	return hr;
 }
 HRESULT D3D9Context2::CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface)
 {
-	//TODO: override parameters
-	HRESULT hr = CreateDeviceExReal(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
+	HWND hwnd = hFocusWindow;
+	if (hwnd == NULL && pPresentationParameters) { hwnd = pPresentationParameters->hDeviceWindow; }
+	bool vsync = true;
+	if (pPresentationParameters) { vsync = pPresentationParameters->PresentationInterval != D3DPRESENT_INTERVAL_IMMEDIATE; }
+	UINT Adapter2 = 0;
+	D3DDEVTYPE DeviceType2 = D3DDEVTYPE_HAL;
+	DWORD BehaviorFlags2 = D3DCREATE_MIXED_VERTEXPROCESSING;
+	if (BehaviorFlags & D3DCREATE_MULTITHREADED)
+	{
+		BehaviorFlags2 |= D3DCREATE_MULTITHREADED;
+	}
+	D3DPRESENT_PARAMETERS presentParameters = {};
+	RECT monitorRect = GetMonitorRect(hwnd);
+
+	int screenWidth = monitorRect.right - monitorRect.left;
+	int screenHeight = monitorRect.bottom - monitorRect.top;
+	presentParameters.BackBufferWidth = screenWidth;
+	presentParameters.BackBufferHeight = screenHeight;
+	presentParameters.BackBufferFormat = D3DFMT_A8R8G8B8;
+	presentParameters.BackBufferCount = 1;
+	presentParameters.MultiSampleType = D3DMULTISAMPLE_NONE;
+	presentParameters.MultiSampleQuality = 0;
+	presentParameters.SwapEffect = D3DSWAPEFFECT_COPY;
+	presentParameters.hDeviceWindow = hwnd;
+	presentParameters.Windowed = true;
+	presentParameters.EnableAutoDepthStencil = true;
+	presentParameters.AutoDepthStencilFormat = D3DFMT_D16;
+	presentParameters.Flags = 0;
+	presentParameters.FullScreen_RefreshRateInHz = 0;
+	presentParameters.PresentationInterval = vsync ? D3DPRESENT_INTERVAL_ONE : D3DPRESENT_INTERVAL_IMMEDIATE;
+
+	HRESULT hr = CreateDeviceExReal(Adapter2, DeviceType2, hwnd, BehaviorFlags2, &presentParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
 	IDirect3DDevice9Ex* device = *ppReturnedDeviceInterface;
-	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device);
+	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device, true);
 	deviceContext->parent = this;
+	deviceContext->Init(device);
+	deviceContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
 	return hr;
 }
 HRESULT __stdcall D3D9Context2::CreateDevice(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)	//static
 {
 	auto context = GetD3D9Context(This);
-	if (context == NULL)
+	if (context == NULL || context->d3d9 == NULL)
 	{
-		auto vtable = GetOriginalVTable(This);
+		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
 		return vtable->CreateDevice(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
 	}
 	else
@@ -106,9 +139,9 @@ HRESULT __stdcall D3D9Context2::CreateDevice(IDirect3D9Ex* This, UINT Adapter, D
 HRESULT __stdcall D3D9Context2::CreateDeviceEx(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface)	//static
 {
 	auto context = GetD3D9Context(This);
-	if (context == NULL)
+	if (context == NULL || context->d3d9 == NULL)
 	{
-		auto vtable = GetOriginalVTable(This);
+		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
 		return vtable->CreateDeviceEx(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
 	}
 	else
@@ -144,7 +177,8 @@ IDirect3D9* CreateAndOverrideDirect3D9()
 	}
 	if (d3d9 != NULL)
 	{
-		GetD3D9Context(d3d9);
+		auto context = GetD3D9Context(d3d9, true);
+		context->Init(d3d9);
 	}
 	return d3d9;
 }
@@ -163,7 +197,8 @@ IDirect3D9Ex* CreateAndOverrideDirect3D9Ex()
 	}
 	if (d3d9 != NULL)
 	{
-		GetD3D9Context(d3d9);
+		auto context = GetD3D9Context(d3d9, true);
+		context->Init(d3d9);
 	}
 	return d3d9;
 }

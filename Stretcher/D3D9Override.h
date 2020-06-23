@@ -6,19 +6,21 @@ class D3D9Context2;
 class D3D9DeviceContext;
 class D3D9SwapChainContext;
 
-extern D3D9Context2* GetD3D9Context(IDirect3D9* key);
+extern D3D9Context2* GetD3D9Context(IDirect3D9* key, bool allocate = false);
 extern D3D9Context2* GetD3D9Context();
 extern void RemoveD3D9Context(IDirect3D9* key);
-extern D3D9DeviceContext* GetD3D9DeviceContext(IDirect3DDevice9* key);
+extern D3D9DeviceContext* GetD3D9DeviceContext(IDirect3DDevice9* key, bool allocate = false);
 extern D3D9DeviceContext* GetD3D9DeviceContext();
 extern void RemoveD3D9DeviceContext(IDirect3DDevice9* key);
-extern D3D9SwapChainContext* GetD3D9SwapChainContext(IDirect3DSwapChain9* key);
+extern D3D9SwapChainContext* GetD3D9SwapChainContext(IDirect3DSwapChain9* key, bool allocate = false);
 extern D3D9SwapChainContext* GetD3D9SwapChainContext();
 extern void RemoveD3D9SwapChainContext(IDirect3DSwapChain9* key);
 
-extern IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9);
-extern IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device);
-extern IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain);
+bool SwapChainContextExists(IDirect3DSwapChain9* key);
+
+extern IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9, bool allocate = false);
+extern IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device, bool allocate = false);
+extern IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain, bool allocate = false);
 //extern IDirect3D9ExVtbl* GetNewVTable(IDirect3D9* d3d9);
 //extern IDirect3DDevice9ExVtbl* GetNewVTable(IDirect3DDevice9* device);
 //extern IDirect3DSwapChain9ExVtbl* GetNewVTable(IDirect3DSwapChain9* swapChain);
@@ -87,6 +89,8 @@ class D3D9DeviceContext
 
 	bool IsEx = false;
 	int internalRefCount = 0;
+	int refCountFirstCapture = 0;
+	int refCountTrackerCount = 0;
 public:
 	D3D9DeviceContext(IDirect3DDevice9* device);
 	D3D9DeviceContext();
@@ -94,6 +98,10 @@ public:
 	void Init(IDirect3DDevice9* device);
 	~D3D9DeviceContext();
 	void Destroy();
+	int GetRefCount();
+	int BeginTrackingRefCount();
+	int EndTrackingRefCount();
+	void CauseLostDevice(); //for debugging
 
 	HRESULT CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters);
 
@@ -157,11 +165,11 @@ class D3D9SwapChainContext
 
 	D3D9DeviceContext* parent = NULL;
 	bool IsEx = false;
+	bool isDestroying = false;
 	bool insidePresent = false;
 	bool forceReal = false;
 	int width, height;
 	D3DPRESENT_PARAMETERS presentParameters = {};
-
 public:
 	D3D9SwapChainContext(IDirect3DSwapChain9* swapChain);
 	D3D9SwapChainContext();
@@ -169,6 +177,7 @@ public:
 	void Init(IDirect3DSwapChain9* swapChain);
 	~D3D9SwapChainContext();
 	void Destroy();
+
 	HRESULT CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters);
 
 	HRESULT Present_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
