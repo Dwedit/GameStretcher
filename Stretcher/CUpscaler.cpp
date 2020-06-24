@@ -7,9 +7,9 @@ CUpscaler::CUpscaler() : impl(new CUpscalerImpl())
 }
 CUpscaler::~CUpscaler()
 {
-	Destroy();
+	Dispose();
 }
-void CUpscaler::Destroy()
+void CUpscaler::Dispose()
 {
 	impl->Destroy();
 }
@@ -33,12 +33,12 @@ void CUpscaler::SetInputRectangle(int x, int y, int width, int height)
 {
 	impl->SetInputRectangle(x, y, width, height);
 }
-bool CUpscaler::Update(const Region& region)
+HRESULT CUpscaler::Update(const Region& region)
 {
 	impl->SetUpdateRegion(region);
 	return impl->Update();
 }
-bool CUpscaler::Update()
+HRESULT CUpscaler::Update()
 {
 	impl->SetBorderDirty();
 	impl->SetUpdateRegion();

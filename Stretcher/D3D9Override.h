@@ -2,6 +2,9 @@
 #include "D3D9VTable.h"
 #include "CUpscaler.h"
 
+#define LOST_DEVICE_TEST 0
+#define NO_DEVICE_HOOK 0
+
 class D3D9Context2;
 class D3D9DeviceContext;
 class D3D9SwapChainContext;
@@ -54,6 +57,7 @@ inline UINT GetRefCount(TComObject* obj)
 
 class D3D9Context2
 {
+public:
 	IDirect3D9* d3d9 = NULL;
 	IDirect3D9ExVtbl* originalVTable = NULL;
 	IDirect3D9ExVtbl* myVTable = NULL;
@@ -66,6 +70,7 @@ public:
 	void Destroy();
 	HRESULT CreateDeviceReal(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface);
 	HRESULT CreateDeviceExReal(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface);
+	static void GetPresentParameters(D3DPRESENT_PARAMETERS& presentParameters, HWND hwnd, bool vsync);
 	HRESULT CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface);
 	HRESULT CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface);
 
@@ -76,6 +81,7 @@ public:
 class D3D9DeviceContext
 {
 	friend D3D9Context2;
+public:
 	IDirect3DDevice9Ex* device = NULL;
 	IDirect3DDevice9ExVtbl* originalVTable = NULL;
 	IDirect3DDevice9ExVtbl* myVTable = NULL;
@@ -86,7 +92,8 @@ class D3D9DeviceContext
 	//IDirect3DSurface9* initialRenderTarget = NULL;
 	//IDirect3DSurface9* initialDepthStencilSurface = NULL;
 
-
+	bool forceReal = false;
+	int simulateLostDevice = 0;
 	bool IsEx = false;
 	int internalRefCount = 0;
 	int refCountFirstCapture = 0;
@@ -94,14 +101,15 @@ class D3D9DeviceContext
 public:
 	D3D9DeviceContext(IDirect3DDevice9* device);
 	D3D9DeviceContext();
+	static void SetVTable(IDirect3DDevice9ExVtbl* myVTable);
 	void SetVTable();
 	void Init(IDirect3DDevice9* device);
 	~D3D9DeviceContext();
-	void Destroy();
-	int GetRefCount();
+	void Dispose();
+	void DisposeExcludingDevice();
+	int GetRefCount() const;
 	int BeginTrackingRefCount();
 	int EndTrackingRefCount();
-	void CauseLostDevice(); //for debugging
 
 	HRESULT CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters);
 
@@ -117,6 +125,7 @@ public:
 	HRESULT BeginStateBlock_();
 	HRESULT PresentEx_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
 	HRESULT ResetEx_(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
+	HRESULT TestCooperativeLevel_();
 
 	ULONG ReleaseReal();
 	HRESULT GetCreationParametersReal(D3DDEVICE_CREATION_PARAMETERS* pParameters);
@@ -143,11 +152,13 @@ public:
 	static HRESULT __stdcall BeginStateBlock(IDirect3DDevice9Ex* This);
 	static HRESULT __stdcall PresentEx(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
 	static HRESULT __stdcall ResetEx(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
+	static HRESULT __stdcall TestCooperativeLevel(IDirect3DDevice9Ex* This);
 };
 
 class D3D9SwapChainContext
 {
 	friend D3D9DeviceContext;
+public:
 	IDirect3DSwapChain9Ex* realSwapChain = NULL;
 	IDirect3DSurface9* realBackBuffer = NULL;
 	IDirect3DSurface9* realDepthStencilSurface = NULL;
@@ -176,7 +187,7 @@ public:
 	void SetVTable();
 	void Init(IDirect3DSwapChain9* swapChain);
 	~D3D9SwapChainContext();
-	void Destroy();
+	void Dispose();
 
 	HRESULT CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters);
 

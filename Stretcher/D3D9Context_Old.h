@@ -27,7 +27,6 @@ public:
 	bool CreateD3D9(HWND mainWindow, D3DSWAPEFFECT swapEffect = D3DSWAPEFFECT_COPY);
 	D3D9Context_Old() : d3d9(NULL), d3d9Ex(NULL), device(NULL), deviceEx(NULL), backBuffer(NULL), depthStencilSurface(NULL), mainWindow(NULL), texture(NULL), textureSurface(NULL), swapEffect(D3DSWAPEFFECT_COPY) {}
 	void Destroy();
-	void CauseLostDevice(); //for debugging
 
 	~D3D9Context_Old() { Destroy(); }
 };

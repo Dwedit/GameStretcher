@@ -458,9 +458,9 @@ public:
 		okay = ClearZBufferAndCarveRects(rects);
 		return SUCCEEDED(hr) & okay;
 	}
-	bool Update()
+	HRESULT Update()
 	{
-		if (device == NULL) return false;
+		if (device == NULL) return E_POINTER;
 		bool okay = true;
 		CStateSaver stateSaver(device);
 		
@@ -504,6 +504,8 @@ public:
 		vector<RECT> rects1x = this->updateRegion1X.GetRegionRectangles();
 		vector<RECT> rects2x = this->updateRegion2X.GetRegionRectangles();
 		vector<RECT> rectsScreen = this->updateRegionScreen.GetRegionRectangles();
+
+		EnsureRenderTexturesExist();
 
 		//clear Z buffers to 0.0 (Near), carve out rectangles as 1.0 (far)
 		okay &= ClearZBufferAndCarveRects(rects2x, pass1RenderTargetSurface, depthSurface2x);
@@ -570,7 +572,7 @@ public:
 		vector<byte> regionDataBytes = this->updateRegionScreen.GetRegionData();
 		if (regionDataBytes.size() == 0)
 		{
-			return true;
+			return 0;
 		}
 		const RGNDATA* rgnData = (const RGNDATA*)&regionDataBytes[0];
 
@@ -583,15 +585,20 @@ public:
 		{
 			rgnData = NULL;
 		}
+		if (!SUCCEEDED(hr)) okay = false;
 		if (this->overrideSwapChain != NULL)
 		{
-			hr |= overrideSwapChain->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData, 0);
+			hr = overrideSwapChain->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData, 0);
 		}
 		else
 		{
-			hr |= swapChain->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData, 0);
+			hr = swapChain->Present(&boundingBoxScreen, &boundingBoxScreen, NULL, rgnData, 0);
 		}
-		return okay && SUCCEEDED(hr);
+		if (!okay && SUCCEEDED(hr))
+		{
+			hr = E_FAIL;
+		}
+		return hr;
 	}
 
 	bool UpdateToTexture(int x, int y, int width, int height)

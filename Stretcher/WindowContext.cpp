@@ -528,18 +528,6 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 				}
 				return 0;
 			}
-			if (wParam == VK_F12)
-			{
-#if _DEBUG
-				auto deviceContext = GetD3D9DeviceContext();
-				if (deviceContext != NULL)
-				{
-					deviceContext->CauseLostDevice();
-				}
-				this->d3d9Context.CauseLostDevice();
-				return 0;
-#endif
-			}
 			break;
 		}
 		case WM_GETMINMAXINFO:

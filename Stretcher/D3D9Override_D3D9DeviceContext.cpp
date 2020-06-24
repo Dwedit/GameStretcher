@@ -9,23 +9,119 @@ D3D9DeviceContext::D3D9DeviceContext()
 {
 
 }
+
+void D3D9DeviceContext::SetVTable(IDirect3DDevice9ExVtbl* myVTable)
+{
+	MemoryUnlocker unlocker(myVTable);
+	myVTable->Release = Release;
+	myVTable->GetCreationParameters = GetCreationParameters;
+	myVTable->CreateAdditionalSwapChain = CreateAdditionalSwapChain;
+	myVTable->Reset = Reset;
+	myVTable->Present = Present;
+	myVTable->GetBackBuffer = GetBackBuffer;
+	myVTable->GetFrontBufferData = GetFrontBufferData;
+	myVTable->BeginStateBlock = BeginStateBlock;
+	myVTable->PresentEx = PresentEx;
+	myVTable->ResetEx = ResetEx;
+	myVTable->TestCooperativeLevel = TestCooperativeLevel;
+}
+
 void D3D9DeviceContext::SetVTable()
 {
-	MemoryUnlocker unlocker(this->myVTable);
-	this->myVTable->Release = Release;
-	this->myVTable->GetCreationParameters = GetCreationParameters;
-	this->myVTable->CreateAdditionalSwapChain = CreateAdditionalSwapChain;
-	this->myVTable->Reset = Reset;
-	this->myVTable->Present = Present;
-	this->myVTable->GetBackBuffer = GetBackBuffer;
-	this->myVTable->GetFrontBufferData = GetFrontBufferData;
-	this->myVTable->BeginStateBlock = BeginStateBlock;
-	this->myVTable->PresentEx = PresentEx;
-	this->myVTable->ResetEx = ResetEx;
+	if (this->myVTable == NULL) return;
+	SetVTable(this->myVTable);
 }
+
+#if LOST_DEVICE_TEST && NO_DEVICE_HOOK
+
+int _frameCount = 0;
+const int _maxFrameCount = 150;
+bool _loseDevice = false;
+bool _returnedLost = false;
+HRESULT __stdcall _Present(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
+{
+	auto vtable = GetOriginalVTable(This);
+	HRESULT hr;
+
+	_frameCount++;
+	if (_frameCount == _maxFrameCount)
+	{
+		_loseDevice = true;
+		_returnedLost = false;
+	}
+
+	if (_loseDevice)
+	{
+		return D3DERR_DEVICELOST;
+	}
+
+	hr = vtable->Present(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+	return hr;
+}
+
+HRESULT __stdcall _Reset(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters)
+{
+	auto vtable = GetOriginalVTable(This);
+	HRESULT hr;
+
+	_loseDevice = false;
+	_frameCount = 0;
+	hr = vtable->Reset(This, pPresentationParameters);
+	return hr;
+}
+
+HRESULT __stdcall _TestCooperativeLevel(IDirect3DDevice9Ex* This)
+{
+	auto vtable = GetOriginalVTable(This);
+	HRESULT hr;
+	if (_loseDevice)
+	{
+		if (_returnedLost)
+		{
+			return D3DERR_DEVICENOTRESET;
+		}
+		_returnedLost = true;
+		return D3DERR_DEVICELOST;
+	}
+	hr = vtable->TestCooperativeLevel(This);
+	return hr;
+}
+
+HRESULT __stdcall _BeginStateBlock(IDirect3DDevice9Ex* This)
+{
+	HRESULT hr;
+	auto context = GetD3D9DeviceContext(This);
+	auto vtable = GetOriginalVTable(This);
+	auto myVTable = context->myVTable;
+
+	hr = vtable->BeginStateBlock(This);
+
+	myVTable->Present = _Present;
+	myVTable->Reset = _Reset;
+	myVTable->TestCooperativeLevel = _TestCooperativeLevel;
+	myVTable->BeginStateBlock = _BeginStateBlock;
+
+	return hr;
+}
+
+#endif
+
 void D3D9DeviceContext::Init(IDirect3DDevice9* device)
 {
-	Destroy();
+#if NO_DEVICE_HOOK
+	DWORD currentThreadId = GetCurrentThreadId();
+	this->device = (IDirect3DDevice9Ex*)device;
+	this->originalVTable = GetOriginalVTable(device, true);
+	this->myVTable = ((IDirect3DDevice9Ex_*)device)->lpVtbl;
+#if LOST_DEVICE_TEST
+	this->myVTable->Present = _Present;
+	this->myVTable->Reset = _Reset;
+	this->myVTable->TestCooperativeLevel = _TestCooperativeLevel;
+	this->myVTable->BeginStateBlock = _BeginStateBlock;
+#endif
+	return;
+#endif
+	Dispose();
 	this->device = (IDirect3DDevice9Ex*)device;
 	BeginTrackingRefCount();
 	this->device->AddRef();
@@ -41,9 +137,9 @@ void D3D9DeviceContext::Init(IDirect3DDevice9* device)
 }
 D3D9DeviceContext::~D3D9DeviceContext()
 {
-	Destroy();
+	Dispose();
 }
-void D3D9DeviceContext::Destroy()
+void D3D9DeviceContext::Dispose()
 {
 	internalRefCount = 0;
 	refCountFirstCapture = 0;
@@ -52,13 +148,26 @@ void D3D9DeviceContext::Destroy()
 	D3D9SwapChainContext* swapChainContext = GetD3D9SwapChainContext(this->realSwapChain);
 	if (swapChainContext != NULL)
 	{
-		swapChainContext->Destroy();
+		swapChainContext->Dispose();
 	}
 	SafeRelease(this->realSwapChain);
 	SafeRelease(this->device);
 }
 
-int D3D9DeviceContext::GetRefCount()
+void D3D9DeviceContext::DisposeExcludingDevice()
+{
+	BeginTrackingRefCount();
+	this->childSwapChainContext = NULL;
+	D3D9SwapChainContext* swapChainContext = GetD3D9SwapChainContext(this->realSwapChain);
+	if (swapChainContext != NULL)
+	{
+		swapChainContext->Dispose();
+	}
+	SafeRelease(this->realSwapChain);
+	EndTrackingRefCount();
+}
+
+int D3D9DeviceContext::GetRefCount() const
 {
 	return (this->device != NULL) ? ::GetRefCount(this->device) : 0;
 }
@@ -88,61 +197,55 @@ int D3D9DeviceContext::EndTrackingRefCount()
 
 HRESULT D3D9DeviceContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
+	if (this->childSwapChainContext == NULL) return E_POINTER;
+#if NO_DEVICE_HOOK
+	return 0;
+#endif
 	BeginTrackingRefCount();
 	HRESULT hr = this->childSwapChainContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
 	EndTrackingRefCount();
 	return hr;
 }
 
-void D3D9DeviceContext::CauseLostDevice() //for debugging
-{
-	D3DPRESENT_PARAMETERS presentParameters = {};
-	presentParameters.BackBufferWidth = 1;
-	presentParameters.BackBufferHeight = 1;
-	presentParameters.BackBufferFormat = D3DFMT_A8R8G8B8;
-	presentParameters.BackBufferCount = 1;
-	presentParameters.MultiSampleType = D3DMULTISAMPLE_NONE;
-	presentParameters.MultiSampleQuality = 0;
-	presentParameters.SwapEffect = D3DSWAPEFFECT_COPY;
-	presentParameters.hDeviceWindow = NULL;
-	presentParameters.Windowed = true;
-	presentParameters.EnableAutoDepthStencil = true;
-	presentParameters.AutoDepthStencilFormat = D3DFMT_D16;
-	presentParameters.Flags = 0;
-	presentParameters.FullScreen_RefreshRateInHz = 0;
-	presentParameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-	HRESULT hr;
-	if (this->device != NULL)
-	{
-		hr = this->device->Reset(&presentParameters);
-		return;
-	}
-}
-
 ULONG D3D9DeviceContext::Release_()
 {
-	//TODO
 	ULONG value = this->ReleaseReal();
 	if (refCountTrackerCount == 0 && internalRefCount == value && internalRefCount > 0)
 	{
 		auto dev = this->device;
 		auto releasePtr = this->originalVTable->Release;
 		value = dev->AddRef();
-		Destroy();
+		Dispose();
 		value = releasePtr(dev);
 	}
 	return value;
 }
 HRESULT D3D9DeviceContext::GetCreationParameters_(D3DDEVICE_CREATION_PARAMETERS* pParameters)
 {
-	//TODO
-	HRESULT hr = this->GetCreationParametersReal(pParameters);
+	HRESULT hr;
+	if (forceReal)
+	{
+		hr = this->GetCreationParametersReal(pParameters);
+	}
+	else
+	{
+		//TODO - Return the creation parameters provided by the application rather than by the stretcher
+		hr = this->GetCreationParametersReal(pParameters);
+	}
 	return hr;
 }
 HRESULT D3D9DeviceContext::CreateAdditionalSwapChain_(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain)
 {
-	//TODO
-	HRESULT hr = this->CreateAdditionalSwapChainReal(pPresentationParameters, pSwapChain);
+	HRESULT hr;
+	if (forceReal)
+	{
+		hr = this->CreateAdditionalSwapChainReal(pPresentationParameters, pSwapChain);
+	}
+	else
+	{
+		//TODO - Support multiple swap chains?
+		hr = this->CreateAdditionalSwapChainReal(pPresentationParameters, pSwapChain);
+	}
 	return hr;
 }
 //HRESULT D3D9DeviceContext::GetSwapChain_(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain)
@@ -157,40 +260,94 @@ HRESULT D3D9DeviceContext::CreateAdditionalSwapChain_(D3DPRESENT_PARAMETERS* pPr
 //}
 HRESULT D3D9DeviceContext::Reset_(D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
-	//TODO
-	HRESULT hr = this->ResetReal(pPresentationParameters);
-	hr = this->device->TestCooperativeLevel();
-	Destroy();
+	HRESULT hr;
+	if (forceReal)
+	{
+		hr = this->ResetReal(pPresentationParameters);
+	}
+	else
+	{
+		this->simulateLostDevice = 0;
+		bool vsync = true;
+		HWND hwnd = NULL;
+		D3DDEVICE_CREATION_PARAMETERS creationParameters = {};
+		hr = device->GetCreationParameters(&creationParameters);
+		if (SUCCEEDED(hr))
+		{
+			hwnd = creationParameters.hFocusWindow;
+		}
+		if (pPresentationParameters != NULL)
+		{
+			if (pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE) { vsync = false; }
+			if (hwnd == NULL) { hwnd = pPresentationParameters->hDeviceWindow; }
+		}
+		D3DPRESENT_PARAMETERS presentParameters;
+		D3D9Context2::GetPresentParameters(presentParameters, hwnd, vsync);
+		hr = this->ResetReal(&presentParameters);
+		this->Init(this->device);
+		this->CreateVirtualDevice(hwnd, creationParameters.BehaviorFlags, pPresentationParameters);
+
+		//TODO - Override present parameters, recreate device, and recreate swap chain object
+		//hr = this->ResetReal(pPresentationParameters);
+		//hr = this->device->TestCooperativeLevel();
+	}
 	return hr;
 }
 HRESULT D3D9DeviceContext::Present_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
-	HRESULT hr = this->childSwapChainContext->Present_(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, 0);
+	HRESULT hr;
+	if (forceReal)
+	{
+		hr = this->PresentReal(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+	}
+	else
+	{
+		hr = this->childSwapChainContext->Present_(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, 0);
+	}
+	if (hr == D3DERR_DEVICELOST)
+	{
+		this->DisposeExcludingDevice();
+		this->simulateLostDevice = 1;
+	}
 	return hr;
 }
 HRESULT D3D9DeviceContext::GetBackBuffer_(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer)
 {
 	HRESULT hr;
-	if (iSwapChain == 0)
+	if (forceReal)
 	{
-		hr = this->childSwapChainContext->GetBackBuffer_(iBackBuffer, Type, ppBackBuffer);
+		hr = GetBackBufferReal(iSwapChain, iBackBuffer, Type, ppBackBuffer);
 	}
 	else
 	{
-		hr = GetBackBufferReal(iSwapChain, iBackBuffer, Type, ppBackBuffer);
+		if (iSwapChain == 0)
+		{
+			hr = this->childSwapChainContext->GetBackBuffer_(iBackBuffer, Type, ppBackBuffer);
+		}
+		else
+		{
+			hr = GetBackBufferReal(iSwapChain, iBackBuffer, Type, ppBackBuffer);
+		}
 	}
 	return hr;
 }
 HRESULT D3D9DeviceContext::GetFrontBufferData_(UINT iSwapChain, IDirect3DSurface9* pDestSurface)
 {
 	HRESULT hr = 0;
-	if (iSwapChain == 0)
+	if (forceReal)
 	{
-		hr = this->childSwapChainContext->GetFrontBufferData_(pDestSurface);
+		hr = GetFrontBufferDataReal(iSwapChain, pDestSurface);
 	}
 	else
 	{
-		hr = GetFrontBufferDataReal(iSwapChain, pDestSurface);
+		if (iSwapChain == 0)
+		{
+			hr = this->childSwapChainContext->GetFrontBufferData_(pDestSurface);
+		}
+		else
+		{
+			hr = GetFrontBufferDataReal(iSwapChain, pDestSurface);
+		}
 	}
 	return hr;
 }
@@ -203,12 +360,72 @@ HRESULT D3D9DeviceContext::BeginStateBlock_()
 }
 HRESULT D3D9DeviceContext::PresentEx_(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
 {
-	return this->childSwapChainContext->Present_(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+	HRESULT hr = 0;
+	if (forceReal)
+	{
+		hr = this->PresentExReal(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+	}
+	else
+	{
+		hr = this->childSwapChainContext->Present_(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+	}
+	if (hr == D3DERR_DEVICELOST)
+	{
+		DisposeExcludingDevice();
+	}
+	return hr;
 }
 HRESULT D3D9DeviceContext::ResetEx_(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode)
 {
-	//TODO
-	HRESULT hr = ResetExReal(pPresentationParameters, pFullscreenDisplayMode);
+	HRESULT hr;
+	if (forceReal)
+	{
+		hr = this->ResetReal(pPresentationParameters);
+	}
+	else
+	{
+		bool vsync = true;
+		HWND hwnd = NULL;
+		D3DDEVICE_CREATION_PARAMETERS creationParameters = {};
+		hr = device->GetCreationParameters(&creationParameters);
+		if (SUCCEEDED(hr))
+		{
+			hwnd = creationParameters.hFocusWindow;
+		}
+		if (pPresentationParameters != NULL)
+		{
+			if (pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE) { vsync = false; }
+			if (hwnd == NULL) { hwnd = pPresentationParameters->hDeviceWindow; }
+		}
+		D3DPRESENT_PARAMETERS presentParameters;
+		D3D9Context2::GetPresentParameters(presentParameters, hwnd, vsync);
+		hr = this->ResetExReal(&presentParameters, NULL);
+		this->Init(this->device);
+		this->CreateVirtualDevice(hwnd, creationParameters.BehaviorFlags, pPresentationParameters);
+
+		//TODO - Override present parameters, recreate device, and recreate swap chain object
+		//hr = this->ResetReal(pPresentationParameters);
+		//hr = this->device->TestCooperativeLevel();
+	}
+	return hr;
+}
+HRESULT D3D9DeviceContext::TestCooperativeLevel_()
+{
+	HRESULT hr;
+	hr = this->originalVTable->TestCooperativeLevel(this->device);
+	if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET)
+	{
+		return hr;
+	}
+	if (simulateLostDevice == 1)
+	{
+		simulateLostDevice++;
+		return D3DERR_DEVICELOST;
+	}
+	if (simulateLostDevice > 1)
+	{
+		return D3DERR_DEVICENOTRESET;
+	}
 	return hr;
 }
 
@@ -224,7 +441,6 @@ HRESULT D3D9DeviceContext::GetCreationParametersReal(D3DDEVICE_CREATION_PARAMETE
 }
 HRESULT D3D9DeviceContext::CreateAdditionalSwapChainReal(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain)
 {
-	//TODO
 	HRESULT hr = originalVTable->CreateAdditionalSwapChain(device, pPresentationParameters, pSwapChain);
 	return hr;
 }
@@ -281,7 +497,7 @@ ULONG __stdcall D3D9DeviceContext::Release(IDirect3DDevice9Ex* This)
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->Release(This);
 	}
 	else
@@ -294,7 +510,7 @@ HRESULT __stdcall D3D9DeviceContext::GetCreationParameters(IDirect3DDevice9Ex* T
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->GetCreationParameters(This, pParameters);
 	}
 	else
@@ -307,7 +523,7 @@ HRESULT __stdcall D3D9DeviceContext::CreateAdditionalSwapChain(IDirect3DDevice9E
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->CreateAdditionalSwapChain(This, pPresentationParameters, pSwapChain);
 	}
 	else
@@ -321,7 +537,7 @@ HRESULT __stdcall D3D9DeviceContext::GetSwapChain(IDirect3DDevice9Ex* This, UINT
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->GetSwapChain(This, iSwapChain, pSwapChain);
 	}
 	else
@@ -334,7 +550,7 @@ UINT __stdcall D3D9DeviceContext::GetNumberOfSwapChains(IDirect3DDevice9Ex* This
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->GetNumberOfSwapChains(This);
 	}
 	else
@@ -346,9 +562,14 @@ UINT __stdcall D3D9DeviceContext::GetNumberOfSwapChains(IDirect3DDevice9Ex* This
 HRESULT __stdcall D3D9DeviceContext::Reset(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
 	auto context = GetD3D9DeviceContext(This);
+	if (context != NULL && context->device == NULL)
+	{
+		context->device = This;
+		context->device->AddRef();
+	}
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->Reset(This, pPresentationParameters);
 	}
 	else
@@ -361,7 +582,7 @@ HRESULT __stdcall D3D9DeviceContext::Present(IDirect3DDevice9Ex* This, const REC
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->Present(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 	}
 	else
@@ -374,7 +595,7 @@ HRESULT __stdcall D3D9DeviceContext::GetBackBuffer(IDirect3DDevice9Ex* This, UIN
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->GetBackBuffer(This, iSwapChain, iBackBuffer, Type, ppBackBuffer);
 	}
 	else
@@ -387,7 +608,7 @@ HRESULT __stdcall D3D9DeviceContext::GetFrontBufferData(IDirect3DDevice9Ex* This
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->GetFrontBufferData(This, iSwapChain, pDestSurface);
 	}
 	else
@@ -400,7 +621,7 @@ HRESULT __stdcall D3D9DeviceContext::BeginStateBlock(IDirect3DDevice9Ex* This)
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->BeginStateBlock(This);
 	}
 	else
@@ -413,7 +634,7 @@ HRESULT __stdcall D3D9DeviceContext::PresentEx(IDirect3DDevice9Ex* This, const R
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->PresentEx(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 	}
 	else
@@ -424,14 +645,49 @@ HRESULT __stdcall D3D9DeviceContext::PresentEx(IDirect3DDevice9Ex* This, const R
 HRESULT __stdcall D3D9DeviceContext::ResetEx(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode)
 {
 	auto context = GetD3D9DeviceContext(This);
+	if (context != NULL && context->device == NULL)
+	{
+		context->device = This;
+		context->device->AddRef();
+	}
 	if (context == NULL || context->device == NULL)
 	{
-		auto vtable = context != NULL ? context->originalVTable : GetOriginalVTable(This);
+		auto vtable = GetOriginalVTable(This);
 		return vtable->ResetEx(This, pPresentationParameters, pFullscreenDisplayMode);
 	}
 	else
 	{
 		return context->ResetEx_(pPresentationParameters, pFullscreenDisplayMode);
+	}
+	/*
+	auto context = GetD3D9DeviceContext(This);
+	if (context == NULL || context->device == NULL)
+	{
+		auto vtable = GetOriginalVTable(This);
+		return vtable->ResetEx(This, pPresentationParameters, pFullscreenDisplayMode);
+	}
+	else
+	{
+		return context->ResetEx_(pPresentationParameters, pFullscreenDisplayMode);
+	}
+	*/
+}
+HRESULT __stdcall D3D9DeviceContext::TestCooperativeLevel(IDirect3DDevice9Ex* This)
+{
+	auto context = GetD3D9DeviceContext(This);
+	if (context != NULL && context->device == NULL)
+	{
+		context->device = This;
+		context->device->AddRef();
+	}
+	if (context == NULL || context->device == NULL)
+	{
+		auto vtable = GetOriginalVTable(This);
+		return vtable->TestCooperativeLevel(This);
+	}
+	else
+	{
+		return context->TestCooperativeLevel_();
 	}
 }
 
