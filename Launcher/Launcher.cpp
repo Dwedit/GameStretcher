@@ -146,6 +146,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         return ERROR_FILE_NOT_FOUND;
     }
     
+    for (int i = 0; i < cmd.switches.size(); i++)
+    {
+        const wstring& cmdSwitch = cmd.switches[i];
+        if (cmdSwitch == L"--optimus")
+        {
+            SetEnvironmentVariableW(L"SHIM_MCCOMPAT", L"0x800000001");
+        }
+    }
+
     PROCESS_INFORMATION processInformation = {};
     bool okay = StartSuspendedProcess(cmd.targetFullCommandLine, cmd.targetDirectory, nShowCmd, processInformation);
     DWORD result = InjectDllIntoRemoteProcess(processInformation, stretcherDll.c_str(), injectorDll.c_str());

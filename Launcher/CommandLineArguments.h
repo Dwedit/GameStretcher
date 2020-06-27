@@ -17,6 +17,8 @@ struct CommandLineData
     wstring targetDirectory;
     vector<wstring> targetParameters;
     wstring targetFullCommandLine;
+    vector<wstring> switches;
+
 
     void BuildFullCommandLine();
 };

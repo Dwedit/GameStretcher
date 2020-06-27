@@ -22,6 +22,11 @@ IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9, bool allocate)
 		{
 			auto context = GetD3D9Context(d3d9);
 			if (context != NULL && context->originalVTable != NULL) return context->originalVTable;
+			auto ptr = map.GetMostRecentValue();
+			if (ptr != NULL)
+			{
+				return *ptr;
+			}
 			return inputVTable;
 		}
 		typedef remove_pointer<decltype(inputVTable)>::type TValue;
@@ -45,6 +50,11 @@ IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device, bool allocat
 		{
 			auto context = GetD3D9DeviceContext(device);
 			if (context != NULL && context->originalVTable != NULL) return context->originalVTable;
+			auto ptr = map.GetMostRecentValue();
+			if (ptr != NULL)
+			{
+				return *ptr;
+			}
 			return inputVTable;
 		}
 		typedef remove_pointer<decltype(inputVTable)>::type TValue;
@@ -68,6 +78,11 @@ IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain, boo
 		{
 			auto context = GetD3D9SwapChainContext(swapChain);
 			if (context != NULL && context->originalVTable != NULL) return context->originalVTable;
+			auto ptr = map.GetMostRecentValue();
+			if (ptr != NULL)
+			{
+				return *ptr;
+			}
 			return inputVTable;
 		}
 		typedef remove_pointer<decltype(inputVTable)>::type TValue;

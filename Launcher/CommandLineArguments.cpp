@@ -277,6 +277,16 @@ CommandLinePiece ParseCommandLinePiece(LPCWSTR lpCmdLine, int& i, int stringLeng
     return piece;
 }
 
+bool StringStartsWith(const wstring& str, const wstring& lookFor)
+{
+    if (lookFor.length() > str.length()) return false;
+    for (int i = 0; i < lookFor.length(); i++)
+    {
+        if (str[i] != lookFor[i]) return false;
+    }
+    return true;
+}
+
 CommandLineData ParseCommandLine(LPWSTR lpCmdLine)
 {
     int stringLength = wcslen(lpCmdLine);
@@ -293,48 +303,51 @@ CommandLineData ParseCommandLine(LPWSTR lpCmdLine)
     {
         pieces.emplace_back(ParseCommandLinePiece(lpCmdLine, textIndex, stringLength));
     }
-    for (int pieceNumber = 0; pieceNumber < pieces.size(); pieceNumber++)
+
+    cmd.launcherExe = GetFile(pieces[0].str);
+    cmd.launcherDirectory = GetDirectory(cmd.launcherExe);
+
+    for (int pieceNumber = 1; pieceNumber < pieces.size(); pieceNumber++)
     {
         const CommandLinePiece& piece = pieces[pieceNumber];
-        if (pieceNumber == 0)
+        if (cmd.targetExe.empty())
         {
-            cmd.launcherExe = GetFile(piece.str);
-            cmd.launcherDirectory = GetDirectory(cmd.launcherExe);
-        }
-        else if (pieceNumber == 1)
-        {
-            cmd.targetExe = LocateFile(piece.str, cmd);
-            cmd.targetDirectory = GetDirectory(cmd.targetExe);
-            if (cmd.targetExe.empty() && !piece.isQuoted)
+            if (StringStartsWith(piece.str, L"--"))
             {
-                int startIndex = piece.startIndex;
-                //re-parse command line using other rules
-                for (int i = pieceNumber; i < pieces.size(); i++)
+                cmd.switches.push_back(piece.str);
+            }
+            else
+            {
+                cmd.targetExe = LocateFile(piece.str, cmd);
+                cmd.targetDirectory = GetDirectory(cmd.targetExe);
+                if (cmd.targetExe.empty() && !piece.isQuoted)
                 {
-                    int endIndex = pieces[i].endIndex;
-                    wstring exeName = wstring(lpCmdLine + startIndex, endIndex - startIndex);
-                    cmd.targetExe = LocateFile(exeName, cmd);
-                    cmd.targetDirectory = GetDirectory(cmd.targetExe);
-                    if (!cmd.targetExe.empty())
+                    int startIndex = piece.startIndex;
+                    //re-parse command line using other rules
+                    for (int i = pieceNumber; i < pieces.size(); i++)
                     {
-                        CommandLinePiece newPiece = CommandLinePiece();
-                        newPiece.startIndex = startIndex;
-                        newPiece.endIndex = endIndex;
-                        newPiece.str = exeName;
+                        int endIndex = pieces[i].endIndex;
+                        wstring exeName = wstring(lpCmdLine + startIndex, endIndex - startIndex);
+                        cmd.targetExe = LocateFile(exeName, cmd);
+                        cmd.targetDirectory = GetDirectory(cmd.targetExe);
+                        if (!cmd.targetExe.empty())
+                        {
+                            CommandLinePiece newPiece = CommandLinePiece();
+                            newPiece.startIndex = startIndex;
+                            newPiece.endIndex = endIndex;
+                            newPiece.str = exeName;
 
-                        pieces[pieceNumber] = newPiece;
-                        pieces.erase(pieces.begin() + pieceNumber + 1, pieces.begin() + i + 1);
-                        break;
+                            pieces[pieceNumber] = newPiece;
+                            pieces.erase(pieces.begin() + pieceNumber + 1, pieces.begin() + i + 1);
+                            break;
+                        }
                     }
                 }
             }
         }
         else
         {
-            if (!cmd.targetExe.empty())
-            {
-                cmd.targetParameters.push_back(piece.str);
-            }
+            cmd.targetParameters.push_back(piece.str);
         }
     }
     cmd.BuildFullCommandLine();

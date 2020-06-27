@@ -7,7 +7,7 @@ D3D9DeviceContext::D3D9DeviceContext(IDirect3DDevice9* device)
 }
 D3D9DeviceContext::D3D9DeviceContext()
 {
-
+	
 }
 
 void D3D9DeviceContext::SetVTable(IDirect3DDevice9ExVtbl* myVTable)
@@ -124,6 +124,7 @@ void D3D9DeviceContext::Init(IDirect3DDevice9* device)
 	Dispose();
 	this->device = (IDirect3DDevice9Ex*)device;
 	BeginTrackingRefCount();
+	this->internalRefCount++;  //for the object that contains this in ObjectStore
 	this->device->AddRef();
 	this->originalVTable = GetOriginalVTable(device, true);
 	this->IsEx = GetIsEx(device);
@@ -141,6 +142,8 @@ D3D9DeviceContext::~D3D9DeviceContext()
 }
 void D3D9DeviceContext::Dispose()
 {
+	if (disposing) return;
+	disposing = true;
 	internalRefCount = 0;
 	refCountFirstCapture = 0;
 	refCountTrackerCount = 0;
@@ -152,10 +155,13 @@ void D3D9DeviceContext::Dispose()
 	}
 	SafeRelease(this->realSwapChain);
 	SafeRelease(this->device);
+	disposing = false;
 }
 
 void D3D9DeviceContext::DisposeExcludingDevice()
 {
+	if (disposing) return;
+	disposing = true;
 	BeginTrackingRefCount();
 	this->childSwapChainContext = NULL;
 	D3D9SwapChainContext* swapChainContext = GetD3D9SwapChainContext(this->realSwapChain);
@@ -165,6 +171,7 @@ void D3D9DeviceContext::DisposeExcludingDevice()
 	}
 	SafeRelease(this->realSwapChain);
 	EndTrackingRefCount();
+	disposing = false;
 }
 
 int D3D9DeviceContext::GetRefCount() const
@@ -216,6 +223,8 @@ ULONG D3D9DeviceContext::Release_()
 		auto releasePtr = this->originalVTable->Release;
 		value = dev->AddRef();
 		Dispose();
+		RemoveD3D9DisposedObjects();  //after calling, the "this" pointer is now invalid
+
 		value = releasePtr(dev);
 	}
 	return value;
@@ -283,6 +292,7 @@ HRESULT D3D9DeviceContext::Reset_(D3DPRESENT_PARAMETERS* pPresentationParameters
 		}
 		D3DPRESENT_PARAMETERS presentParameters;
 		D3D9Context2::GetPresentParameters(presentParameters, hwnd, vsync);
+		this->DisposeExcludingDevice();
 		hr = this->ResetReal(&presentParameters);
 		this->Init(this->device);
 		this->CreateVirtualDevice(hwnd, creationParameters.BehaviorFlags, pPresentationParameters);
@@ -399,6 +409,7 @@ HRESULT D3D9DeviceContext::ResetEx_(D3DPRESENT_PARAMETERS* pPresentationParamete
 		}
 		D3DPRESENT_PARAMETERS presentParameters;
 		D3D9Context2::GetPresentParameters(presentParameters, hwnd, vsync);
+		this->DisposeExcludingDevice();
 		hr = this->ResetExReal(&presentParameters, NULL);
 		this->Init(this->device);
 		this->CreateVirtualDevice(hwnd, creationParameters.BehaviorFlags, pPresentationParameters);

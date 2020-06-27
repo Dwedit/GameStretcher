@@ -18,8 +18,8 @@ extern void RemoveD3D9DeviceContext(IDirect3DDevice9* key);
 extern D3D9SwapChainContext* GetD3D9SwapChainContext(IDirect3DSwapChain9* key, bool allocate = false);
 extern D3D9SwapChainContext* GetD3D9SwapChainContext();
 extern void RemoveD3D9SwapChainContext(IDirect3DSwapChain9* key);
-
 bool SwapChainContextExists(IDirect3DSwapChain9* key);
+void RemoveD3D9DisposedObjects();
 
 extern IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9, bool allocate = false);
 extern IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device, bool allocate = false);
@@ -58,7 +58,8 @@ inline UINT GetRefCount(TComObject* obj)
 class D3D9Context2
 {
 public:
-	IDirect3D9* d3d9 = NULL;
+	int internalRefCount = 0;
+	IDirect3D9Ex* d3d9 = NULL;
 	IDirect3D9ExVtbl* originalVTable = NULL;
 	IDirect3D9ExVtbl* myVTable = NULL;
 	bool IsEx = false;
@@ -67,15 +68,18 @@ public:
 	D3D9Context2();
 	void Init(IDirect3D9* d3d9);
 	~D3D9Context2();
-	void Destroy();
+	void Dispose();
 	HRESULT CreateDeviceReal(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface);
 	HRESULT CreateDeviceExReal(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface);
+	ULONG ReleaseReal();
 	static void GetPresentParameters(D3DPRESENT_PARAMETERS& presentParameters, HWND hwnd, bool vsync);
 	HRESULT CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface);
 	HRESULT CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface);
+	ULONG Release_();
 
 	static HRESULT __stdcall CreateDevice(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface);
 	static HRESULT __stdcall CreateDeviceEx(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface);
+	static ULONG __stdcall Release(IDirect3D9Ex* This);
 };
 
 class D3D9DeviceContext
@@ -98,6 +102,7 @@ public:
 	int internalRefCount = 0;
 	int refCountFirstCapture = 0;
 	int refCountTrackerCount = 0;
+	bool disposing = false;
 public:
 	D3D9DeviceContext(IDirect3DDevice9* device);
 	D3D9DeviceContext();

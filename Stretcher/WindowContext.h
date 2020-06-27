@@ -88,15 +88,20 @@ class WindowContext
 
 	std::mutex myMutex;
 
+	bool deleteThis;
+	int wndProcStackDepth;
+
 public:
 	LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static int simpleWndProcStackDepth;
 	static LRESULT CALLBACK SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static bool WindowBeingCreated;
 
 public:
 	void Init(HWND hwnd);
 	void Release();
+	void PreDispose();
 
 	WindowContext() :
 		Scale(1.0f),

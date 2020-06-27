@@ -103,17 +103,41 @@ public:
 		if (found == map.end()) return NULL;
 		return &found->second;
 	}
-	TValue Get(const TKey& key)
-	{
-		auto found = map.find(key);
-		if (found == map.end()) return TValue();
-		return found->second;
-	}
+	//const TValue& Get(const TKey& key) const
+	//{
+	//	auto found = map.find(key);
+	//	if (found == map.end()) throw;
+	//	return found->second;
+	//}
 	TKey GetKey(const TValue& value)
 	{
 		auto found = FindValue(value);
 		if (found == map.end()) return TKey();
 		return found->first;
+	}
+	vector<TKey> GetKeys()
+	{
+		vector<TKey> keys;
+		keys.reserve(this->map.size());
+		for (auto iterator = map.begin(); iterator != map.end(); iterator++)
+		{
+			keys.push_back(iterator->first);
+		}
+		return keys;
+	}
+	vector<TValue*> GetValues()
+	{
+		vector<TValue*> values;
+		values.reserve(this->map.size());
+		for (auto iterator = map.begin(); iterator != map.end(); iterator++)
+		{
+			values.push_back(&iterator->second);
+		}
+		return values;
+	}
+	void Clear()
+	{
+		this->map.clear();
 	}
 };
 
@@ -200,12 +224,12 @@ public:
 		return anythingRemoved;
 	}
 
-	TValue Get(const TKey& key) const
-	{
-		int index = Find(key);
-		if (index == -1) return TValue();
-		return vec[index].second;
-	}
+	//const TValue& Get(const TKey& key) const
+	//{
+	//	int index = Find(key);
+	//	if (index == -1) throw;
+	//	return vec[index].second;
+	//}
 
 	TValue* GetReference(const TKey& key)
 	{
@@ -226,6 +250,33 @@ public:
 		int index = FindValue(value);
 		if (index == -1) return TKey();
 		return vec[index].first;
+	}
+
+	vector<TKey> GetKeys()
+	{
+		vector<TKey> keys;
+		keys.reserve(this->vec.size());
+		for (auto iterator = vec.begin(); iterator != vec.end(); iterator++)
+		{
+			keys.push_back(iterator->first);
+		}
+		return keys;
+	}
+
+	vector<TValue*> GetValues()
+	{
+		vector<TValue*> values;
+		values.reserve(this->vec.size());
+		for (auto iterator = vec.begin(); iterator != vec.end(); iterator++)
+		{
+			values.push_back(&iterator->second);
+		}
+		return values;
+	}
+
+	void Clear()
+	{
+		this->vec.clear();
 	}
 };
 
@@ -299,11 +350,11 @@ public:
 		return map.RemoveValue(value);
 	}
 
-	TValue Get(const TKey& key)
-	{
-		if (ContainsKey(key)) return *pMostRecentValue;
-		return TValue();
-	}
+	//TValue Get(const TKey& key)
+	//{
+	//	if (ContainsKey(key)) return *pMostRecentValue;
+	//	return TValue();
+	//}
 
 	TValue* GetReference(const TKey& key)
 	{
@@ -324,6 +375,23 @@ public:
 			return mostRecentKey;
 		}
 		return TKey();
+	}
+
+	vector<TKey> GetKeys()
+	{
+		return map.GetKeys();
+	}
+
+	vector<TValue*> GetValues()
+	{
+		return map.GetValues();
+	}
+	
+	void Clear()
+	{
+		this->map.Clear();
+		pMostRecentValue = NULL;
+		mostRecentKey = TKey();
 	}
 };
 

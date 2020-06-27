@@ -13,8 +13,9 @@ D3D9Context2::D3D9Context2()
 
 void D3D9Context2::Init(IDirect3D9* d3d9)
 {
-	Destroy();
-	this->d3d9 = d3d9;
+	Dispose();
+	this->internalRefCount = 2;
+	this->d3d9 = (IDirect3D9Ex*)d3d9;
 	this->d3d9->AddRef();
 	this->originalVTable = GetOriginalVTable(d3d9, true);
 	this->IsEx = GetIsEx(d3d9);
@@ -23,23 +24,29 @@ void D3D9Context2::Init(IDirect3D9* d3d9)
 		MemoryUnlocker unlocker(this->myVTable);
 		this->myVTable->CreateDevice = CreateDevice;
 		this->myVTable->CreateDeviceEx = CreateDeviceEx;
+		this->myVTable->Release = Release;
 	}
 }
 D3D9Context2::~D3D9Context2()
 {
-	Destroy();
+	Dispose();
 }
-void D3D9Context2::Destroy()
+void D3D9Context2::Dispose()
 {
+	internalRefCount = 0;
 	SafeRelease(this->d3d9);
 }
 HRESULT D3D9Context2::CreateDeviceReal(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 {
-	return this->originalVTable->CreateDevice(static_cast<IDirect3D9Ex*>(d3d9), Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
+	return this->originalVTable->CreateDevice(d3d9, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
 }
 HRESULT D3D9Context2::CreateDeviceExReal(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface)
 {
-	return this->originalVTable->CreateDeviceEx(static_cast<IDirect3D9Ex*>(d3d9), Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
+	return this->originalVTable->CreateDeviceEx(d3d9, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
+}
+ULONG D3D9Context2::ReleaseReal()
+{
+	return this->originalVTable->Release(d3d9);
 }
 
 void D3D9Context2::GetPresentParameters(D3DPRESENT_PARAMETERS& presentParameters, HWND hwnd, bool vsync) //static
@@ -125,6 +132,20 @@ HRESULT D3D9Context2::CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND 
 	deviceContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
 	return hr;
 }
+ULONG D3D9Context2::Release_()
+{
+	ULONG value = this->ReleaseReal();
+	if (value == internalRefCount)
+	{
+		auto d3d9 = this->d3d9;
+		auto releasePtr = this->originalVTable->Release;
+		value = d3d9->AddRef();
+		Dispose();
+		RemoveD3D9DisposedObjects();  //after calling, the "this" pointer is now invalid
+		value = releasePtr(d3d9);
+	}
+	return value;
+}
 HRESULT __stdcall D3D9Context2::CreateDevice(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)	//static
 {
 	auto context = GetD3D9Context(This);
@@ -149,6 +170,19 @@ HRESULT __stdcall D3D9Context2::CreateDeviceEx(IDirect3D9Ex* This, UINT Adapter,
 	else
 	{
 		return context->CreateDeviceEx_(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
+	}
+}
+ULONG __stdcall D3D9Context2::Release(IDirect3D9Ex* This) //static
+{
+	auto context = GetD3D9Context(This);
+	if (context == NULL || context->d3d9 == NULL)
+	{
+		auto vtable = GetOriginalVTable(This);
+		return vtable->Release(This);
+	}
+	else
+	{
+		return context->Release_();
 	}
 }
 

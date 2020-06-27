@@ -52,6 +52,7 @@ extern WindowContext* lastWindowContext2;
 void WindowContext::Init(HWND hwnd)
 {
 	if (window != NULL) Release();
+	this->deleteThis = false;
 	isWindowUnicode = IsWindowUnicode(hwnd);
 	window = hwnd;
 	HWND parentWindow = GetParent(hwnd);
@@ -91,8 +92,9 @@ void RemoveFromVector(std::vector<T>& vec, const T& item)
 	vec.erase(found, found + 1);
 }
 
-void WindowContext::Release()
+void WindowContext::PreDispose()
 {
+	this->deleteThis = true;
 	if (this->parentWindowContext != NULL)
 	{
 		RemoveFromVector(this->parentWindowContext->childWindows, this);
@@ -111,8 +113,6 @@ void WindowContext::Release()
 		_SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)oldWindowProc);
 	}
 	d3d9Context.Destroy();
-	window = NULL;
-	oldWindowProc = NULL;
 	if (lastWindowContext == this)
 	{
 		lastWindowContext = NULL;
@@ -123,13 +123,22 @@ void WindowContext::Release()
 	}
 }
 
+void WindowContext::Release()
+{
+	PreDispose();
+	window = NULL;
+	oldWindowProc = NULL;
+}
+
 WindowContext* WindowContext::Get(HWND hwnd)	//static
 {
 	return GetWindowContext(hwnd);
 }
 WindowContext* WindowContext::GetByHdc(HDC hdc)	//static
 {
-	return hdcMap.Get(hdc);
+	auto ref = hdcMap.GetReference(hdc);
+	if (ref == NULL) return NULL;
+	return *ref;
 }
 void WindowContext::HdcAdd(HDC hdc, WindowContext* windowContext)	//static
 {
@@ -318,7 +327,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_NCDESTROY:
 	{
 		LRESULT result = _CallWindowProc(oldWindowProc, hwnd, uMsg, wParam, lParam);
-		DeleteWindowContext(hwnd);
+		this->PreDispose();
 		return result;
 	}
 	case WM_SHOWWINDOW:
@@ -663,11 +672,11 @@ bool WindowContext::Redraw()
 	{
 		return false;
 	}
-	bool okay = true;
+	HRESULT hr = true;
 	upscaler.SetUpscaleFilter(1);
-	okay &= upscaler.Update(this->dirtyRegion);
+	hr = upscaler.Update(this->dirtyRegion);
 	this->dirtyRegion.Clear();
-	return okay;
+	return SUCCEEDED(hr);
 }
 
 RECT WindowContext::RectVirtualToClient(const RECT &rect) const
@@ -808,13 +817,25 @@ bool WindowContext::TryHookWindow(HWND hwnd)
 	return false;
 }
 
+int WindowContext::simpleWndProcStackDepth = 0;
+
 _declspec(noinline)
 LRESULT CALLBACK WindowContext::SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	WindowContext* context = GetWindowContext(hwnd);
 	if (context != NULL)
 	{
+		context->wndProcStackDepth++;
 		LRESULT result = context->WndProc(hwnd, uMsg, wParam, lParam);
+		context->wndProcStackDepth--;
+		if (context->wndProcStackDepth == 0)
+		{
+			if (context->deleteThis)
+			{
+				WindowContext::DeleteWindowContext(hwnd);
+			}
+			int dummy = 0;
+		}
 		return result;
 	}
 	else
@@ -1346,7 +1367,6 @@ BOOL WindowContext::GetUpdateRect_(LPRECT rect, BOOL bErase) //rect in virtual c
 }
 int WindowContext::GetUpdateRgn_(HRGN hrgn, BOOL bErase) //rect in virtual coordinates
 {
-	BOOL okay;
 	int result = GetUpdateRgn(window, hrgn, bErase);
 	TransformRegionRealToVirtual(hrgn);
 	return result;
