@@ -2,6 +2,8 @@
 #include "D3D9VTable.h"
 #include "CUpscaler.h"
 
+#define SIMULATE_LOST_DEVICE 1
+
 #define LOST_DEVICE_TEST 0
 #define NO_DEVICE_HOOK 0
 

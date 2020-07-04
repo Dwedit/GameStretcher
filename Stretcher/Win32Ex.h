@@ -6,3 +6,6 @@ struct IUnknown;
 
 RECT GetMonitorRect(HWND window);
 RECT GetMonitorWorkAreaRect(HWND window);
+bool IsWow64();
+bool IsWine();
+

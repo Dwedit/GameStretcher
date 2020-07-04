@@ -15,8 +15,8 @@ struct IUnknown;
 //#include <initguid.h>
 #include <d3d9.h>
 
+#include "Win32Ex.h"
 #include "D3D9Context_Old.h"
-
 
 template <class T>
 static inline void SafeRelease(T*& ptr)
@@ -26,12 +26,6 @@ static inline void SafeRelease(T*& ptr)
 		ptr->Release();
 		ptr = NULL;
 	}
-}
-
-bool IsWine()
-{
-	HMODULE ntdllModule = GetModuleHandleA("ntdll.dll");
-	return NULL != GetProcAddress(ntdllModule, "wine_get_version");
 }
 
 //#define SafeRelease(xxxx) if ((xxxx) != NULL) { (xxxx)->Release(); (xxxx) = NULL; }

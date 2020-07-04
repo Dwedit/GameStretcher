@@ -428,6 +428,7 @@ HRESULT D3D9DeviceContext::TestCooperativeLevel_()
 	{
 		return hr;
 	}
+#if SIMULATE_LOST_DEVICE
 	if (simulateLostDevice == 1)
 	{
 		simulateLostDevice++;
@@ -437,6 +438,7 @@ HRESULT D3D9DeviceContext::TestCooperativeLevel_()
 	{
 		return D3DERR_DEVICENOTRESET;
 	}
+#endif
 	return hr;
 }
 

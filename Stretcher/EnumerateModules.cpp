@@ -13,6 +13,7 @@ struct IUnknown;
 #include <vector>
 #include <string>
 #include <Shlwapi.h>
+#include "StringUtil.h"
 using std::vector;
 using std::wstring;
 using std::min;
@@ -27,42 +28,6 @@ wstring GetModuleFileName(HMODULE module)
     path.resize(wcslen(path.c_str()));
     path.shrink_to_fit();
     return path;
-}
-
-bool StringStartsWithCaseInsensitive(const wstring& str, const wstring& prefix)
-{
-    if (prefix.empty()) return false;
-    if (prefix.size() > str.size()) return false;
-    for (int i = 0; i < prefix.size(); i++)
-    {
-        int c1 = str[i];
-        int c2 = prefix[i];
-        if (c1 >= 'a' && c1 <= 'z') c1 -= 'a' - 'A';
-        if (c2 >= 'a' && c2 <= 'z') c2 -= 'a' - 'A';
-        if (c1 != c2)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool StringEndsWithCaseInsensitive(const wstring& str, const wstring& suffix)
-{
-    if (suffix.empty()) return false;
-    if (suffix.size() > str.size()) return false;
-    for (int i = 0; i < suffix.size(); i++)
-    {
-        int c1 = str[str.size() - i - 1];
-        int c2 = suffix[suffix.size() - i - 1];
-        if (c1 >= 'a' && c1 < 'z') c1 -= 'a' - 'A';
-        if (c2 >= 'a' && c2 < 'z') c2 -= 'a' - 'A';
-        if (c1 != c2)
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 vector<HMODULE> GetModules()

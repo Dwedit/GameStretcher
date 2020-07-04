@@ -89,7 +89,7 @@ class WindowContext
 	std::mutex myMutex;
 
 	bool deleteThis;
-	int wndProcStackDepth;
+	int wndProcStackDepth = 0;
 
 public:
 	LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
