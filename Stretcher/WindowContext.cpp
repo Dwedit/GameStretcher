@@ -610,11 +610,12 @@ bool WindowContext::CompleteDraw()
 		return this->parentWindowContext->CompleteDraw();
 	}
 	if (this->d3dDC == NULL) return true;
-
-	RECT boundsRect = {};
-	bool isEmpty;
-	UINT boundsRectMode = GetBoundsRect(this->d3dDC, &boundsRect, DCB_RESET);
-	isEmpty = boundsRectMode == DCB_RESET && this->dirtyRegion.IsEmpty();
+	this->AddDirtyRect();
+	bool isEmpty = this->dirtyRegion.IsEmpty();
+	//RECT boundsRect = {};
+	//bool isEmpty;
+	//UINT boundsRectMode = GetBoundsRect(this->d3dDC, &boundsRect, DCB_RESET);
+	//isEmpty = boundsRectMode == DCB_RESET && this->dirtyRegion.IsEmpty();
 	if (isEmpty)
 	{
 		return true;
@@ -672,7 +673,7 @@ bool WindowContext::Redraw()
 	{
 		return false;
 	}
-	HRESULT hr = true;
+	HRESULT hr = 0;
 	upscaler.SetUpscaleFilter(1);
 	hr = upscaler.Update(this->dirtyRegion);
 	this->dirtyRegion.Clear();
@@ -816,8 +817,6 @@ bool WindowContext::TryHookWindow(HWND hwnd)
 	}
 	return false;
 }
-
-int WindowContext::simpleWndProcStackDepth = 0;
 
 _declspec(noinline)
 LRESULT CALLBACK WindowContext::SimpleWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
