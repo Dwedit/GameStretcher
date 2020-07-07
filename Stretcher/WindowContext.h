@@ -162,9 +162,9 @@ public:
 	int ReleaseDC_();
 	BOOL GdiFlush_();
 
-	bool CompleteDraw();	//TODO
-	HDC GetD3DDC();	//TODO
-	bool Redraw();	//TODO
+	bool CompleteDraw();
+	HDC GetD3DDC();
+	bool Redraw();
 
 	void AddDirtyRect();
 

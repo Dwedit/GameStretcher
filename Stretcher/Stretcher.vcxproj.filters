@@ -78,6 +78,15 @@
     <ClCompile Include="Win32Ex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DDrawOverride.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CDirectDrawWrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CDirectDrawSurfaceWrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinApiWrappers.h">
@@ -139,6 +148,15 @@
     </ClInclude>
     <ClInclude Include="Win32Ex.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CDirectDrawWrapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CDirectDrawSurfaceWrapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DDrawOverride.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

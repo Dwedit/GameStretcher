@@ -4,6 +4,7 @@ struct IUnknown;
 #define NOMINMAX
 #include <Windows.h>
 #include <d3d9.h>
+#include <ddraw.h>
 
 //Function Pointer Typedefs
 typedef BOOL(WINAPI* ClientToScreen_FUNC)(HWND hWnd, LPPOINT lpPoint);
@@ -69,6 +70,8 @@ typedef BOOL(WINAPI* RedrawWindow_FUNC)(HWND hWnd, CONST RECT* lprcUpdate, HRGN 
 typedef FARPROC (WINAPI*GetProcAddress_FUNC)(HMODULE hModule, LPCSTR lpProcName);
 typedef IDirect3D9* (WINAPI* Direct3DCreate9_FUNC)(UINT SDKVersion);
 typedef HRESULT (WINAPI* Direct3DCreate9Ex_FUNC)(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex);
+typedef HRESULT(WINAPI* DirectDrawCreate_FUNC)(GUID* lpGUID, LPDIRECTDRAW* lplpDD, IUnknown* pUnkOuter);
+typedef HRESULT(WINAPI* DirectDrawCreateEx_FUNC)(GUID* lpGuid, LPVOID* lplpDD, REFIID iid, IUnknown* pUnkOuter);
 
 //Import Backups (Declarations)
 extern ClientToScreen_FUNC ClientToScreen_OLD;
@@ -134,6 +137,8 @@ extern RedrawWindow_FUNC RedrawWindow_OLD;
 extern GetProcAddress_FUNC GetProcAddress_OLD;
 extern Direct3DCreate9_FUNC Direct3DCreate9_OLD;
 extern Direct3DCreate9Ex_FUNC Direct3DCreate9Ex_OLD;
+extern DirectDrawCreate_FUNC DirectDrawCreate_OLD;
+extern DirectDrawCreateEx_FUNC DirectDrawCreateEx_OLD;
 
 //Replacement Functions (Declarations)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint);
@@ -199,6 +204,8 @@ BOOL WINAPI RedrawWindow_Replacement(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrg
 FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName);
 IDirect3D9*  WINAPI Direct3DCreate9_Replacement(UINT SDKVersion);
 HRESULT WINAPI Direct3DCreate9Ex_Replacement(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex);
+HRESULT WINAPI DirectDrawCreate_Replacement(GUID* lpGUID, LPDIRECTDRAW* lplpDD, IUnknown* pUnkOuter);
+HRESULT WINAPI DirectDrawCreateEx_Replacement(GUID* lpGuid, LPVOID* lplpDD, REFIID iid, IUnknown* pUnkOuter);
 
 void BuildImportMap();
 void ReplaceImports(HMODULE module = NULL);

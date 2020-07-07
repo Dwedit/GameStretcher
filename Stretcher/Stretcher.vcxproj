@@ -95,6 +95,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -111,6 +112,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,6 +132,7 @@
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -154,6 +157,7 @@
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -169,6 +173,8 @@
     </ManifestResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CDirectDrawSurfaceWrapper.cpp" />
+    <ClCompile Include="CDirectDrawWrapper.cpp" />
     <ClCompile Include="CUpscaler.cpp" />
     <ClCompile Include="D3D9Context_Old.cpp" />
     <ClCompile Include="D3D9Override.cpp" />
@@ -177,6 +183,7 @@
     <ClCompile Include="D3D9Override_D3D9SwapChainContext.cpp" />
     <ClCompile Include="D3D9Override_ObjectStore.cpp" />
     <ClCompile Include="D3D9Override_VTableStore.cpp" />
+    <ClCompile Include="DDrawOverride.cpp" />
     <ClCompile Include="EnumerateModules.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Initguid.cpp" />
@@ -195,11 +202,14 @@
     <ClCompile Include="Win32Ex.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CDirectDrawSurfaceWrapper.h" />
+    <ClInclude Include="CDirectDrawWrapper.h" />
     <ClInclude Include="CUpscaler.h" />
     <ClInclude Include="CUpscalerImpl.h" />
     <ClInclude Include="D3D9Context_Old.h" />
     <ClInclude Include="D3D9Override.h" />
     <ClInclude Include="D3D9VTable.h" />
+    <ClInclude Include="DDrawOverride.h" />
     <ClInclude Include="ImportReplacer.h" />
     <ClInclude Include="MemoryUnlocker.h" />
     <ClInclude Include="RectUtil.h" />

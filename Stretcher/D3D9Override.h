@@ -1,6 +1,7 @@
 #pragma once
 #include "D3D9VTable.h"
 #include "CUpscaler.h"
+#include "Win32Ex.h"
 
 #define SIMULATE_LOST_DEVICE 1
 
@@ -39,23 +40,6 @@ extern bool GetIsEx(IDirect3DSwapChain9* swapChain);
 
 IDirect3D9* CreateAndOverrideDirect3D9();
 IDirect3D9Ex* CreateAndOverrideDirect3D9Ex();
-
-template <class TComObject>
-inline void SafeRelease(TComObject*& obj)
-{
-	if (obj != NULL)
-	{
-		obj->Release();
-		obj = NULL;
-	}
-}
-template <class TComObject>
-inline UINT GetRefCount(TComObject* obj)
-{
-	if (obj == NULL) return 0;
-	obj->AddRef();
-	return obj->Release();
-}
 
 class D3D9Context2
 {

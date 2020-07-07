@@ -18,16 +18,6 @@ struct IUnknown;
 #include "Win32Ex.h"
 #include "D3D9Context_Old.h"
 
-template <class T>
-static inline void SafeRelease(T*& ptr)
-{
-	if (ptr != NULL)
-	{
-		ptr->Release();
-		ptr = NULL;
-	}
-}
-
 //#define SafeRelease(xxxx) if ((xxxx) != NULL) { (xxxx)->Release(); (xxxx) = NULL; }
 //#pragma comment( lib, "d3d9.lib" )
 #pragma warning (disable: 26812)

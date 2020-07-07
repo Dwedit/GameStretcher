@@ -9,6 +9,7 @@ struct IUnknown;
 #include "WindowContext.h"
 #include "WindowClassContext.h"
 #include "D3D9Override.h"
+#include "DDrawOverride.h"
 
 extern void EnableVisualStyles();
 
@@ -90,6 +91,8 @@ void BuildImportMap()
     ReplaceImport("Kernel32.dll", "GetProcAddress", (FARPROC)GetProcAddress_Replacement, (FARPROC*)&GetProcAddress_OLD);
     ReplaceImport("d3d9.dll", "Direct3DCreate9", (FARPROC)Direct3DCreate9_Replacement, (FARPROC*)&Direct3DCreate9_OLD);
     ReplaceImport("d3d9.dll", "Direct3DCreate9Ex", (FARPROC)Direct3DCreate9Ex_Replacement, (FARPROC*)&Direct3DCreate9Ex_OLD);
+    ReplaceImport("ddraw.dll", "DirectDrawCreate", (FARPROC)DirectDrawCreate_Replacement, (FARPROC*)&DirectDrawCreate_OLD);
+    ReplaceImport("ddraw.dll", "DirectDrawCreateEx", (FARPROC)DirectDrawCreateEx_Replacement, (FARPROC*)&DirectDrawCreateEx_OLD);
 
     void BuildImportMap_AllGDI();
     void BuildImportMap_Registry();
@@ -169,6 +172,8 @@ RedrawWindow_FUNC RedrawWindow_OLD = NULL;
 GetProcAddress_FUNC GetProcAddress_OLD = NULL;
 Direct3DCreate9_FUNC Direct3DCreate9_OLD = NULL;
 Direct3DCreate9Ex_FUNC Direct3DCreate9Ex_OLD = NULL;
+DirectDrawCreate_FUNC DirectDrawCreate_OLD = NULL;
+DirectDrawCreateEx_FUNC DirectDrawCreateEx_OLD = NULL;
 
 /*
 
@@ -765,3 +770,26 @@ HRESULT WINAPI Direct3DCreate9Ex_Replacement(UINT SDKVersion, IDirect3D9Ex** lpI
     return 0;
     //return Direct3DCreate9Ex_OLD(SDKVersion, lpIDirect3D9Ex);
 }
+
+
+HRESULT WINAPI DirectDrawCreate_Replacement(GUID* lpGUID, LPDIRECTDRAW* lplpDD, IUnknown* pUnkOuter)
+{
+    HRESULT hr = DirectDrawCreate_OLD(lpGUID, lplpDD, pUnkOuter);
+    IDirectDraw7 *& ddraw = *(IDirectDraw7**)lplpDD;
+    if (SUCCEEDED(hr) && ddraw != NULL)
+    {
+        ddraw = DDrawOverride::CreateWrapper(ddraw);
+    }
+    return hr;
+}
+HRESULT WINAPI DirectDrawCreateEx_Replacement(GUID* lpGuid, LPVOID* lplpDD, REFIID iid, IUnknown* pUnkOuter)
+{
+    HRESULT hr = DirectDrawCreateEx_OLD(lpGuid, lplpDD, iid, pUnkOuter);
+    IDirectDraw7*& ddraw = *(IDirectDraw7**)lplpDD;
+    if (SUCCEEDED(hr) && ddraw != NULL)
+    {
+        ddraw = DDrawOverride::CreateWrapper(ddraw);
+    }
+    return hr;
+}
+

@@ -1,10 +1,78 @@
 struct IUnknown;
 #define NOMINMAX
 #include <Windows.h>
+#include "Win32Ex.h"
 
+#define HAVE_WINDOW_CONTEXT 1
+
+struct _searchForMainWindowData
+{
+	HWND foundHwnd;
+	DWORD targetProcessId;
+};
+BOOL CALLBACK _searchForMainWindowCb(HWND handle, LPARAM lParam);
+HWND SearchForMainWindow()
+{
+	_searchForMainWindowData data = {};
+	DWORD currentProcessId = GetCurrentProcessId();
+	data.targetProcessId = currentProcessId;
+	EnumWindows(_searchForMainWindowCb, (LPARAM)&data);
+	return data.foundHwnd;
+}
+BOOL CALLBACK _searchForMainWindowCb(HWND hwnd, LPARAM lParam)
+{
+	_searchForMainWindowData* data = (_searchForMainWindowData*)lParam;
+	DWORD windowProcessId, windowThreadId;
+	windowThreadId = GetWindowThreadProcessId(hwnd, &windowProcessId);
+	if (windowProcessId == data->targetProcessId)
+	{
+		if (IsWindowVisible(hwnd) && NULL == GetWindow(hwnd, GW_OWNER))
+		{
+			wchar_t classNameBuffer[256];
+			RealGetWindowClassW(hwnd, &classNameBuffer[0], 256);
+			if (0 != wcscmp(classNameBuffer, L"#32770"))
+			{
+				data->foundHwnd = hwnd;
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+#if HAVE_WINDOW_CONTEXT
+#include "WindowContext.h"
+HWND FindMainWindow()
+{
+	auto context = WindowContext::GetWindowContext();
+	if (context != NULL)
+	{
+		return context->GetHwnd();
+	}
+	return SearchForMainWindow();
+}
+#else
+HWND FindMainWindow()
+{
+	return SearchForMainWindow();
+}
+#endif
+
+RECT GetMonitorRect()
+{
+	return GetMonitorRect(FindMainWindow());
+}
 RECT GetMonitorRect(HWND window)
 {
-	HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+	HMONITOR monitor;
+	if (window == NULL)
+	{
+		monitor = MonitorFromWindow(window, MONITOR_DEFAULTTOPRIMARY);
+	}
+	else
+	{
+		monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+	}
 	MONITORINFO monitorInfo = {};
 	monitorInfo.cbSize = sizeof(monitorInfo);
 	GetMonitorInfoA(monitor, &monitorInfo);
@@ -12,7 +80,15 @@ RECT GetMonitorRect(HWND window)
 }
 RECT GetMonitorWorkAreaRect(HWND window)
 {
-	HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+	HMONITOR monitor;
+	if (window == NULL)
+	{
+		monitor = MonitorFromWindow(window, MONITOR_DEFAULTTOPRIMARY);
+	}
+	else
+	{
+		monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+	}
 	MONITORINFO monitorInfo = {};
 	monitorInfo.cbSize = sizeof(monitorInfo);
 	GetMonitorInfoA(monitor, &monitorInfo);
