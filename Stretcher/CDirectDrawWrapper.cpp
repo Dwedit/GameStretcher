@@ -76,6 +76,7 @@ HRESULT CDirectDraw7Wrapper::CreateSurface(LPDDSURFACEDESC2 a, LPDIRECTDRAWSURFA
 	if (SUCCEEDED(hr) && surface != NULL)
 	{
 		CDirectDrawSurface7Wrapper* newSurface = CreateSurfaceWrapper(surface);
+		SafeRelease(surface);
 		surface = newSurface;
 	}
 	return hr;

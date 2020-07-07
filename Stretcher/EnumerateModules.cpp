@@ -19,6 +19,7 @@ using std::wstring;
 using std::min;
 using std::max;
 
+//Given a module, return its filename as a unicode string
 wstring GetModuleFileName(HMODULE module)
 {
     wstring path;
@@ -30,6 +31,7 @@ wstring GetModuleFileName(HMODULE module)
     return path;
 }
 
+//Return all modules of this process into a vector
 vector<HMODULE> GetModules()
 {
     //enumerate modules
@@ -43,6 +45,7 @@ vector<HMODULE> GetModules()
     return modules;
 }
 
+//Gets the directory from a full path, and validates the directory before returning it (otherwise returns empty string)
 wstring GetDirectory(LPCWSTR path)
 {
     if (PathIsDirectoryW(path))
@@ -64,11 +67,63 @@ wstring GetDirectory(LPCWSTR path)
     return wstring();
 }
 
+//Gets the directory from a full path, and validates the directory before returning it (otherwise returns empty string)
 wstring GetDirectory(const wstring &path)
 {
     return GetDirectory(path.c_str());
 }
 
+wstring SHGetFolderPath(int csidl)
+{
+    wchar_t buffer[MAX_PATH];
+    SHGetFolderPathW(NULL, csidl, NULL, SHGFP_TYPE_CURRENT, &buffer[0]);
+    wstring folder = buffer;
+    AddSlash(folder);
+    folder.shrink_to_fit();
+    return folder;
+}
+
+template <int csidl>
+static const wstring& SHGetFolderPathCached()
+{
+    static bool isChecked;
+    static wstring path;
+    if (isChecked) return path;
+    path = SHGetFolderPath(csidl);
+    return path;
+}
+
+const wstring& GetWindowsDirectory()
+{
+    return SHGetFolderPathCached<CSIDL_WINDOWS>();
+}
+const wstring& GetCommonFilesDirectory()
+{
+    return SHGetFolderPathCached<CSIDL_PROGRAM_FILES_COMMON>();
+}
+const wstring& GetCommonFilesX86Directory()
+{
+    return SHGetFolderPathCached<CSIDL_PROGRAM_FILES_COMMONX86>();
+}
+
+bool IsSystemDll(const wstring& path)
+{
+    {
+        const wstring& windowsDirectory = GetWindowsDirectory();
+        if (!windowsDirectory.empty() && StringStartsWithCaseInsensitive(path, windowsDirectory)) return true;
+    }
+    {
+        const wstring& commonFilesDirectory = GetCommonFilesDirectory();
+        if (!commonFilesDirectory.empty() && StringStartsWithCaseInsensitive(path, commonFilesDirectory)) return true;
+    }
+    {
+        const wstring& commonFilesX86Directory = GetCommonFilesX86Directory();
+        if (!commonFilesX86Directory.empty() && StringStartsWithCaseInsensitive(path, commonFilesX86Directory)) return true;
+    }
+    return false;
+}
+
+//Returns Modules from the current process that are DLLs, and are relative the program (and not System)
 vector<HMODULE> GetApplicationDLLs()
 {
     HMODULE thisDll = NULL;
@@ -84,7 +139,7 @@ vector<HMODULE> GetApplicationDLLs()
     {
         HMODULE module = modules[i];
         wstring path = GetModuleFileName(module);
-        if (module != thisExe && module != thisDll && StringStartsWithCaseInsensitive(path, myDirectory))
+        if (module != thisExe && module != thisDll && StringStartsWithCaseInsensitive(path, myDirectory) && !IsSystemDll(path))
         {
             result.push_back(module);
         }

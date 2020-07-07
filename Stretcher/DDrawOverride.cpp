@@ -37,19 +37,20 @@ HRESULT DDrawOverride::CreateSurface(LPDDSURFACEDESC2 desc, LPDIRECTDRAWSURFACE7
         if (SUCCEEDED(hr) && surface != NULL)
         {
             CDirectDrawSurface7Wrapper* newSurface = CreateSurfaceWrapper(surface);
+            SafeRelease(surface);
             surface = newSurface;
             return hr;
         }
     }
 
     hr = realObject->CreateSurface(desc, pSurface, unused);
+    if (SUCCEEDED(hr) && surface != NULL)
+    {
+        CDirectDrawSurface7Wrapper* newSurface = new CDirectDrawSurface7Wrapper(surface);
+        SafeRelease(surface);
+        surface = newSurface;
+    }
     return hr;
-    //if (SUCCEEDED(hr) && surface != NULL)
-    //{
-    //    CDirectDrawSurface7Wrapper* newSurface = CreateSurfaceWrapper(surface);
-    //    surface = newSurface;
-    //}
-    //return hr;
 }
 
 CDirectDrawSurface7Wrapper* DDrawSurfaceOverride::CreateSurfaceWrapper(IDirectDrawSurface7* obj)
