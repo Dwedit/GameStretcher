@@ -46,4 +46,5 @@ Minesweeper: Original and Upscaled
 ROM Check Fail (game by Farbs, uses DirectDraw) Original and Upscaled
 
 ![Screenshot of ROM Check Fail, portion of screen](/readme-images/rom_check_fail_screen_portion.png?raw=true "Screenshot of ROM Check Fail, portion of screen")
-![Screenshot of ROM Check Fail, portion of screen (upscaled)](/readme-images/rom_check_fail_screen_portion_upscaled.png?raw=true "Screenshot of ROM Check Fail, portion of screen (upscaled)")
+
+![Screenshot of ROM Check Fail, portion of screen (upscaled)](/readme-images/rom_check_fail_screen_portion_upscaled.jpg?raw=true "Screenshot of ROM Check Fail, portion of screen (upscaled)")
