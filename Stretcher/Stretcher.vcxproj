@@ -187,6 +187,7 @@
     <ClCompile Include="EnumerateModules.cpp" />
     <ClCompile Include="ImportReplacer.cpp" />
     <ClCompile Include="Initguid.cpp" />
+    <ClCompile Include="Logging.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MemoryUnlocker.cpp" />
     <ClCompile Include="Region.cpp" />

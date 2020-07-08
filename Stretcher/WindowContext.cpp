@@ -319,8 +319,16 @@ void WindowContext::MouseVirtualToVirtualScreen(LPPOINT lpPoint) const
 #endif
 }
 
+#if _DEBUG
+void LogWindowsMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+#endif
+
 LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#if _DEBUG
+	//LogWindowsMessage(hwnd, uMsg, wParam, lParam);
+#endif
+
 	switch (uMsg)
 	{
 	//Always handle these
@@ -342,6 +350,12 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	case WM_PAINT:
 	{
+		//if Resize Handler hasn't triggered yet, trigger it now
+		if (ResizeHandler != NULL)
+		{
+			(this->*ResizeHandler)();
+		}
+
 		int dummy = 0;
 		break;
 	}
