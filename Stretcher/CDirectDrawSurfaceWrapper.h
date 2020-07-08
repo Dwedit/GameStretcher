@@ -20,7 +20,7 @@ public:
     virtual ~CDirectDrawSurface7Wrapper();
     static IDirectDrawSurface7* GetRealObject(IDirectDrawSurface7* obj);
 
-    virtual  HRESULT __stdcall QueryInterface(const IID& riid, LPVOID* ppvObj);
+    virtual  HRESULT __stdcall QueryInterface(REFIID riid, LPVOID* ppvObj);
     virtual  ULONG __stdcall AddRef(void);
     virtual  ULONG __stdcall Release(void);
 
@@ -64,9 +64,9 @@ public:
 
     virtual  HRESULT __stdcall SetSurfaceDesc(LPDDSURFACEDESC2, DWORD);
 
-    virtual  HRESULT __stdcall SetPrivateData(const GUID&, LPVOID, DWORD, DWORD);
-    virtual  HRESULT __stdcall GetPrivateData(const GUID&, LPVOID, LPDWORD);
-    virtual  HRESULT __stdcall FreePrivateData(const GUID&);
+    virtual  HRESULT __stdcall SetPrivateData(REFGUID, LPVOID, DWORD, DWORD);
+    virtual  HRESULT __stdcall GetPrivateData(REFGUID, LPVOID, LPDWORD);
+    virtual  HRESULT __stdcall FreePrivateData(REFGUID);
     virtual  HRESULT __stdcall GetUniquenessValue(LPDWORD);
     virtual  HRESULT __stdcall ChangeUniquenessValue(void);
 

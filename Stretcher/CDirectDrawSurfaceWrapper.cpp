@@ -1,5 +1,6 @@
 #include "CDirectDrawSurfaceWrapper.h"
 #include "Win32Ex.h"
+#include <ddraw.h>
 
 CDirectDrawSurface7Wrapper::CDirectDrawSurface7Wrapper(IDirectDrawSurface7* obj)
 {
@@ -13,13 +14,16 @@ CDirectDrawSurface7Wrapper::~CDirectDrawSurface7Wrapper()
 
 IDirectDrawSurface7* CDirectDrawSurface7Wrapper::GetRealObject(IDirectDrawSurface7* obj)
 {
-	CDirectDrawSurface7Wrapper* wrapper = NULL;
-	HRESULT hr = obj->QueryInterface(CLSID_DirectDrawSurface7Wrapper, (void**)&wrapper);
-	if (SUCCEEDED(hr) && wrapper != NULL)
+	if (obj != NULL)
 	{
-		IDirectDrawSurface7* realObject = wrapper->realObject;
-		SafeRelease(wrapper);
-		return realObject;
+		CDirectDrawSurface7Wrapper* wrapper = NULL;
+		HRESULT hr = obj->QueryInterface(CLSID_DirectDrawSurface7Wrapper, (void**)&wrapper);
+		if (SUCCEEDED(hr) && wrapper != NULL)
+		{
+			IDirectDrawSurface7* realObject = wrapper->realObject;
+			SafeRelease(wrapper);
+			return realObject;
+		}
 	}
 	return obj;
 }
@@ -92,12 +96,14 @@ HRESULT CDirectDrawSurface7Wrapper::AddOverlayDirtyRect(LPRECT a)
 
 HRESULT CDirectDrawSurface7Wrapper::Blt(LPRECT a, LPDIRECTDRAWSURFACE7 b, LPRECT c, DWORD d, LPDDBLTFX e)
 {
+	//surfaces found in DDBLTFX were declared obsolete, and are not used, thus do not need to be unwrapped
 	b = GetRealObject(b);
 	return realObject->Blt(a, b, c, d, e);
 }
 
 HRESULT CDirectDrawSurface7Wrapper::BltBatch(LPDDBLTBATCH a, DWORD b, DWORD c)
 {
+	//According to MSDN: Not Implemented
 	return realObject->BltBatch(a, b, c);
 }
 
@@ -237,6 +243,16 @@ HRESULT CDirectDrawSurface7Wrapper::Unlock(LPRECT a)
 HRESULT CDirectDrawSurface7Wrapper::UpdateOverlay(LPRECT a, LPDIRECTDRAWSURFACE7 b, LPRECT c, DWORD d, LPDDOVERLAYFX e)
 {
 	b = GetRealObject(b);
+	//unwrap DirectDraw surfaces contained in DDOVERLAYFX if they exist
+	if ((d & (DDOVER_ALPHADESTSURFACEOVERRIDE | DDOVER_ALPHASRCCONSTOVERRIDE)) != 0 && e != NULL)
+	{
+		DDOVERLAYFX fx = *e;
+		if (d & DDOVER_ALPHASRCCONSTOVERRIDE)
+			fx.lpDDSAlphaSrc = (IDirectDrawSurface*)GetRealObject((IDirectDrawSurface7*)fx.lpDDSAlphaSrc);
+		if (d & DDOVER_ALPHADESTSURFACEOVERRIDE)
+			fx.lpDDSAlphaDest = (IDirectDrawSurface*)GetRealObject((IDirectDrawSurface7*)fx.lpDDSAlphaDest);
+		return realObject->UpdateOverlay(a, b, c, d, &fx);
+	}
 	return realObject->UpdateOverlay(a, b, c, d, e);
 }
 
