@@ -175,7 +175,10 @@
   <ItemGroup>
     <ClCompile Include="CDirectDrawSurfaceWrapper.cpp" />
     <ClCompile Include="CDirectDrawWrapper.cpp" />
+    <ClCompile Include="CRenderPass.cpp" />
     <ClCompile Include="CUpscaler.cpp" />
+    <ClCompile Include="CUpscaler2.cpp" />
+    <ClCompile Include="CUpscaler2Impl.cpp" />
     <ClCompile Include="D3D9Context_Old.cpp" />
     <ClCompile Include="D3D9Override.cpp" />
     <ClCompile Include="D3D9Override_D3D9Context.cpp" />
@@ -205,8 +208,12 @@
   <ItemGroup>
     <ClInclude Include="CDirectDrawSurfaceWrapper.h" />
     <ClInclude Include="CDirectDrawWrapper.h" />
+    <ClInclude Include="CRenderPass.h" />
     <ClInclude Include="CUpscaler.h" />
+    <ClInclude Include="CUpscaler2.h" />
+    <ClInclude Include="CUpscaler2Impl.h" />
     <ClInclude Include="CUpscalerImpl.h" />
+    <ClInclude Include="CVertexBuffer.h" />
     <ClInclude Include="D3D9Context_Old.h" />
     <ClInclude Include="D3D9Override.h" />
     <ClInclude Include="D3D9VTable.h" />

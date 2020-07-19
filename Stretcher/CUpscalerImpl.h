@@ -391,7 +391,7 @@ private:
 		Vertex* vertices = NULL;
 		const int VertexCount = 8;
 		HRESULT hr;
-		hr = vertexBuffer->Lock(0, VertexCount * sizeof(Vertex), &vData, 0);
+		hr = vertexBuffer->Lock(0, VertexCount * sizeof(Vertex), &vData, D3DLOCK_DISCARD);
 		if (FAILED(hr)) goto failed;
 
 		vertices = (Vertex*)vData;
@@ -407,6 +407,11 @@ private:
 			float u1 = (float)(this->inputLeft + this->inputWidth) / (float)this->textureWidth;
 			float v0 = (float)this->inputTop / (float)this->textureHeight;
 			float v1 = (float)(this->inputTop + this->inputHeight) / (float)this->textureHeight;
+
+			vertices[0] = Vertex(x, y, z, 0, 0);
+			vertices[1] = Vertex(x2, y, z, 1, 0);
+			vertices[2] = Vertex(x, y2, z, 0, 1);
+			vertices[3] = Vertex(x2, y2, z, 1, 1);
 
 			vertices[4] = Vertex(x, y, z, u0, v0);
 			vertices[5] = Vertex(x2, y, z, u1, v0);
@@ -1319,7 +1324,12 @@ public:
 	}
 	void SetUpscaleFilter(int upscaleFilter)
 	{
-		this->upscaleFilter = upscaleFilter;
+		if (this->upscaleFilter != upscaleFilter)
+		{
+			this->upscaleFilter = upscaleFilter;
+			this->backBufferDirty = true;
+			this->upscaledTextureDirty = true;
+		}
 	}
 	int GetUpscaleFilter()
 	{
@@ -1388,7 +1398,7 @@ public:
 		this->updateRegionOriginal = region;
 		this->updateRegion1X = region.ZoomAndDialate(1.0f, 2.0f, 0.0f, 0.0f, 0, 0, this->inputWidth, this->inputHeight);
 		this->updateRegion2X = region.ZoomAndDialate(2.0f, 3.0f, 0.0f, 0.0f, 0, 0, this->inputWidth * 2, this->inputHeight * 2);
-		this->updateRegionScreen = region.ZoomAndDialate(scale, scale * 2.0f, (float)this->updateLeft, (float)this->updateTop, this->updateLeft, this->updateTop, this->updateLeft + this->updateWidth, this->updateTop + this->updateHeight);
+		this->updateRegionScreen = region.ZoomAndDialate(scale, 2.0f, (float)this->updateLeft, (float)this->updateTop, this->updateLeft, this->updateTop, this->updateLeft + this->updateWidth, this->updateTop + this->updateHeight);
 
 		if (this->upscaledTextureDirty && this->GetUpscaleFilter() != 0)
 		{
