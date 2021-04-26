@@ -100,7 +100,7 @@ HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hF
 	if (pPresentationParameters) { vsync = pPresentationParameters->PresentationInterval != D3DPRESENT_INTERVAL_IMMEDIATE; }
 	UINT Adapter2 = 0;
 	D3DDEVTYPE DeviceType2 = D3DDEVTYPE_HAL;
-	DWORD BehaviorFlags2 = BehaviorFlags & VERTEX_PROCESSING_FLAGS & D3DCREATE_MULTITHREADED;
+	DWORD BehaviorFlags2 = BehaviorFlags & (VERTEX_PROCESSING_FLAGS | D3DCREATE_MULTITHREADED);
 
 	DWORD vertexProcessingMode = BehaviorFlags & VERTEX_PROCESSING_FLAGS;
 	if (vertexProcessingMode == D3DCREATE_SOFTWARE_VERTEXPROCESSING)
@@ -142,7 +142,7 @@ HRESULT D3D9Context2::CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND 
 	if (pPresentationParameters) { vsync = pPresentationParameters->PresentationInterval != D3DPRESENT_INTERVAL_IMMEDIATE; }
 	UINT Adapter2 = 0;
 	D3DDEVTYPE DeviceType2 = D3DDEVTYPE_HAL;
-	DWORD BehaviorFlags2 = BehaviorFlags & VERTEX_PROCESSING_FLAGS & D3DCREATE_MULTITHREADED;
+	DWORD BehaviorFlags2 = BehaviorFlags & (VERTEX_PROCESSING_FLAGS | D3DCREATE_MULTITHREADED);
 
 	DWORD vertexProcessingMode = BehaviorFlags & VERTEX_PROCESSING_FLAGS;
 	if (vertexProcessingMode == D3DCREATE_SOFTWARE_VERTEXPROCESSING)
