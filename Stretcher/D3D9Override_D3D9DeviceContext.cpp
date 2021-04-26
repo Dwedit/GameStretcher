@@ -238,8 +238,9 @@ HRESULT D3D9DeviceContext::GetCreationParameters_(D3DDEVICE_CREATION_PARAMETERS*
 	}
 	else
 	{
-		//TODO - Return the creation parameters provided by the application rather than by the stretcher
-		hr = this->GetCreationParametersReal(pParameters);
+		//Return the creation parameters provided by the application rather than by the stretcher
+		*pParameters = this->originalDeviceCreationParameters;
+		return S_OK;
 	}
 	return hr;
 }
@@ -507,6 +508,7 @@ HRESULT D3D9DeviceContext::ResetExReal(D3DPRESENT_PARAMETERS* pPresentationParam
 
 ULONG __stdcall D3D9DeviceContext::Release(IDirect3DDevice9Ex* This)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -520,6 +522,7 @@ ULONG __stdcall D3D9DeviceContext::Release(IDirect3DDevice9Ex* This)
 }
 HRESULT __stdcall D3D9DeviceContext::GetCreationParameters(IDirect3DDevice9Ex* This, D3DDEVICE_CREATION_PARAMETERS* pParameters)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -533,6 +536,7 @@ HRESULT __stdcall D3D9DeviceContext::GetCreationParameters(IDirect3DDevice9Ex* T
 }
 HRESULT __stdcall D3D9DeviceContext::CreateAdditionalSwapChain(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -574,6 +578,7 @@ UINT __stdcall D3D9DeviceContext::GetNumberOfSwapChains(IDirect3DDevice9Ex* This
 */
 HRESULT __stdcall D3D9DeviceContext::Reset(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context != NULL && context->device == NULL)
 	{
@@ -592,6 +597,7 @@ HRESULT __stdcall D3D9DeviceContext::Reset(IDirect3DDevice9Ex* This, D3DPRESENT_
 }
 HRESULT __stdcall D3D9DeviceContext::Present(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -605,6 +611,7 @@ HRESULT __stdcall D3D9DeviceContext::Present(IDirect3DDevice9Ex* This, const REC
 }
 HRESULT __stdcall D3D9DeviceContext::GetBackBuffer(IDirect3DDevice9Ex* This, UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -618,6 +625,7 @@ HRESULT __stdcall D3D9DeviceContext::GetBackBuffer(IDirect3DDevice9Ex* This, UIN
 }
 HRESULT __stdcall D3D9DeviceContext::GetFrontBufferData(IDirect3DDevice9Ex* This, UINT iSwapChain, IDirect3DSurface9* pDestSurface)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -631,6 +639,7 @@ HRESULT __stdcall D3D9DeviceContext::GetFrontBufferData(IDirect3DDevice9Ex* This
 }
 HRESULT __stdcall D3D9DeviceContext::BeginStateBlock(IDirect3DDevice9Ex* This)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -644,6 +653,7 @@ HRESULT __stdcall D3D9DeviceContext::BeginStateBlock(IDirect3DDevice9Ex* This)
 }
 HRESULT __stdcall D3D9DeviceContext::PresentEx(IDirect3DDevice9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context == NULL || context->device == NULL)
 	{
@@ -657,6 +667,7 @@ HRESULT __stdcall D3D9DeviceContext::PresentEx(IDirect3DDevice9Ex* This, const R
 }
 HRESULT __stdcall D3D9DeviceContext::ResetEx(IDirect3DDevice9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context != NULL && context->device == NULL)
 	{
@@ -687,6 +698,7 @@ HRESULT __stdcall D3D9DeviceContext::ResetEx(IDirect3DDevice9Ex* This, D3DPRESEN
 }
 HRESULT __stdcall D3D9DeviceContext::TestCooperativeLevel(IDirect3DDevice9Ex* This)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9DeviceContext(This);
 	if (context != NULL && context->device == NULL)
 	{

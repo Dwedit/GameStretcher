@@ -3,10 +3,27 @@
 #include "CUpscaler.h"
 #include "Win32Ex.h"
 
-#define SIMULATE_LOST_DEVICE 1
+#define SIMULATE_LOST_DEVICE 0
 
 #define LOST_DEVICE_TEST 0
 #define NO_DEVICE_HOOK 0
+
+extern CRITICAL_SECTION d3d9CriticalSection;
+
+class CriticalSectionLock
+{
+	LPCRITICAL_SECTION criticalSection;
+public:
+	CriticalSectionLock(LPCRITICAL_SECTION criticalSection)
+	{
+		this->criticalSection = criticalSection;
+		EnterCriticalSection(criticalSection);
+	}
+	~CriticalSectionLock()
+	{
+		LeaveCriticalSection(criticalSection);
+	}
+};
 
 class D3D9Context2;
 class D3D9DeviceContext;
@@ -89,6 +106,8 @@ public:
 	int refCountFirstCapture = 0;
 	int refCountTrackerCount = 0;
 	bool disposing = false;
+
+	D3DDEVICE_CREATION_PARAMETERS originalDeviceCreationParameters = {};
 public:
 	D3D9DeviceContext(IDirect3DDevice9* device);
 	D3D9DeviceContext();

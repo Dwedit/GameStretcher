@@ -97,6 +97,16 @@ HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags
 	SafeRelease(virtualBackBuffer);
 	SafeRelease(virtualBackBufferMultisampled);
 	
+	if (pixelFormat == D3DFMT_UNKNOWN)
+	{
+		if (realBackBuffer != NULL)
+		{
+			D3DSURFACE_DESC desc;
+			realBackBuffer->GetDesc(&desc);
+			pixelFormat = desc.Format;
+		}
+	}
+
 	hr = device->CreateTexture(width, height, 1, D3DUSAGE_RENDERTARGET, pixelFormat, D3DPOOL_DEFAULT, &virtualBackBufferTexture, NULL);
 	if (SUCCEEDED(hr) && virtualBackBufferTexture != NULL)
 	{
@@ -115,9 +125,11 @@ HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags
 	}
 
 	forceReal = true;
+	this->parent->forceReal = true;
 	upscaler.SetBorderDirty();
 	upscaler.SetInputRectangle(0, 0, width, height);
 	upscaler.SetSourceTexture(virtualBackBufferTexture);
+	this->parent->forceReal = false;
 	forceReal = false;
 
 	hr = device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 255), 0, 0);
@@ -133,13 +145,11 @@ HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags
 	}
 
 	hr = device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 255, 0), 0, 0);
-	if (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING)
+
+	//According to the API documentation, should write back the actual back buffer format used if D3DFMT_UNKNOWN was specified
+	if (pPresentationParameters != NULL && pPresentationParameters->BackBufferFormat == D3DFMT_UNKNOWN)
 	{
-		device->SetSoftwareVertexProcessing(true);
-	}
-	else
-	{
-		device->SetSoftwareVertexProcessing(false);
+		pPresentationParameters->BackBufferFormat = pixelFormat;
 	}
 	return hr;
 }
@@ -256,6 +266,7 @@ HRESULT D3D9SwapChainContext::GetPresentParametersReal(D3DPRESENT_PARAMETERS* pP
 
 HRESULT __stdcall D3D9SwapChainContext::Present(IDirect3DSwapChain9Ex* This, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9SwapChainContext(This);
 	if (context == NULL || context->realSwapChain == NULL)
 	{
@@ -269,6 +280,7 @@ HRESULT __stdcall D3D9SwapChainContext::Present(IDirect3DSwapChain9Ex* This, con
 }
 HRESULT __stdcall D3D9SwapChainContext::GetFrontBufferData(IDirect3DSwapChain9Ex* This, IDirect3DSurface9* pDestSurface)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9SwapChainContext(This);
 	if (context == NULL || context->realSwapChain == NULL)
 	{
@@ -283,6 +295,7 @@ HRESULT __stdcall D3D9SwapChainContext::GetFrontBufferData(IDirect3DSwapChain9Ex
 }
 HRESULT __stdcall D3D9SwapChainContext::GetBackBuffer(IDirect3DSwapChain9Ex* This, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9SwapChainContext(This);
 	if (context == NULL || context->realSwapChain == NULL)
 	{
@@ -296,6 +309,7 @@ HRESULT __stdcall D3D9SwapChainContext::GetBackBuffer(IDirect3DSwapChain9Ex* Thi
 }
 HRESULT __stdcall D3D9SwapChainContext::GetPresentParameters(IDirect3DSwapChain9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
+	CriticalSectionLock locker(&::d3d9CriticalSection);
 	auto context = GetD3D9SwapChainContext(This);
 	if (context == NULL || context->realSwapChain == NULL)
 	{

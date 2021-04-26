@@ -72,9 +72,16 @@ void D3D9Context2::GetPresentParameters(D3DPRESENT_PARAMETERS& presentParameters
 	presentParameters.PresentationInterval = vsync ? D3DPRESENT_INTERVAL_ONE : D3DPRESENT_INTERVAL_IMMEDIATE;
 }
 
+const DWORD VERTEX_PROCESSING_FLAGS = (D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_HARDWARE_VERTEXPROCESSING);
+
 HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface)
 {
 	if (this->d3d9 == NULL) return E_POINTER;
+	D3DDEVICE_CREATION_PARAMETERS originalCreationParameters;
+	originalCreationParameters.AdapterOrdinal = Adapter;
+	originalCreationParameters.DeviceType = DeviceType;
+	originalCreationParameters.hFocusWindow = hFocusWindow;
+	originalCreationParameters.BehaviorFlags = BehaviorFlags;
 	HRESULT hr = 0;
 #if NO_DEVICE_HOOK
 	{
@@ -93,11 +100,15 @@ HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hF
 	if (pPresentationParameters) { vsync = pPresentationParameters->PresentationInterval != D3DPRESENT_INTERVAL_IMMEDIATE; }
 	UINT Adapter2 = 0;
 	D3DDEVTYPE DeviceType2 = D3DDEVTYPE_HAL;
-	DWORD BehaviorFlags2 = D3DCREATE_MIXED_VERTEXPROCESSING;
-	if (BehaviorFlags & D3DCREATE_MULTITHREADED)
+	DWORD BehaviorFlags2 = BehaviorFlags & VERTEX_PROCESSING_FLAGS & D3DCREATE_MULTITHREADED;
+
+	DWORD vertexProcessingMode = BehaviorFlags & VERTEX_PROCESSING_FLAGS;
+	if (vertexProcessingMode == D3DCREATE_SOFTWARE_VERTEXPROCESSING)
 	{
-		BehaviorFlags2 |= D3DCREATE_MULTITHREADED;
+		BehaviorFlags2 &= ~VERTEX_PROCESSING_FLAGS;
+		BehaviorFlags2 |= D3DCREATE_MIXED_VERTEXPROCESSING;
 	}
+
 	D3DPRESENT_PARAMETERS presentParameters = {};
 	GetPresentParameters(presentParameters, hwnd, vsync);
 	hr = CreateDeviceReal(Adapter2, DeviceType2, hwnd, BehaviorFlags2, &presentParameters, ppReturnedDeviceInterface);
@@ -105,22 +116,39 @@ HRESULT D3D9Context2::CreateDevice_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hF
 	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device, true);
 	deviceContext->parent = this;
 	deviceContext->Init(device);
+	deviceContext->originalDeviceCreationParameters = originalCreationParameters;
 	deviceContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
+
+	if (vertexProcessingMode == D3DCREATE_SOFTWARE_VERTEXPROCESSING)
+	{
+		device->SetSoftwareVertexProcessing(true);
+	}
+
 	return hr;
 }
+
 HRESULT D3D9Context2::CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface)
 {
 	if (this->d3d9 == NULL) return E_POINTER;
+	D3DDEVICE_CREATION_PARAMETERS originalCreationParameters;
+	originalCreationParameters.AdapterOrdinal = Adapter;
+	originalCreationParameters.DeviceType = DeviceType;
+	originalCreationParameters.hFocusWindow = hFocusWindow;
+	originalCreationParameters.BehaviorFlags = BehaviorFlags;
+
 	HWND hwnd = hFocusWindow;
 	if (hwnd == NULL && pPresentationParameters) { hwnd = pPresentationParameters->hDeviceWindow; }
 	bool vsync = true;
 	if (pPresentationParameters) { vsync = pPresentationParameters->PresentationInterval != D3DPRESENT_INTERVAL_IMMEDIATE; }
 	UINT Adapter2 = 0;
 	D3DDEVTYPE DeviceType2 = D3DDEVTYPE_HAL;
-	DWORD BehaviorFlags2 = D3DCREATE_MIXED_VERTEXPROCESSING;
-	if (BehaviorFlags & D3DCREATE_MULTITHREADED)
+	DWORD BehaviorFlags2 = BehaviorFlags & VERTEX_PROCESSING_FLAGS & D3DCREATE_MULTITHREADED;
+
+	DWORD vertexProcessingMode = BehaviorFlags & VERTEX_PROCESSING_FLAGS;
+	if (vertexProcessingMode == D3DCREATE_SOFTWARE_VERTEXPROCESSING)
 	{
-		BehaviorFlags2 |= D3DCREATE_MULTITHREADED;
+		BehaviorFlags2 &= ~VERTEX_PROCESSING_FLAGS;
+		BehaviorFlags2 |= D3DCREATE_MIXED_VERTEXPROCESSING;
 	}
 	D3DPRESENT_PARAMETERS presentParameters = {};
 	GetPresentParameters(presentParameters, hwnd, vsync);
@@ -129,7 +157,14 @@ HRESULT D3D9Context2::CreateDeviceEx_(UINT Adapter, D3DDEVTYPE DeviceType, HWND 
 	D3D9DeviceContext* deviceContext = GetD3D9DeviceContext(device, true);
 	deviceContext->parent = this;
 	deviceContext->Init(device);
+	deviceContext->originalDeviceCreationParameters = originalCreationParameters;
 	deviceContext->CreateVirtualDevice(hwnd, BehaviorFlags, pPresentationParameters);
+
+	if (vertexProcessingMode == D3DCREATE_SOFTWARE_VERTEXPROCESSING)
+	{
+		device->SetSoftwareVertexProcessing(true);
+	}
+
 	return hr;
 }
 ULONG D3D9Context2::Release_()

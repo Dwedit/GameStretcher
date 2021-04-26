@@ -132,6 +132,8 @@ BOOL WINAPI DllMain(
         // Initialize once for each new process.
         // Return FALSE to fail DLL load.
         hInstance = hinstDLL;
+        extern CRITICAL_SECTION d3d9CriticalSection;
+        InitializeCriticalSection(&d3d9CriticalSection);
         DoHacks();
         break;
 
