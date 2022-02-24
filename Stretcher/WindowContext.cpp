@@ -49,6 +49,8 @@ extern WindowContext* lastWindowContext2;
  (isWindowUnicode ? GetWindowLongW((hwnd), (index)) :\
  GetWindowLongA((hwnd), (index)))
 
+bool WindowContext::staticRecursionGuard = false;
+
 void WindowContext::Init(HWND hwnd)
 {
 	if (window != NULL) Release();
@@ -897,7 +899,18 @@ LRESULT CALLBACK WindowContext::DefaultWndProc(HWND hwnd, UINT uMsg, WPARAM wPar
 	WNDPROC currentWndProc = (WNDPROC)_GetWindowLongPtr(hwnd, GWLP_WNDPROC);
 	if (currentWndProc != DefaultWndProc && currentWndProc != SimpleWndProc)
 	{
-		return _CallWindowProc(currentWndProc, hwnd, uMsg, wParam, lParam);
+		bool recursionGuard = staticRecursionGuard;
+		if (!recursionGuard)
+		{
+			staticRecursionGuard = true;
+			LRESULT result = _CallWindowProc(currentWndProc, hwnd, uMsg, wParam, lParam);
+			staticRecursionGuard = recursionGuard;
+			return result;
+		}
+		else
+		{
+			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
 	}
 #if USE_CLASS_HOOK
 	WNDPROC oldWndProc = windowClassSet.GetClassWndProc(hwnd);
@@ -974,6 +987,7 @@ void WindowContext::UpdateSize()
 
 void WindowContext::UpdateSizeReal()
 {
+	//TODO: Check for a window that began maximized, and use its Restored Window Placement instead of its maximized size
 	RealClientRect = GetRealClientRect();
 	RealClientBounds = GetRealClientBounds();
 	RealWindowRect = GetRealWindowRect();
@@ -1042,6 +1056,12 @@ void WindowContext::UpdateSizeScaled()
 void WindowContext::UpdateSizeNonVirtualized()
 {
 	UpdateSizeReal();
+	//{
+	//	WINDOWPLACEMENT windowPlacement;
+	//	GetWindowPlacement(GetHwnd(), &windowPlacement);
+	//
+	//	int dummy = 0;
+	//}
 	VirtualClientRect = RealClientRect;
 	VirtualClientBounds = RealClientBounds;
 	VirtualWindowRect = RealWindowRect;

@@ -10,7 +10,7 @@ struct IUnknown;
 #include "WindowClassContext.h"
 #include "D3D9Override.h"
 #include "DDrawOverride.h"
-
+extern bool IsApplicationDLL(HMODULE module);
 extern void EnableVisualStyles();
 
 #include "ImportReplacer.h"
@@ -87,8 +87,13 @@ void BuildImportMap()
     ReplaceImport("User32.dll", "GetUpdateRgn", (FARPROC)GetUpdateRgn_Replacement, (FARPROC*)&GetUpdateRgn_OLD);
     ReplaceImport("User32.dll", "InvalidateRgn", (FARPROC)InvalidateRgn_Replacement, (FARPROC*)&InvalidateRgn_OLD);
     ReplaceImport("User32.dll", "RedrawWindow", (FARPROC)RedrawWindow_Replacement, (FARPROC*)&RedrawWindow_OLD);
-
+    ReplaceImport("User32.dll", "GetSystemMetrics", (FARPROC)GetSystemMetrics_Replacement, (FARPROC*)&GetSystemMetrics_OLD);
+    ReplaceImport("User32.dll", "GetMonitorInfoA", (FARPROC)GetMonitorInfoA_Replacement, (FARPROC*)&GetMonitorInfoA_OLD);
+    ReplaceImport("User32.dll", "GetMonitorInfoW", (FARPROC)GetMonitorInfoW_Replacement, (FARPROC*)&GetMonitorInfoW_OLD);
+    ReplaceImport("User32.dll", "IsZoomed", (FARPROC)IsZoomed_Replacement, (FARPROC*)&IsZoomed_OLD);
     ReplaceImport("Kernel32.dll", "GetProcAddress", (FARPROC)GetProcAddress_Replacement, (FARPROC*)&GetProcAddress_OLD);
+    ReplaceImport("Kernel32.dll", "LoadLibraryA", (FARPROC)LoadLibraryA_Replacement, (FARPROC*)&LoadLibraryA_OLD);
+    ReplaceImport("Kernel32.dll", "LoadLibraryW", (FARPROC)LoadLibraryW_Replacement, (FARPROC*)&LoadLibraryW_OLD);
     ReplaceImport("d3d9.dll", "Direct3DCreate9", (FARPROC)Direct3DCreate9_Replacement, (FARPROC*)&Direct3DCreate9_OLD);
     ReplaceImport("d3d9.dll", "Direct3DCreate9Ex", (FARPROC)Direct3DCreate9Ex_Replacement, (FARPROC*)&Direct3DCreate9Ex_OLD);
     ReplaceImport("ddraw.dll", "DirectDrawCreate", (FARPROC)DirectDrawCreate_Replacement, (FARPROC*)&DirectDrawCreate_OLD);
@@ -169,7 +174,13 @@ GetUpdateRect_FUNC GetUpdateRect_OLD = NULL;
 GetUpdateRgn_FUNC GetUpdateRgn_OLD = NULL;
 InvalidateRgn_FUNC InvalidateRgn_OLD = NULL;
 RedrawWindow_FUNC RedrawWindow_OLD = NULL;
+GetSystemMetrics_FUNC GetSystemMetrics_OLD = NULL;
+GetMonitorInfoA_FUNC GetMonitorInfoA_OLD = NULL;
+GetMonitorInfoW_FUNC GetMonitorInfoW_OLD = NULL;
+IsZoomed_FUNC IsZoomed_OLD = NULL;
 GetProcAddress_FUNC GetProcAddress_OLD = NULL;
+LoadLibraryA_FUNC LoadLibraryA_OLD = NULL;
+LoadLibraryW_FUNC LoadLibraryW_OLD = NULL;
 Direct3DCreate9_FUNC Direct3DCreate9_OLD = NULL;
 Direct3DCreate9Ex_FUNC Direct3DCreate9Ex_OLD = NULL;
 DirectDrawCreate_FUNC DirectDrawCreate_OLD = NULL;
@@ -733,6 +744,31 @@ BOOL WINAPI RedrawWindow_Replacement(HWND hWnd, CONST RECT* lprcUpdate, HRGN hrg
     return windowContext->RedrawWindow_(lprcUpdate, hrgnUpdate, flags);
 }
 
+int WINAPI GetSystemMetrics_Replacement(int nIndex)
+{
+	//TODO: override reported screen resolution if enabled
+    int value = GetSystemMetrics_OLD(nIndex);
+    return value;
+}
+BOOL WINAPI GetMonitorInfoA_Replacement(HMONITOR hMonitor, LPMONITORINFO lpmi)
+{
+	//TODO: override reported screen resolution if enabled
+    return GetMonitorInfoA_OLD(hMonitor, lpmi);
+}
+BOOL WINAPI GetMonitorInfoW_Replacement(HMONITOR hMonitor, LPMONITORINFO lpmi)
+{
+	//TODO: override reported screen resolution if enabled
+    return GetMonitorInfoW_OLD(hMonitor, lpmi);
+}
+BOOL WINAPI IsZoomed_Replacement(HWND hWnd)
+{
+	//For virtualization of Maximized status of a window,
+	//make it consistent with what hooked GetWindowLong would return
+    WindowContext* windowContext = WindowContext::Get(hWnd);
+    if (windowContext == NULL) return IsZoomed_OLD(hWnd);
+    return 0 != (windowContext->GetWindowLong_(GWL_STYLE) & WS_MAXIMIZE);
+}
+
 FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName)
 {
     FARPROC overrideAddress = importMap.GetProcAddress(hModule, lpProcName);
@@ -742,6 +778,27 @@ FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName)
     }
     return GetProcAddress_OLD(hModule, lpProcName);
 }
+
+HMODULE WINAPI LoadLibraryA_Replacement(LPCSTR fileName)
+{
+    HMODULE module = LoadLibraryA_OLD(fileName);
+    if (IsApplicationDLL(module))
+    {
+        ReplaceImports(module);
+    }
+    return module;
+}
+
+HMODULE WINAPI LoadLibraryW_Replacement(LPCWSTR fileName)
+{
+    HMODULE module = LoadLibraryW_OLD(fileName);
+    if (IsApplicationDLL(module))
+    {
+        ReplaceImports(module);
+    }
+    return module;
+}
+
 
 IDirect3D9* WINAPI Direct3DCreate9_Replacement(UINT SDKVersion)
 {

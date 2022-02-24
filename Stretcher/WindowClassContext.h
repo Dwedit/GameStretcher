@@ -1,6 +1,6 @@
 #pragma once
 
-#define USE_CLASS_HOOK 1
+#define USE_CLASS_HOOK 0
 
 #if USE_CLASS_HOOK
 

@@ -123,6 +123,23 @@ bool IsSystemDll(const wstring& path)
     return false;
 }
 
+bool IsApplicationDLL(HMODULE module)
+{
+    HMODULE thisDll = NULL;
+    HMODULE thisExe = GetModuleHandleA(NULL);
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, (LPCWSTR)&IsApplicationDLL, &thisDll);
+
+    wstring myPath = GetModuleFileName(thisExe);
+    wstring myDirectory = GetDirectory(myPath);
+
+    wstring path = GetModuleFileName(module);
+    if (module != thisExe && module != thisDll && StringStartsWithCaseInsensitive(path, myDirectory) && !IsSystemDll(path))
+    {
+        return true;
+    }
+    return false;
+}
+
 //Returns Modules from the current process that are DLLs, and are relative the program (and not System)
 vector<HMODULE> GetApplicationDLLs()
 {

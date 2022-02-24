@@ -92,6 +92,7 @@ class WindowContext
 	bool deleteThis;	//indicates that the object should be deleted once the stack depth reaches 0
 	int wndProcStackDepth = 0;	//stack depth for wndproc, when it reaches 0, it is okay to delete the object
 
+	static bool staticRecursionGuard;
 public:
 	//Main WndProc handler
 	LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
