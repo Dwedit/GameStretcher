@@ -182,6 +182,7 @@
     <ClCompile Include="D3D9Override_D3D9DeviceContext.cpp" />
     <ClCompile Include="D3D9Override_D3D9SwapChainContext.cpp" />
     <ClCompile Include="D3D9Override_ObjectStore.cpp" />
+    <ClCompile Include="D3D9Override_SurfaceContext.cpp" />
     <ClCompile Include="D3D9Override_VTableStore.cpp" />
     <ClCompile Include="DDrawOverride.cpp" />
     <ClCompile Include="EnumerateModules.cpp" />

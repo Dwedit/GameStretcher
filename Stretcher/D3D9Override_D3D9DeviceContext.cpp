@@ -1,13 +1,23 @@
 #include "D3D9Override.h"
 #include "MemoryUnlocker.h"
 
-D3D9DeviceContext::D3D9DeviceContext(IDirect3DDevice9* device)
-{
-	Init(device);
-}
 D3D9DeviceContext::D3D9DeviceContext()
 {
-	
+	this->device = NULL;
+	this->originalVTable = NULL;
+	this->myVTable = NULL;
+
+	this->parent = NULL;
+	this->childSwapChainContext = NULL;
+	this->realSwapChain = NULL;
+
+	this->forceReal = false;
+	this->simulateLostDevice = 0;
+	this->IsEx = false;
+	this->internalRefCount = 0;
+	this->refCountFirstCapture = 0;
+	this->refCountTrackerCount = 0;
+	this->disposing = false;
 }
 
 void D3D9DeviceContext::SetVTable(IDirect3DDevice9ExVtbl* myVTable)

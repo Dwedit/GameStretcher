@@ -28,6 +28,7 @@ public:
 class D3D9Context2;
 class D3D9DeviceContext;
 class D3D9SwapChainContext;
+class D3D9SurfaceContext;
 
 extern D3D9Context2* GetD3D9Context(IDirect3D9* key, bool allocate = false);
 extern D3D9Context2* GetD3D9Context();
@@ -38,12 +39,16 @@ extern void RemoveD3D9DeviceContext(IDirect3DDevice9* key);
 extern D3D9SwapChainContext* GetD3D9SwapChainContext(IDirect3DSwapChain9* key, bool allocate = false);
 extern D3D9SwapChainContext* GetD3D9SwapChainContext();
 extern void RemoveD3D9SwapChainContext(IDirect3DSwapChain9* key);
+extern D3D9SurfaceContext* GetD3D9SurfaceContext(IDirect3DSurface9* key, bool allocate = false);
+extern D3D9SurfaceContext* GetD3D9SurfaceContext();
+extern void RemoveD3D9SurfaceContext(IDirect3DSurface9* key);
 bool SwapChainContextExists(IDirect3DSwapChain9* key);
 void RemoveD3D9DisposedObjects();
 
 extern IDirect3D9ExVtbl* GetOriginalVTable(IDirect3D9* d3d9, bool allocate = false);
 extern IDirect3DDevice9ExVtbl* GetOriginalVTable(IDirect3DDevice9* device, bool allocate = false);
 extern IDirect3DSwapChain9ExVtbl* GetOriginalVTable(IDirect3DSwapChain9* swapChain, bool allocate = false);
+extern IDirect3DSurface9Vtbl* GetOriginalVTable(IDirect3DSurface9* surface, bool allocate = false);
 //extern IDirect3D9ExVtbl* GetNewVTable(IDirect3D9* d3d9);
 //extern IDirect3DDevice9ExVtbl* GetNewVTable(IDirect3DDevice9* device);
 //extern IDirect3DSwapChain9ExVtbl* GetNewVTable(IDirect3DSwapChain9* swapChain);
@@ -109,7 +114,6 @@ public:
 
 	D3DDEVICE_CREATION_PARAMETERS originalDeviceCreationParameters = {};
 public:
-	D3D9DeviceContext(IDirect3DDevice9* device);
 	D3D9DeviceContext();
 	static void SetVTable(IDirect3DDevice9ExVtbl* myVTable);
 	void SetVTable();
@@ -190,9 +194,11 @@ public:
 	bool insidePresent = false;
 	bool forceReal = false;
 	int width, height;
+	bool lockable = false;
 	D3DPRESENT_PARAMETERS presentParameters = {};
+
+	D3D9SurfaceContext* virtualBackBufferContext = NULL;
 public:
-	D3D9SwapChainContext(IDirect3DSwapChain9* swapChain);
 	D3D9SwapChainContext();
 	void SetVTable();
 	void Init(IDirect3DSwapChain9* swapChain);
@@ -215,4 +221,29 @@ public:
 	static HRESULT __stdcall GetFrontBufferData(IDirect3DSwapChain9Ex* This, IDirect3DSurface9* pDestSurface);
 	static HRESULT __stdcall GetBackBuffer(IDirect3DSwapChain9Ex* This, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
 	static HRESULT __stdcall GetPresentParameters(IDirect3DSwapChain9Ex* This, D3DPRESENT_PARAMETERS* pPresentationParameters);
+};
+
+class D3D9SurfaceContext
+{
+	friend D3D9DeviceContext;
+public:
+	IDirect3DSurface9* realSurface = NULL;
+
+	IDirect3DSurface9Vtbl* originalVTable = NULL;
+	IDirect3DSurface9Vtbl* myVTable = NULL;
+public:
+	D3D9SurfaceContext();
+	void SetVTable();
+	void Init(IDirect3DSurface9* surface);
+	~D3D9SurfaceContext();
+	void Dispose();
+
+	static HRESULT __stdcall LockRect(IDirect3DSurface9* This, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags);
+	static HRESULT __stdcall UnlockRect(IDirect3DSurface9* This);
+
+	HRESULT __stdcall LockRect_(D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags);
+	HRESULT __stdcall UnlockRect_();
+
+	HRESULT __stdcall LockRectReal(D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags);
+	HRESULT __stdcall UnlockRectReal();
 };

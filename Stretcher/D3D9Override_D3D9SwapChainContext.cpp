@@ -2,13 +2,32 @@
 #include "MemoryUnlocker.h"
 #include "WindowContext.h"
 
-D3D9SwapChainContext::D3D9SwapChainContext(IDirect3DSwapChain9* swapChain)
-{
-	Init(swapChain);
-}
 D3D9SwapChainContext::D3D9SwapChainContext()
 {
+	this->realSwapChain = NULL;
+	this->realBackBuffer = NULL;
+	this->realDepthStencilSurface = NULL;
 
+	this->virtualBackBufferTexture = NULL;
+	this->virtualBackBuffer = NULL;
+	this->virtualBackBufferMultisampled = NULL;
+	this->virtualDepthStencilSurface = NULL;
+	this->swapEffect = D3DSWAPEFFECT_COPY;
+
+	this->originalVTable = NULL;
+	this->myVTable = NULL;
+	this->device = NULL;
+
+	this->parent = NULL;
+	this->IsEx = false;
+	this->isDestroying = false;
+	this->insidePresent = false;
+	this->forceReal = false;
+	this->width = 1;
+	this->height = 1;
+	this->lockable = false;
+	this->presentParameters = {};
+	this->virtualBackBufferContext = NULL;
 }
 D3D9SwapChainContext::~D3D9SwapChainContext()
 {
@@ -59,6 +78,11 @@ void D3D9SwapChainContext::Dispose()
 	SafeRelease(virtualBackBuffer);
 	SafeRelease(virtualBackBufferMultisampled);
 	SafeRelease(virtualDepthStencilSurface);
+	if (virtualBackBufferContext != NULL)
+	{
+		virtualBackBufferContext->Dispose();
+		virtualBackBufferContext = NULL;
+	}
 	upscaler.Dispose();
 	SafeRelease(device);
 
@@ -84,6 +108,7 @@ HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags
 	height = pPresentationParameters->BackBufferHeight;
 	D3DFORMAT pixelFormat = pPresentationParameters->BackBufferFormat;
 	swapEffect = pPresentationParameters->SwapEffect;
+	bool lockable = 0 != (pPresentationParameters->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER);
 
 	if (width <= 0 || height <= 0)
 	{
@@ -145,6 +170,17 @@ HRESULT D3D9SwapChainContext::CreateVirtualDevice(HWND hwnd, DWORD BehaviorFlags
 	}
 
 	hr = device->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 255, 0), 0, 0);
+
+	if (virtualBackBuffer != NULL)
+	{
+		if (virtualBackBufferContext != NULL)
+		{
+			virtualBackBufferContext->Dispose();
+			virtualBackBufferContext = NULL;
+		}
+		virtualBackBufferContext = GetD3D9SurfaceContext(virtualBackBuffer, true);
+		virtualBackBufferContext->Init(virtualBackBuffer);
+	}
 
 	//According to the API documentation, should write back the actual back buffer format used if D3DFMT_UNKNOWN was specified
 	if (pPresentationParameters != NULL && pPresentationParameters->BackBufferFormat == D3DFMT_UNKNOWN)

@@ -133,7 +133,6 @@ public:
 			key->AddRef();
 			map.Set(key, make_unique<TValue>());
 			ref = map.GetReference(key);
-			//ref->get()->Init(key);
 			return ref->get();
 		}
 	}
@@ -166,7 +165,6 @@ public:
 			key->AddRef();
 			map.Set(key, make_unique<TValue>());
 			ref = map.GetReference(key);
-			//ref->get()->Init(key);
 			return ref->get();
 		}
 	}
@@ -199,7 +197,6 @@ public:
 			key->AddRef();
 			map.Set(key, make_unique<TValue>());
 			ref = map.GetReference(key);
-			//ref->get()->Init(key);
 			return ref->get();
 		}
 	}
@@ -223,11 +220,43 @@ public:
 			key->Release();
 		}
 	}
+	D3D9SurfaceContext* GetD3D9SurfaceContext(IDirect3DSurface9* key, bool allocate)
+	{
+		auto& map = d3d9SurfaceContextMap;
+		typedef remove_reference<decltype(map)>::type::ValueType::element_type TValue;
 
+		//Given a D3D9 Surface object, create or find an existing D3D9 Surface Context
+		auto* ref = map.GetReference(key);
+		if (ref != NULL) { return ref->get(); }
+		else
+		{
+			if (!allocate) return NULL;
+			key->AddRef();
+			map.Set(key, make_unique<TValue>());
+			ref = map.GetReference(key);
+			return ref->get();
+		}
+	}
+	D3D9SurfaceContext* GetD3D9SurfaceContext()
+	{
+		//Gets the last used D3D9 Surface Context
+		auto* ref = d3d9SurfaceContextMap.GetMostRecentValue();
+		if (ref == NULL) return NULL;
+		return ref->get();
+	}
+	void RemoveD3D9SurfaceContext(IDirect3DSurface9* key)
+	{
+		//Deletes a D3D9 Surface Context
+		if (d3d9SurfaceContextMap.Remove(key))
+		{
+			key->Release();
+		}
+	}
 private:
 	CachedVectorMap<IDirect3D9*, unique_ptr<D3D9Context2>> d3d9ContextMap;
 	CachedVectorMap<IDirect3DDevice9*, unique_ptr<D3D9DeviceContext>> d3d9DeviceContextMap;
 	CachedVectorMap<IDirect3DSwapChain9*, unique_ptr<D3D9SwapChainContext>> d3d9SwapChainContextMap;
+	CachedVectorMap<IDirect3DSurface9*, unique_ptr<D3D9SurfaceContext>> d3d9SurfaceContextMap;
 };
 
 D3D9ObjectStore objectStore;
@@ -274,6 +303,18 @@ bool SwapChainContextExists(IDirect3DSwapChain9* key)
 void RemoveD3D9SwapChainContext(IDirect3DSwapChain9* key)
 {
 	objectStore.RemoveD3D9SwapChainContext(key);
+}
+D3D9SurfaceContext* GetD3D9SurfaceContext(IDirect3DSurface9* key, bool allocate)
+{
+	return objectStore.GetD3D9SurfaceContext(key, allocate);
+}
+D3D9SurfaceContext* GetD3D9SurfaceContext()
+{
+	return objectStore.GetD3D9SurfaceContext();
+}
+void RemoveD3D9SurfaceContext(IDirect3DSurface9* key)
+{
+	objectStore.RemoveD3D9SurfaceContext(key);
 }
 void RemoveD3D9DisposedObjects()
 {

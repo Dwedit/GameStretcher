@@ -10,6 +10,7 @@ typedef struct IDirect3DSwapChain9ExVtbl IDirect3DSwapChain9ExVtbl;
 typedef struct IDirect3D9Vtbl IDirect3D9Vtbl;
 typedef struct IDirect3DDevice9Vtbl IDirect3DDevice9Vtbl;
 typedef struct IDirect3DSwapChain9Vtbl IDirect3DSwapChain9Vtbl;
+typedef struct IDirect3DSurface9Vtbl IDirect3DSurface9Vtbl;
 
 typedef struct IDirect3D9Ex_ { IDirect3D9ExVtbl* lpVtbl; } IDirect3D9Ex_;
 typedef struct IDirect3DDevice9Ex_ { IDirect3DDevice9ExVtbl* lpVtbl; } IDirect3DDevice9Ex_;
@@ -17,6 +18,7 @@ typedef struct IDirect3DSwapChain9Ex_ { IDirect3DSwapChain9ExVtbl* lpVtbl; } IDi
 typedef struct IDirect3D9_ { IDirect3D9Vtbl* lpVtbl; } IDirect3D9_;
 typedef struct IDirect3DDevice9_ { IDirect3DDevice9Vtbl* lpVtbl; } IDirect3DDevice9_;
 typedef struct IDirect3DSwapChain9_ { IDirect3DSwapChain9Vtbl* lpVtbl; } IDirect3DSwapChain9_;
+typedef struct IDirect3DSurface9_ { IDirect3DSurface9Vtbl* lpVtbl; } IDirect3DSurface9_;
 
 struct IDirect3D9ExVtbl
 {
@@ -355,4 +357,25 @@ struct IDirect3DSwapChain9Vtbl
     HRESULT(__stdcall* GetDisplayMode)(IDirect3DSwapChain9* This, D3DDISPLAYMODE* pMode);
     HRESULT(__stdcall* GetDevice)(IDirect3DSwapChain9* This, IDirect3DDevice9** ppDevice);
     HRESULT(__stdcall* GetPresentParameters)(IDirect3DSwapChain9* This, D3DPRESENT_PARAMETERS* pPresentationParameters);
+};
+
+struct IDirect3DSurface9Vtbl
+{
+    HRESULT(__stdcall* QueryInterface)(IDirect3DSurface9* This, const IID* const riid, void** ppvObj);
+    ULONG(__stdcall* AddRef)(IDirect3DSurface9* This);
+    ULONG(__stdcall* Release)(IDirect3DSurface9* This);
+    HRESULT(__stdcall* GetDevice)(IDirect3DSurface9* This, IDirect3DDevice9** ppDevice);
+    HRESULT(__stdcall* SetPrivateData)(IDirect3DSurface9* This, const IID* const refguid, const void* pData, DWORD SizeOfData, DWORD Flags);
+    HRESULT(__stdcall* GetPrivateData)(IDirect3DSurface9* This, const IID* const refguid, void* pData, DWORD* pSizeOfData);
+    HRESULT(__stdcall* FreePrivateData)(IDirect3DSurface9* This, const IID* const refguid);
+    DWORD (__stdcall* SetPriority)(IDirect3DSurface9* This, DWORD PriorityNew);
+    DWORD (__stdcall* GetPriority)(IDirect3DSurface9* This);
+    void (__stdcall* PreLoad)(IDirect3DSurface9* This);
+    D3DRESOURCETYPE (__stdcall* GetType)(IDirect3DSurface9* This);
+    HRESULT(__stdcall* GetContainer)(IDirect3DSurface9* This, const IID* const riid, void** ppContainer);
+    HRESULT(__stdcall* GetDesc)(IDirect3DSurface9* This, D3DSURFACE_DESC* pDesc);
+    HRESULT(__stdcall* LockRect)(IDirect3DSurface9* This, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags);
+    HRESULT(__stdcall* UnlockRect)(IDirect3DSurface9* This);
+    HRESULT(__stdcall* GetDC)(IDirect3DSurface9* This, HDC* phdc);
+    HRESULT(__stdcall* ReleaseDC)(IDirect3DSurface9* This, HDC hdc);
 };
