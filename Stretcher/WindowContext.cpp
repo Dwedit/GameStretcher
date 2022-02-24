@@ -10,10 +10,14 @@ using std::wstring;
 #define PAINT_USE_CLIP_BOX 1
 
 #define REDRAW_AFTER_GETDC 1
+#define REDRAW_AFTER_EVERYTHING 0
 #define INVALIDATE_ENTIRE_WINDOW 1
 
 #define DO_NOT_RESET_WNDPROC 0
 #define DELAYED_HOOK 0
+
+#define MAGIC1 0xEC2D6780
+#define MAGIC2 0xDE1ABC27
 
 #include "WindowClassContext.h"
 #include "Win32Ex.h"
@@ -568,6 +572,19 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			return _DefWindowProc(hwnd, uMsg, wParam, lParam);
 		}
 		break;
+		case WM_APP:
+		{
+			if (redrawPending && wParam == (WPARAM)MAGIC1 && lParam == (LPARAM)MAGIC2)
+			{
+				redrawPending = false;
+				if (!dirtyRegion.IsEmpty())
+				{
+					Redraw();
+				}
+				return 0;
+			}
+		}
+		break;
 		} //end swtich
 	}
 	return _CallWindowProc(oldWindowProc,hwnd, uMsg, wParam, lParam);
@@ -790,6 +807,14 @@ void WindowContext::AddDirtyRect()
 	{
 		LPtoDP(this->d3dDC, (LPPOINT)&boundsRect, 2);
 		dirtyRegion.AddRectangle(boundsRect);
+
+#if REDRAW_AFTER_EVERYTHING
+		if (!redrawPending)
+		{
+			redrawPending = true;
+			PostMessageW(this->window, WM_APP, (WPARAM)MAGIC1, (LPARAM)MAGIC2);
+		}
+#endif
 	}
 }
 
