@@ -129,7 +129,10 @@ void ImportReplacer::GetImports(LPCSTR dllNameToMatch)
 	string dllNameToMatchLower = ToLower(dllNameToMatch);
 	ULONG ImportDirectorySize = 0;
 	PVOID ImportDirectory = ImageDirectoryEntryToDataEx(this->Base, IMAGE_DIRECTORY_ENTRY_IMPORT, &ImportDirectorySize);
-
+	if (ImportDirectory == NULL)
+	{
+		return;
+	}
 	const char* base = reinterpret_cast<const char*>(this->Base);
 	PIMAGE_IMPORT_DESCRIPTOR ImportDescriptor = static_cast<PIMAGE_IMPORT_DESCRIPTOR>(ImportDirectory);
 	while (ImportDescriptor->Name != 0)
