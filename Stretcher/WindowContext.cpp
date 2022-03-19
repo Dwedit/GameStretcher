@@ -10,7 +10,7 @@ using std::wstring;
 #define PAINT_USE_CLIP_BOX 1
 
 #define REDRAW_AFTER_GETDC 1
-#define REDRAW_AFTER_EVERYTHING 0
+#define REDRAW_AFTER_EVERYTHING 1
 #define INVALIDATE_ENTIRE_WINDOW 1
 
 #define DO_NOT_RESET_WNDPROC 0
@@ -579,7 +579,7 @@ LRESULT WindowContext::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 				redrawPending = false;
 				if (!dirtyRegion.IsEmpty())
 				{
-					Redraw();
+					CompleteDraw();
 				}
 				return 0;
 			}
@@ -700,6 +700,7 @@ HDC WindowContext::GetD3DDC()
 	return NULL;
 }
 
+//Only CompleteDraw should call this function
 bool WindowContext::Redraw()
 {
 	if (d3d9Context.device == NULL)

@@ -343,6 +343,7 @@ void BuildImportMap_AllGDI()
 	ReplaceImport("User32.dll", "DrawFrameControl", (FARPROC)DrawFrameControl_Replacement, (FARPROC*)&DrawFrameControl_OLD);
 	ReplaceImport("User32.dll", "DrawCaption", (FARPROC)DrawCaption_Replacement, (FARPROC*)&DrawCaption_OLD);
 	ReplaceImport("User32.dll", "DrawIcon", (FARPROC)DrawIcon_Replacement, (FARPROC*)&DrawIcon_OLD);
+	ReplaceImport("User32.dll", "PrintWindow", (FARPROC)PrintWindow_Replacement, (FARPROC*)&PrintWindow_OLD);
 	ReplaceImport("User32.dll", "DrawTextA", (FARPROC)DrawTextA_Replacement, (FARPROC*)&DrawTextA_OLD);
 	ReplaceImport("User32.dll", "DrawTextW", (FARPROC)DrawTextW_Replacement, (FARPROC*)&DrawTextW_OLD);
 	ReplaceImport("User32.dll", "DrawTextExA", (FARPROC)DrawTextExA_Replacement, (FARPROC*)&DrawTextExA_OLD);
@@ -618,6 +619,7 @@ wglSwapLayerBuffers_FUNC wglSwapLayerBuffers_OLD = NULL;
 DrawEdge_FUNC DrawEdge_OLD = NULL;
 DrawFrameControl_FUNC DrawFrameControl_OLD = NULL;
 DrawCaption_FUNC DrawCaption_OLD = NULL;
+PrintWindow_FUNC PrintWindow_OLD = NULL;
 DrawIcon_FUNC DrawIcon_OLD = NULL;
 DrawTextA_FUNC DrawTextA_OLD = NULL;
 DrawTextW_FUNC DrawTextW_OLD = NULL;
@@ -1905,6 +1907,11 @@ BOOL WINAPI DrawCaption_Replacement(HWND hwnd, HDC hdc, CONST RECT* lprect, UINT
 {
 	auto lock = SubstituteDC(hdc);
 	return DrawCaption_OLD(hwnd, hdc, lprect, flags);
+}
+BOOL WINAPI PrintWindow_Replacement(HWND hwnd, HDC hdcBlt, UINT nFlags)
+{
+	auto lock = SubstituteDC(hdcBlt);
+	return PrintWindow_OLD(hwnd, hdcBlt, nFlags);
 }
 BOOL WINAPI DrawIcon_Replacement(HDC hDC, int X, int Y, HICON hIcon)
 {
