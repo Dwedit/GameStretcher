@@ -781,20 +781,34 @@ FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName)
 
 HMODULE WINAPI LoadLibraryA_Replacement(LPCSTR fileName)
 {
-    HMODULE module = LoadLibraryA_OLD(fileName);
-    if (IsApplicationDLL(module))
+    bool wasLoaded = false;
+    HMODULE module;
+    module = GetModuleHandleA(fileName);
+    wasLoaded = module != NULL;
+    module = LoadLibraryA_OLD(fileName);
+    if (!wasLoaded)
     {
-        ReplaceImports(module);
+        if (IsApplicationDLL(module))
+        {
+            ReplaceImports(module);
+        }
     }
     return module;
 }
 
 HMODULE WINAPI LoadLibraryW_Replacement(LPCWSTR fileName)
 {
-    HMODULE module = LoadLibraryW_OLD(fileName);
-    if (IsApplicationDLL(module))
+    bool wasLoaded = false;
+    HMODULE module;
+    module = GetModuleHandleW(fileName);
+    wasLoaded = module != NULL;
+    module = LoadLibraryW_OLD(fileName);
+    if (!wasLoaded)
     {
-        ReplaceImports(module);
+        if (IsApplicationDLL(module))
+        {
+            ReplaceImports(module);
+        }
     }
     return module;
 }
