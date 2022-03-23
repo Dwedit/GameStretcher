@@ -75,9 +75,11 @@ typedef FARPROC(WINAPI* GetProcAddress_FUNC)(HMODULE hModule, LPCSTR lpProcName)
 typedef HMODULE(WINAPI* LoadLibraryA_FUNC)(LPCSTR fileName);
 typedef HMODULE(WINAPI* LoadLibraryW_FUNC)(LPCWSTR fileName);
 typedef IDirect3D9* (WINAPI* Direct3DCreate9_FUNC)(UINT SDKVersion);
-typedef HRESULT (WINAPI* Direct3DCreate9Ex_FUNC)(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex);
+typedef HRESULT(WINAPI* Direct3DCreate9Ex_FUNC)(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex);
 typedef HRESULT(WINAPI* DirectDrawCreate_FUNC)(GUID* lpGUID, LPDIRECTDRAW* lplpDD, IUnknown* pUnkOuter);
 typedef HRESULT(WINAPI* DirectDrawCreateEx_FUNC)(GUID* lpGuid, LPVOID* lplpDD, REFIID iid, IUnknown* pUnkOuter);
+typedef HRESULT(WINAPI* CoCreateInstance_FUNC)(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv);
+typedef HRESULT(WINAPI* DllGetClassObject_FUNC)(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
 //Import Backups (Declarations)
 extern ClientToScreen_FUNC ClientToScreen_OLD;
@@ -151,6 +153,8 @@ extern Direct3DCreate9_FUNC Direct3DCreate9_OLD;
 extern Direct3DCreate9Ex_FUNC Direct3DCreate9Ex_OLD;
 extern DirectDrawCreate_FUNC DirectDrawCreate_OLD;
 extern DirectDrawCreateEx_FUNC DirectDrawCreateEx_OLD;
+extern DllGetClassObject_FUNC DDRAW_DllGetClassObject_OLD;
+extern CoCreateInstance_FUNC CoCreateInstance_OLD;
 
 //Replacement Functions (Declarations)
 BOOL WINAPI ClientToScreen_Replacement(HWND hWnd, LPPOINT lpPoint);
@@ -224,6 +228,8 @@ IDirect3D9*  WINAPI Direct3DCreate9_Replacement(UINT SDKVersion);
 HRESULT WINAPI Direct3DCreate9Ex_Replacement(UINT SDKVersion, IDirect3D9Ex** lpIDirect3D9Ex);
 HRESULT WINAPI DirectDrawCreate_Replacement(GUID* lpGUID, LPDIRECTDRAW* lplpDD, IUnknown* pUnkOuter);
 HRESULT WINAPI DirectDrawCreateEx_Replacement(GUID* lpGuid, LPVOID* lplpDD, REFIID iid, IUnknown* pUnkOuter);
+HRESULT WINAPI DDRAW_DllGetClassObject_Replacement(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
+HRESULT WINAPI CoCreateInstance_Replacement(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv);
 
 void BuildImportMap();
 void ReplaceImports(HMODULE module = NULL);

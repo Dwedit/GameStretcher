@@ -4,6 +4,8 @@ struct IUnknown;
 #include <Windows.h>
 #include <ddraw.h>
 
+struct DDrawOverride;
+
 // {0438FBD8-FDD5-4d64-B8D4-79ED51C6D104}
 static const GUID CLSID_DirectDrawSurface7Wrapper =
 { 0x438fbd8, 0xfdd5, 0x4d64, { 0xb8, 0xd4, 0x79, 0xed, 0x51, 0xc6, 0xd1, 0x4 } };
@@ -11,10 +13,12 @@ static const GUID CLSID_DirectDrawSurface7Wrapper =
 
 struct CDirectDrawSurface7Wrapper : public IDirectDrawSurface7
 {
+    friend struct DDrawOverride;
 protected:
     int refCount = 1;
     int internalRefCount = 0;
     IDirectDrawSurface7* realObject = NULL;
+    bool isPrimarySurface = false;
 public:
     CDirectDrawSurface7Wrapper(IDirectDrawSurface7* obj);
     virtual ~CDirectDrawSurface7Wrapper();

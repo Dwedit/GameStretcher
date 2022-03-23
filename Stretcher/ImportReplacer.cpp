@@ -321,9 +321,136 @@ void ImportMap::ReplaceImports(HMODULE Base) const
 		for (auto iterator2 = map2.cbegin(); iterator2 != map2.cend(); iterator2++)
 		{
 			const string& procName = iterator2->first;
-			FARPROC procAddress = iterator2->second.first;
+			FARPROC replacementProcAddress = iterator2->second.first;
 			FARPROC* oldAddress = iterator2->second.second;
-			replacer.ReplaceImport(moduleName.c_str(), procName.c_str(), procAddress, oldAddress);
+			replacer.ReplaceImport(moduleName.c_str(), procName.c_str(), replacementProcAddress, oldAddress);
+		}
+	}
+}
+std::unordered_map<UINT_PTR, UINT_PTR> ImportMap::GetFunctionReplacementMap() const
+{
+	//Builds a map that relates actual procedure address to replacement procedure address
+	//Also sets "Old" address so you can safely call the replacement procedures.
+	std::unordered_map<UINT_PTR, UINT_PTR> importReplacements;
+	//build replacement map
+	for (auto iterator1 = map.cbegin(); iterator1 != map.cend(); iterator1++)
+	{
+		const string& moduleName = iterator1->first;
+		HMODULE dllModule = GetModuleHandleA(moduleName.c_str());
+		if (dllModule != NULL)
+		{
+			const auto& map2 = iterator1->second;
+			for (auto iterator2 = map2.cbegin(); iterator2 != map2.cend(); iterator2++)
+			{
+				const string& procName = iterator2->first;
+				FARPROC replacementProcAddress = iterator2->second.first;
+				FARPROC* oldAddress = iterator2->second.second;
+				FARPROC procAddress = ::GetProcAddress(dllModule, procName.c_str());
+				if (procAddress != NULL)
+				{
+					//ensure oldAddress points to a valid place
+					if (oldAddress != NULL && *oldAddress == NULL)
+					{
+						*oldAddress = procAddress;
+					}
+					importReplacements[(UINT_PTR)procAddress] = (UINT_PTR)replacementProcAddress;
+				}
+			}
+		}
+	}
+	return importReplacements;
+}
+
+static void ParseProtect(int protect, bool &isReadable, bool &isWritable, bool &isExecutable)
+{
+	isReadable = false;
+	isWritable = false;
+	isExecutable = false;
+	switch (protect)
+	{
+	case PAGE_NOACCESS:
+		break;
+	case PAGE_READONLY:
+		isReadable = true;
+		break;
+	case PAGE_READWRITE:
+	case PAGE_WRITECOPY:
+		isReadable = true;
+		isWritable = true;
+		break;
+	case PAGE_EXECUTE:
+	case PAGE_EXECUTE_READ:
+		isReadable = true;
+		isExecutable = true;
+		break;
+	case PAGE_EXECUTE_READWRITE:
+	case PAGE_EXECUTE_WRITECOPY:
+		isReadable = true;
+		isWritable = true;
+		isExecutable = true;
+		break;
+	}
+}
+
+void ImportMap::PatchModuleMemory(HMODULE module) const
+{
+	std::unordered_map<UINT_PTR, UINT_PTR> importReplacements = GetFunctionReplacementMap();
+	auto notFound = importReplacements.cend();
+	//Look at memory at module
+	//Ensure memory is readable
+	//See if we find any exact matches for functions we want to replace
+	//Unlock memory, and poke the match for a replacement
+	UINT_PTR* p = (UINT_PTR*)module;
+	while (true)
+	{
+		//get information about memory page
+		MEMORY_BASIC_INFORMATION memInfo = {};
+		SIZE_T returnSize = VirtualQuery((LPCVOID)p, &memInfo, sizeof(memInfo));
+		if (returnSize == 0)  //failure (doesn't happen)
+		{
+			break;
+		}
+		//check if memory page has the same module as our starting module
+		HMODULE memModule = NULL;
+		BOOL okay = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			(LPCWSTR)memInfo.BaseAddress, &memModule);
+		if (!okay)
+		{
+			break;
+		}
+		if (memModule != module)
+		{
+			break;
+		}
+		UINT_PTR* memoryBlockEnd = (UINT_PTR*)((byte*)memInfo.BaseAddress + memInfo.RegionSize);
+		//check protection
+		bool isWritable = false;
+		bool isReadable = false;
+		bool isExecutable = false;
+		int protect = memInfo.Protect & 0x1FF;
+		ParseProtect(protect, isReadable, isWritable, isExecutable);
+		MemoryUnlocker unlocker;
+		if (isReadable)
+		{
+			//read entire memory block, look for an import replacement
+			for (; p < memoryBlockEnd; p++)
+			{
+				UINT_PTR value = *p;
+				const auto found = importReplacements.find(value);
+				if (found != notFound)
+				{
+					if (!isWritable)
+					{
+						unlocker.Unlock(p);
+						isWritable = true;
+					}
+					*p = found->second;
+				}
+			}
+		}
+		else
+		{
+			p = memoryBlockEnd;
 		}
 	}
 }

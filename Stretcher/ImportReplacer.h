@@ -42,10 +42,13 @@ class ImportMap
 {
 	unordered_map<string, unordered_map<string, pair<FARPROC, FARPROC*>>> map;
 	mutable ModuleBaseNameMap baseNameMap;
+private:
+	unordered_map<UINT_PTR, UINT_PTR> GetFunctionReplacementMap() const;
 public:
 	void AddImport(LPCSTR dllName, LPCSTR functionName, FARPROC replacementFunction, FARPROC* pOldFunction);
 	FARPROC GetProcAddress(LPCSTR moduleName, LPCSTR procName) const;
 	FARPROC GetProcAddress(const string &moduleName, LPCSTR procName) const;
 	FARPROC GetProcAddress(HMODULE module, LPCSTR procName) const;
 	void ReplaceImports(HMODULE Base = NULL) const;
+	void PatchModuleMemory(HMODULE module) const;
 };

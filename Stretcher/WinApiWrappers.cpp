@@ -98,6 +98,8 @@ void BuildImportMap()
     ReplaceImport("d3d9.dll", "Direct3DCreate9Ex", (FARPROC)Direct3DCreate9Ex_Replacement, (FARPROC*)&Direct3DCreate9Ex_OLD);
     ReplaceImport("ddraw.dll", "DirectDrawCreate", (FARPROC)DirectDrawCreate_Replacement, (FARPROC*)&DirectDrawCreate_OLD);
     ReplaceImport("ddraw.dll", "DirectDrawCreateEx", (FARPROC)DirectDrawCreateEx_Replacement, (FARPROC*)&DirectDrawCreateEx_OLD);
+    ReplaceImport("ddraw.dll", "DllGetClassObject", (FARPROC)DDRAW_DllGetClassObject_Replacement, (FARPROC*)&DDRAW_DllGetClassObject_OLD);
+    ReplaceImport("ole32.dll", "CoCreateInstance", (FARPROC)CoCreateInstance_Replacement, (FARPROC*)&CoCreateInstance_OLD);
 
     void BuildImportMap_AllGDI();
     void BuildImportMap_Registry();
@@ -185,6 +187,8 @@ Direct3DCreate9_FUNC Direct3DCreate9_OLD = NULL;
 Direct3DCreate9Ex_FUNC Direct3DCreate9Ex_OLD = NULL;
 DirectDrawCreate_FUNC DirectDrawCreate_OLD = NULL;
 DirectDrawCreateEx_FUNC DirectDrawCreateEx_OLD = NULL;
+CoCreateInstance_FUNC CoCreateInstance_OLD = NULL;
+DllGetClassObject_FUNC DDRAW_DllGetClassObject_OLD = NULL;
 
 /*
 
@@ -779,18 +783,46 @@ FARPROC WINAPI GetProcAddress_Replacement(HMODULE hModule, LPCSTR lpProcName)
     return GetProcAddress_OLD(hModule, lpProcName);
 }
 
+static bool StringEndsWithCaseInsensitive(const wchar_t* path, const wchar_t* fileName)
+{
+    int fileNameLength = wcslen(fileName);
+    int pathLength = wcslen(path);
+    if (pathLength >= fileNameLength)
+    {
+        return 0 == _wcsicmp(path + pathLength - fileNameLength, fileName);
+    }
+    return false;
+}
+
+static bool StringEndsWithCaseInsensitive(const char* path, const char* fileName)
+{
+    int fileNameLength = strlen(fileName);
+    int pathLength = strlen(path);
+    if (pathLength >= fileNameLength)
+    {
+        return 0 == _stricmp(path + pathLength - fileNameLength, fileName);
+    }
+    return false;
+}
+
 HMODULE WINAPI LoadLibraryA_Replacement(LPCSTR fileName)
 {
-    bool wasLoaded = false;
+    bool wasAlreadyLoaded = false;
     HMODULE module;
     module = GetModuleHandleA(fileName);
-    wasLoaded = module != NULL;
+    wasAlreadyLoaded = module != NULL;
     module = LoadLibraryA_OLD(fileName);
-    if (!wasLoaded)
+    //If module successfully loaded
+    if (module != NULL)
     {
-        if (IsApplicationDLL(module))
+        //If we're loading this module for the first time
+        if (!wasAlreadyLoaded)
         {
-            ReplaceImports(module);
+            //If module is not in a system directory, replace imports.
+            if (IsApplicationDLL(module))
+            {
+                ReplaceImports(module);
+            }
         }
     }
     return module;
@@ -798,16 +830,32 @@ HMODULE WINAPI LoadLibraryA_Replacement(LPCSTR fileName)
 
 HMODULE WINAPI LoadLibraryW_Replacement(LPCWSTR fileName)
 {
-    bool wasLoaded = false;
+    bool wasAlreadyLoaded = false;
     HMODULE module;
     module = GetModuleHandleW(fileName);
-    wasLoaded = module != NULL;
+    wasAlreadyLoaded = module != NULL;
     module = LoadLibraryW_OLD(fileName);
-    if (!wasLoaded)
+    //If module successfully loaded
+    if (module != NULL)
     {
-        if (IsApplicationDLL(module))
+        //If we're loading this module for the first time
+        if (!wasAlreadyLoaded)
         {
-            ReplaceImports(module);
+            //If module is not in a system directory, replace imports.
+            if (IsApplicationDLL(module))
+            {
+                ReplaceImports(module);
+            }
+            //Check for RPG Maker VX or VX Ace engine, it uses a special program loader where imports are not static
+            //Instead, search and replace the entire module's memory space for function pointers we want to override
+            if (StringEndsWithCaseInsensitive(fileName, L"RGSS301.dll") ||
+                StringEndsWithCaseInsensitive(fileName, L"RGSS300.dll") ||
+                StringEndsWithCaseInsensitive(fileName, L"RGSS202J.dll") ||
+                StringEndsWithCaseInsensitive(fileName, L"RGSS202E.dll") ||
+                StringEndsWithCaseInsensitive(fileName, L"RGSS200J.dll"))
+            {
+                importMap.PatchModuleMemory(module);
+            }
         }
     }
     return module;
@@ -864,3 +912,27 @@ HRESULT WINAPI DirectDrawCreateEx_Replacement(GUID* lpGuid, LPVOID* lplpDD, REFI
     return hr;
 }
 
+HRESULT WINAPI DDRAW_DllGetClassObject_Replacement(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+{
+	//TODO, make this check for a DirectDraw object and hook it, for now overriding CoCreateInstance instead
+    return DDRAW_DllGetClassObject_OLD(rclsid, riid, ppv);
+}
+
+HRESULT WINAPI CoCreateInstance_Replacement(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv)
+{
+	//This function can also be used to create an instance of DirectDraw rather than using DirectDrawCreate
+    HRESULT hr;
+    if (rclsid == CLSID_DirectDraw7 ||
+        riid == IID_IDirectDraw7)
+    {
+        hr = CoCreateInstance_OLD(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+        if (SUCCEEDED(hr) && *ppv != NULL)
+        {
+            IDirectDraw7*& ddraw = *(IDirectDraw7**)ppv;
+            ddraw = DDrawOverride::CreateWrapper(ddraw);
+            return hr;
+        }
+    }
+
+    return CoCreateInstance_OLD(rclsid, pUnkOuter, dwClsContext, riid, ppv);
+}

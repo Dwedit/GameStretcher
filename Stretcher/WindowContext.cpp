@@ -4,18 +4,26 @@
 using std::string;
 using std::wstring;
 
+//For troubleshooting only, completely disables Direct3D
 #define NOD3D 0
+//For troubleshooting only, completely disables virtualization
 #define NOVIRTUALIZE 0
+//For troubleshooting only, completely disables hooking windows
 #define NOHOOKWINDOW 0
+//For GetDC of child windows, sets clip box to the child window so it can't draw elsewhere
 #define PAINT_USE_CLIP_BOX 1
-
+//Triggers graphics update after calling GetDC (if there are any dirty rectangles)
 #define REDRAW_AFTER_GETDC 1
+//Triggers graphics update on empty message loop using PostMessage WM_APP (if there are any dirty rectangles)
 #define REDRAW_AFTER_EVERYTHING 1
+//If InvalidateRect would specify the entire client area, invalidate the whole real window (including black border area)
 #define INVALIDATE_ENTIRE_WINDOW 1
-
+//for class hook, not used
 #define DO_NOT_RESET_WNDPROC 0
+//TODO, delayed hooking is not yet implemented
 #define DELAYED_HOOK 0
 
+//Magic constants used for REDRAW_AFTER_EVERYTHING to distinguish the window message from other possible WM_APP messages 
 #define MAGIC1 0xEC2D6780
 #define MAGIC2 0xDE1ABC27
 

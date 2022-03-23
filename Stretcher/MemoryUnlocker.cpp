@@ -20,7 +20,10 @@ void MemoryUnlocker::Unlock(void* mem)
 		SIZE_T returnSize;
 		returnSize = VirtualQuery(mem, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
 		oldProtect = memInfo.Protect & 0xFF;
-		if (oldProtect == PAGE_READWRITE || oldProtect == PAGE_EXECUTE_READWRITE) return;
+		if (oldProtect == PAGE_READWRITE ||
+			oldProtect == PAGE_WRITECOPY ||
+			oldProtect == PAGE_EXECUTE_READWRITE ||
+			oldProtect == PAGE_EXECUTE_WRITECOPY) return;
 		DWORD protect = PAGE_READWRITE;
 		if (memInfo.Protect & 0xF0)
 		{
@@ -31,7 +34,10 @@ void MemoryUnlocker::Unlock(void* mem)
 }
 void MemoryUnlocker::Lock()
 {
-	if (oldProtect == PAGE_READWRITE || oldProtect == PAGE_EXECUTE_READWRITE) return;
+	if (oldProtect == PAGE_READWRITE ||
+		oldProtect == PAGE_WRITECOPY ||
+		oldProtect == PAGE_EXECUTE_READWRITE ||
+		oldProtect == PAGE_EXECUTE_WRITECOPY) return;
 	if (memInfo.BaseAddress)
 	{
 		BOOL okay;
