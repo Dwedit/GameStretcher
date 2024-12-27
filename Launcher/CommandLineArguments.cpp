@@ -38,41 +38,41 @@ vector<HWND> GetChildWindows(HWND hwnd)
     return vec;
 }
 
-wstring GetParentExplorerDirectory()
-{
-    HWND foregroundWindow = GetForegroundWindow();
-    wchar_t buffer[256];
-    GetClassNameW(foregroundWindow, buffer, 256);
-    if (0 == wcscmp(buffer, L"CabinetWClass") || 0 == wcscmp(buffer, L"ExplorerWClass"))
-    {
-        auto vec = GetChildWindows(foregroundWindow);
-        for (int i = 0; i < vec.size(); i++)
-        {
-            GetClassNameW(vec[i], buffer, 256);
-            if (0 == wcscmp(buffer, L"Edit") || 0 == wcscmp(buffer, L"ToolbarWindow32"))
-            {
-                GetWindowTextW(vec[i], buffer, 256);
-                wchar_t* found = NULL;
-                found = wcsstr(buffer, L":\\");
-                if (found)
-                {
-                    int charPos = found - buffer;
-                    if (charPos > 0)
-                    {
-                        wchar_t* path = buffer + charPos - 1;
-                        if (PathFileExistsW(path))
-                        {
-                            wchar_t buffer2[MAX_PATH];
-                            PathCanonicalizeW(buffer2, path);
-                            return wstring(buffer2);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return wstring();
-}
+//wstring GetParentExplorerDirectory()
+//{
+//    HWND foregroundWindow = GetForegroundWindow();
+//    wchar_t buffer[256];
+//    GetClassNameW(foregroundWindow, buffer, 256);
+//    if (0 == wcscmp(buffer, L"CabinetWClass") || 0 == wcscmp(buffer, L"ExplorerWClass"))
+//    {
+//        auto vec = GetChildWindows(foregroundWindow);
+//        for (int i = 0; i < vec.size(); i++)
+//        {
+//            GetClassNameW(vec[i], buffer, 256);
+//            if (0 == wcscmp(buffer, L"Edit") || 0 == wcscmp(buffer, L"ToolbarWindow32"))
+//            {
+//                GetWindowTextW(vec[i], buffer, 256);
+//                wchar_t* found = NULL;
+//                found = wcsstr(buffer, L":\\");
+//                if (found)
+//                {
+//                    int charPos = found - buffer;
+//                    if (charPos > 0)
+//                    {
+//                        wchar_t* path = buffer + charPos - 1;
+//                        if (PathFileExistsW(path))
+//                        {
+//                            wchar_t buffer2[MAX_PATH];
+//                            PathCanonicalizeW(buffer2, path);
+//                            return wstring(buffer2);
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//    return wstring();
+//}
 
 wstring GetCurrentDirectory()
 {
@@ -165,9 +165,9 @@ wstring LocateFile2(const wstring& path_in, const CommandLineData& cmd)
         wstring path = GetFile(AppendSlash(cmd.currentDirectory) + path_in);
         if (!path.empty()) return path;
     }
-    if (!cmd.explorerDirectory.empty())
+    if (!cmd.startupDirectory.empty())
     {
-        wstring path = GetFile(AppendSlash(cmd.explorerDirectory) + path_in);
+        wstring path = GetFile(AppendSlash(cmd.startupDirectory) + path_in);
         if (!path.empty()) return path;
     }
     return wstring();
@@ -190,9 +190,9 @@ wstring LocateFile(const wstring& path_in, const CommandLineData& cmd)
         wstring path = GetFile(AppendSlash(cmd.targetDirectory) + path_in);
         if (!path.empty()) return path;
     }
-    if (!cmd.explorerDirectory.empty())
+    if (!cmd.startupDirectory.empty())
     {
-        wstring path = GetFile(AppendSlash(cmd.explorerDirectory) + path_in);
+        wstring path = GetFile(AppendSlash(cmd.startupDirectory) + path_in);
         if (!path.empty()) return path;
     }
     return wstring();
@@ -287,11 +287,19 @@ bool StringStartsWith(const wstring& str, const wstring& lookFor)
     return true;
 }
 
+wstring GetStartupDirectory()
+{
+    STARTUPINFOW startupInfo = {};
+    startupInfo.cb = sizeof(startupInfo);
+    GetStartupInfoW(&startupInfo);
+    return GetDirectory(startupInfo.lpTitle);
+}
+
 CommandLineData ParseCommandLine(LPWSTR lpCmdLine)
 {
     int stringLength = wcslen(lpCmdLine);
     CommandLineData cmd;
-    cmd.explorerDirectory = GetParentExplorerDirectory();
+    cmd.startupDirectory = GetStartupDirectory();
     cmd.currentDirectory = GetCurrentDirectory();
     //int argc;
     //LPWSTR* argv;
@@ -307,6 +315,7 @@ CommandLineData ParseCommandLine(LPWSTR lpCmdLine)
     cmd.launcherExe = GetFile(pieces[0].str);
     cmd.launcherDirectory = GetDirectory(cmd.launcherExe);
 
+
     for (int pieceNumber = 1; pieceNumber < pieces.size(); pieceNumber++)
     {
         const CommandLinePiece& piece = pieces[pieceNumber];
@@ -314,7 +323,22 @@ CommandLineData ParseCommandLine(LPWSTR lpCmdLine)
         {
             if (StringStartsWith(piece.str, L"--"))
             {
+                bool wantArgument = false;
                 cmd.switches.push_back(piece.str);
+                if (piece.str == L"--attach")
+                {
+                    wantArgument = true;
+                }
+
+                if (wantArgument)
+                {
+                    pieceNumber++;
+                    if (pieceNumber < pieces.size())
+                    {
+                        const CommandLinePiece& piece2 = pieces[pieceNumber];
+                        cmd.targetExe = piece2.str;
+                    }
+                }
             }
             else
             {

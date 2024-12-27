@@ -11,7 +11,7 @@ struct CommandLineData
 {
     wstring launcherExe;
     wstring launcherDirectory;
-    wstring explorerDirectory;
+    wstring startupDirectory;
     wstring currentDirectory;
     wstring targetExe;
     wstring targetDirectory;

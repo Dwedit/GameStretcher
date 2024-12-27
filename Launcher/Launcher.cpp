@@ -116,6 +116,8 @@ DWORD InjectDllIntoRemoteProcess(const PROCESS_INFORMATION& processInformation, 
     return result;
 }
 
+bool AttachToProcess(const wstring &targetExe, PROCESS_INFORMATION &processInformation);
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd)
 {
     CommandLineData cmd = ParseCommandLine();
@@ -145,22 +147,111 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         MessageBoxW(NULL, L"Cannot find Injector.dll.", L"Error", 0);
         return ERROR_FILE_NOT_FOUND;
     }
-    
+
+    bool staySuspended = false;
+    bool doAttach = false;
     for (int i = 0; i < cmd.switches.size(); i++)
     {
         const wstring& cmdSwitch = cmd.switches[i];
+        if (cmdSwitch == L"--attach")
+        {
+            doAttach = true;
+        }
         if (cmdSwitch == L"--optimus")
         {
             SetEnvironmentVariableW(L"SHIM_MCCOMPAT", L"0x800000001");
         }
+        if (cmdSwitch == L"--suspend")
+        {
+            staySuspended = true;
+        }
     }
 
     PROCESS_INFORMATION processInformation = {};
-    bool okay = StartSuspendedProcess(cmd.targetFullCommandLine, cmd.targetDirectory, nShowCmd, processInformation);
+    if (!doAttach)
+    {
+        bool okay = StartSuspendedProcess(cmd.targetFullCommandLine, cmd.targetDirectory, nShowCmd, processInformation);
+        if (!okay)
+        {
+            return ERROR_FILE_NOT_FOUND;
+        }
+    }
+    else
+    {
+        bool okay = AttachToProcess(cmd.targetExe, processInformation);
+        if (!okay)
+        {
+            return ERROR_FILE_NOT_FOUND;
+        }
+    }
     DWORD result = InjectDllIntoRemoteProcess(processInformation, stretcherDll.c_str(), injectorDll.c_str());
     AllowSetForegroundWindow(processInformation.dwProcessId);
-    ResumeThread(processInformation.hThread);
-    CloseHandle(processInformation.hProcess);
-    CloseHandle(processInformation.hThread);
+    if (!staySuspended)
+    {
+        if (processInformation.hThread != 0 && processInformation.hThread != INVALID_HANDLE_VALUE)
+        {
+            ResumeThread(processInformation.hThread);
+        }
+    }
+    if (processInformation.hProcess != 0 && processInformation.hProcess != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(processInformation.hProcess);
+    }
+    if (processInformation.hThread != 0 && processInformation.hThread != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(processInformation.hThread);
+    }
 	return result;
+}
+
+#include <tlhelp32.h>
+
+DWORD FindFirstProcess(LPCWSTR exeName)
+{
+    PROCESSENTRY32 entry;
+    entry.dwSize = sizeof(PROCESSENTRY32);
+
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+    if (Process32First(snapshot, &entry) == TRUE)
+    {
+        while (Process32Next(snapshot, &entry) == TRUE)
+        {
+            if (_wcsicmp(entry.szExeFile, exeName) == 0)
+            {
+                CloseHandle(snapshot);
+                return entry.th32ProcessID;
+            }
+        }
+    }
+    CloseHandle(snapshot);
+    return 0;
+}
+
+bool AttachToProcess(const wstring& targetExe, PROCESS_INFORMATION& processInformation)
+{
+    if (targetExe.size() > 0 && targetExe[0] >= '0' && targetExe[0] <= '9')
+    {
+        int pid = _wtoi(targetExe.c_str());
+        processInformation.hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
+        if (processInformation.hProcess != INVALID_HANDLE_VALUE && processInformation.hProcess != 0)
+        {
+            processInformation.dwProcessId = pid;
+            return true;
+        }
+    }
+    LPWSTR fileName = PathFindFileNameW(targetExe.c_str());
+    int pid = FindFirstProcess(fileName);
+    if (pid == 0)
+    {
+        return false;
+    }
+
+    processInformation.hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
+    if (processInformation.hProcess != INVALID_HANDLE_VALUE && processInformation.hProcess != 0)
+    {
+        processInformation.dwProcessId = pid;
+        return true;
+    }
+    return false;
 }

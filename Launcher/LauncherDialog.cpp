@@ -119,7 +119,7 @@ static void GetFileNames()
     filenames2.clear();
     vector<wstring> paths;
     AddString(paths, AppendSlash(cmd->targetDirectory));
-    AddString(paths, AppendSlash(cmd->explorerDirectory));
+    AddString(paths, AppendSlash(cmd->startupDirectory));
     AddString(paths, AppendSlash(cmd->currentDirectory));
     AddString(paths, AppendSlash(cmd->launcherDirectory));
     for (int i = 0; i < paths.size(); i++)
